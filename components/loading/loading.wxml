@@ -1,0 +1,34 @@
+<!--components/loading/loading.wxml-->
+<view class="loading-container" wx:if="{{show}}">
+  <!-- 背景遮罩 -->
+  <view class="loading-mask" wx:if="{{mask}}" style="opacity: {{opacity}}" bindtap="preventTap"></view>
+  
+  <!-- loading内容 -->
+  <view class="loading-content">
+    <!-- 默认loading样式 -->
+    <view class="loading-default" wx:if="{{type === 'default'}}">
+      <view class="loading-spinner">
+        <view class="loading-dot"></view>
+        <view class="loading-dot"></view>
+        <view class="loading-dot"></view>
+      </view>
+      <text class="loading-text">{{text}}</text>
+    </view>
+    
+    <!-- 点状loading样式 -->
+    <view class="loading-dots" wx:if="{{type === 'dots'}}">
+      <view class="dot-container">
+        <view class="dot dot1"></view>
+        <view class="dot dot2"></view>
+        <view class="dot dot3"></view>
+      </view>
+      <text class="loading-text">{{text}}</text>
+    </view>
+    
+    <!-- 旋转loading样式 -->
+    <view class="loading-spinner-type" wx:if="{{type === 'spinner'}}">
+      <view class="spinner-circle"></view>
+      <text class="loading-text">{{text}}</text>
+    </view>
+  </view>
+</view>

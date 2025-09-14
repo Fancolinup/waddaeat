@@ -1,0 +1,27 @@
+<!--pages/welcome/welcome.wxml-->
+<!--欢迎页面模板-->
+<view class="welcome-container">
+  <swiper class="slides" bindchange="onSlideChange" indicator-dots="true" indicator-color="rgba(255,255,255,0.5)" indicator-active-color="#fff" autoplay="true" interval="3000" circular="true">
+    <swiper-item wx:for="{{slides}}" wx:key="index" class="slide">
+      <view class="slide-content">
+        <view class="slide-image">
+          <!-- 这里可以放置图片，目前用渐变背景代替 -->
+          <view class="image-placeholder slide-{{index}}"></view>
+        </view>
+        <view class="slide-text">
+          <text class="slide-title">{{item.title}}</text>
+          <text class="slide-subtitle">{{item.subtitle}}</text>
+          <text class="slide-description">{{item.description}}</text>
+        </view>
+      </view>
+    </swiper-item>
+  </swiper>
+  
+  <view class="bottom-section">
+    <view class="indicators">
+      <view wx:for="{{slides}}" wx:key="index" class="indicator {{currentSlide === index ? 'active' : ''}}"></view>
+    </view>
+    
+    <button class="start-btn" bindtap="goToIndex">开始使用</button>
+  </view>
+</view>

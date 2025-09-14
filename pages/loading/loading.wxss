@@ -1,0 +1,62 @@
+/* pages/loading/loading.wxss */
+/* 小程序启动加载页面样式 */
+.loading-container {
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-content {
+  text-align: center;
+  color: white;
+}
+
+.logo {
+  margin-bottom: 80rpx;
+}
+
+.logo-text {
+  font-size: 80rpx;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.3);
+}
+
+.loading-section {
+  margin-bottom: 60rpx;
+}
+
+.progress-bar {
+  width: 400rpx;
+  height: 8rpx;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 4rpx;
+  margin: 0 auto 30rpx;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: white;
+  border-radius: 4rpx;
+  transition: width 0.3s ease;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.welcome-text {
+  opacity: 0.8;
+}
+
+.welcome-text text {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.5;
+  margin-bottom: 10rpx;
+}

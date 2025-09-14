@@ -1,0 +1,121 @@
+/* pages/welcome/welcome.wxss */
+/* 欢迎页面样式 */
+.welcome-container {
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+.slides {
+  flex: 1;
+  width: 100%;
+}
+
+.slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx 40rpx;
+}
+
+.slide-content {
+  text-align: center;
+  color: white;
+}
+
+.slide-image {
+  margin-bottom: 60rpx;
+}
+
+.image-placeholder {
+  width: 300rpx;
+  height: 300rpx;
+  margin: 0 auto;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-0 {
+  background: linear-gradient(45deg, #ff6b6b, #feca57);
+}
+
+.slide-1 {
+  background: linear-gradient(45deg, #48dbfb, #0abde3);
+}
+
+.slide-2 {
+  background: linear-gradient(45deg, #ff9ff3, #f368e0);
+}
+
+.slide-text {
+  max-width: 600rpx;
+  margin: 0 auto;
+}
+
+.slide-title {
+  display: block;
+  font-size: 56rpx;
+  font-weight: bold;
+  margin-bottom: 20rpx;
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.3);
+}
+
+.slide-subtitle {
+  display: block;
+  font-size: 36rpx;
+  margin-bottom: 30rpx;
+  opacity: 0.9;
+}
+
+.slide-description {
+  display: block;
+  font-size: 28rpx;
+  line-height: 1.6;
+  opacity: 0.8;
+}
+
+.bottom-section {
+  padding: 40rpx;
+  text-align: center;
+}
+
+.indicators {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 40rpx;
+}
+
+.indicator {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.5);
+  margin: 0 8rpx;
+  transition: all 0.3s ease;
+}
+
+.indicator.active {
+  background-color: white;
+  transform: scale(1.2);
+}
+
+.start-btn {
+  width: 300rpx;
+  height: 80rpx;
+  background-color: white;
+  color: #667eea;
+  border-radius: 40rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  border: none;
+  box-shadow: 0 8rpx 16rpx rgba(0, 0, 0, 0.2);
+}
+
+.start-btn:active {
+  transform: translateY(2rpx);
+  box-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.2);
+}

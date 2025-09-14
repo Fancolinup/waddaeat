@@ -1,0 +1,57 @@
+{
+  "pages": [
+    "pages/loading/loading",
+    "pages/index/index",
+    "pages/welcome/welcome",
+    "pages/profile/profile"
+  ],
+  "subpackages": [
+    {
+      "root": "packageA",
+      "name": "voice",
+      "pages": [
+        "pages/voice/index"
+      ]
+    }
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "Eatigo",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f8f8f8"
+  },
+  "tabBar": {
+    "color": "#7A7E83",
+    "selectedColor": "#3cc51f",
+    "borderStyle": "black",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "iconPath": "images/icon_home.png",
+        "selectedIconPath": "images/icon_home_selected.png",
+        "text": "今日选择"
+      },
+      {
+        "pagePath": "packageA/pages/voice/index",
+        "iconPath": "images/icon_voice.png",
+        "selectedIconPath": "images/icon_voice_selected.png",
+        "text": "职场嘴替"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "iconPath": "images/icon_profile.png",
+        "selectedIconPath": "images/icon_profile_selected.png",
+        "text": "个人"
+      }
+    ]
+  },
+  "networkTimeout": {
+    "request": 10000,
+    "downloadFile": 10000
+  },
+  "debug": true,
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

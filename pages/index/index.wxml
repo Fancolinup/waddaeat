@@ -1,0 +1,74 @@
+<!--pages/index/index.wxml-->
+<view class="container">
+  <!-- 搜索栏 -->
+  <view class="search-bar" bindtap="onSearchTap">
+    <view class="search-input">
+      <image class="search-icon" src="/images/search.png"></image>
+      <text class="search-placeholder">搜索餐厅、美食</text>
+    </view>
+  </view>
+
+  <!-- 轮播图 -->
+  <swiper class="banner-swiper" indicator-dots="{{true}}" autoplay="{{true}}" interval="3000" duration="500">
+    <block wx:for="{{banners}}" wx:key="id">
+      <swiper-item>
+        <view class="banner-item" bindtap="onBannerTap" data-id="{{item.id}}">
+          <image class="banner-image" src="{{item.image}}" mode="aspectFill"></image>
+          <view class="banner-title">{{item.title}}</view>
+        </view>
+      </swiper-item>
+    </block>
+  </swiper>
+
+  <!-- 分类导航 -->
+  <view class="category-section">
+    <view class="section-title">美食分类</view>
+    <view class="category-grid">
+      <block wx:for="{{categories}}" wx:key="id">
+        <view class="category-item" bindtap="onCategoryTap" data-category="{{item}}">
+          <image class="category-icon" src="{{item.icon}}"></image>
+          <text class="category-name">{{item.name}}</text>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <!-- 推荐餐厅 -->
+  <view class="restaurant-section">
+    <view class="section-title">推荐餐厅</view>
+    <view class="restaurant-list">
+      <block wx:for="{{restaurants}}" wx:key="id">
+        <view class="restaurant-card" bindtap="onRestaurantTap" data-restaurant="{{item}}">
+          <image class="restaurant-image" src="{{item.image}}" mode="aspectFill"></image>
+          <view class="restaurant-info">
+            <view class="restaurant-name">{{item.name}}</view>
+            <view class="restaurant-meta">
+              <view class="rating">
+                <image class="star-icon" src="/images/star.png"></image>
+                <text class="rating-text">{{item.rating}}</text>
+              </view>
+              <text class="category">{{item.category}}</text>
+              <text class="distance">{{item.distance}}</text>
+            </view>
+            <view class="discount-tag">{{item.discount}}</view>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <!-- 用户信息区域（可选显示） -->
+  <view class="user-section" wx:if="{{!hasUserInfo}}">
+    <view class="user-info-card">
+      <text class="welcome-text">欢迎使用 Eatigo</text>
+      <button wx:if="{{canIUseGetUserProfile}}" class="btn btn-primary" bindtap="getUserProfile">获取用户信息</button>
+      <button wx:else class="btn btn-primary" open-type="getUserInfo" bindgetuserinfo="getUserProfile">获取用户信息</button>
+    </view>
+  </view>
+
+  <!-- 用户已登录显示 -->
+  <view class="user-welcome" wx:if="{{hasUserInfo}}">
+    <image class="user-avatar" src="{{userInfo.avatarUrl}}"></image>
+    <text class="user-nickname">你好，{{userInfo.nickName}}</text>
+  </view>
+</view>

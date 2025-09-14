@@ -1,0 +1,22 @@
+<!--packageA/pages/voice/index.wxml-->
+<!--职场嘴替页面模板-->
+<view class="container">
+  <loading wx:if="{{isLoading}}" />
+  
+  <view wx:else class="voice-content">
+    <view class="header">
+      <text class="title">职场嘴替</text>
+      <text class="subtitle">让AI帮你说话</text>
+    </view>
+    
+    <view class="dialogue-section">
+      <text class="section-title">对话示例</text>
+      <view class="dialogue-list">
+        <!-- 对话内容将在这里显示 -->
+        <view class="dialogue-item">
+          <text class="dialogue-text">功能开发中...</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
