@@ -1,121 +1,422 @@
 /* pages/welcome/welcome.wxss */
-/* 欢迎页面样式 */
+/* 新用户欢迎页面 - 品牌选择样式 */
+
 .welcome-container {
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-.slides {
-  flex: 1;
+/* 背景渐变 */
+.background-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, #E8F4FD 0%, #D1E9F6 50%, #B8DDF0 100%);
+  z-index: -1;
 }
 
-.slide {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 60rpx 40rpx;
-}
-
-.slide-content {
+/* 顶部文案区 */
+.header-section {
+  padding: 80rpx 60rpx 40rpx;
   text-align: center;
-  color: white;
 }
 
-.slide-image {
-  margin-bottom: 60rpx;
-}
-
-.image-placeholder {
-  width: 300rpx;
-  height: 300rpx;
-  margin: 0 auto;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.slide-0 {
-  background: linear-gradient(45deg, #ff6b6b, #feca57);
-}
-
-.slide-1 {
-  background: linear-gradient(45deg, #48dbfb, #0abde3);
-}
-
-.slide-2 {
-  background: linear-gradient(45deg, #ff9ff3, #f368e0);
-}
-
-.slide-text {
-  max-width: 600rpx;
-  margin: 0 auto;
-}
-
-.slide-title {
+.main-title {
   display: block;
-  font-size: 56rpx;
-  font-weight: bold;
-  margin-bottom: 20rpx;
-  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.3);
+  font-size: 48rpx;
+  font-weight: 500;
+  color: #2C3E50;
+  line-height: 1.4;
+  margin-bottom: 40rpx;
+  letter-spacing: 2rpx;
 }
 
-.slide-subtitle {
+.sub-title {
   display: block;
-  font-size: 36rpx;
-  margin-bottom: 30rpx;
-  opacity: 0.9;
+  font-size: 32rpx;
+  color: #7F8C8D;
+  font-weight: 400;
 }
 
-.slide-description {
+/* 选择计数器样式 */
+.selection-counter {
+  margin-top: 20rpx;
+  text-align: center;
+}
+
+.counter-text {
   display: block;
   font-size: 28rpx;
-  line-height: 1.6;
-  opacity: 0.8;
+  color: #3498DB;
+  font-weight: 500;
+  background: rgba(52, 152, 219, 0.1);
+  padding: 8rpx 20rpx;
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(52, 152, 219, 0.3);
 }
 
-.bottom-section {
-  padding: 40rpx;
-  text-align: center;
-}
-
-.indicators {
+/* 品牌选择区 */
+.brand-selection-area {
+  flex: 1;
+  padding: 0 20rpx;
   display: flex;
+  align-items: flex-start;
   justify-content: center;
-  margin-bottom: 40rpx;
+  padding-top: 5rpx;
 }
 
-.indicator {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.5);
-  margin: 0 8rpx;
+.restaurant-selection {
+  width: 100%;
+  max-width: 600rpx;
+}
+
+/* 滚动容器 */
+.restaurant-scroll {
+  width: 100%;
+  height: 100%;
+  max-height: 960rpx;
+}
+
+/* 3列网格布局 */
+.grid-layout {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
+  padding: 12rpx;
+  justify-items: center;
+}
+
+/* New角标样式 */
+.new-badge {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  border-radius: 20rpx;
+  padding: 4rpx 12rpx;
+  box-shadow: 0 4rpx 8rpx rgba(76, 175, 80, 0.3);
+  z-index: 10;
+  animation: pulse 2s infinite;
+}
+
+.new-text {
+  font-size: 20rpx;
+  color: #fff;
+  font-weight: bold;
+  text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.2);
+}
+
+
+
+/* 更多餐厅单元格特殊样式 */
+.more-restaurant-item {
+  opacity: 0.8;
   transition: all 0.3s ease;
 }
 
-.indicator.active {
-  background-color: white;
-  transform: scale(1.2);
+.more-restaurant-item:active {
+  transform: scale(0.95);
+  opacity: 1;
 }
 
-.start-btn {
-  width: 300rpx;
-  height: 80rpx;
-  background-color: white;
-  color: #667eea;
-  border-radius: 40rpx;
-  font-size: 32rpx;
-  font-weight: bold;
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.loading-container {
+  text-align: center;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #7F8C8D;
+}
+
+
+
+/* 餐厅项基础样式 - 微信小程序优化版 */
+.restaurant-item {
+  position: relative;
+  width: 180rpx;
+  height: 180rpx;
+  background: white;
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  overflow: visible;
   border: none;
-  box-shadow: 0 8rpx 16rpx rgba(0, 0, 0, 0.2);
+  outline: none;
 }
 
-.start-btn:active {
+/* 未选中状态强制重置 */
+.restaurant-item:not(.selected) {
+  border: none !important;
+  outline: none !important;
+}
+
+.restaurant-item:not(.selected)::before {
+  display: none !important;
+}
+
+/* 点击缩放动画 */
+.restaurant-item:active {
+  transform: scale(0.9);
+  transition: transform 0.1s ease;
+}
+
+/* 选中状态的餐厅项样式 */
+.restaurant-item.selected {
+  box-shadow: 0 8rpx 24rpx rgba(39, 174, 96, 0.5);
+}
+
+/* 选中状态的边框效果 - 使用伪元素 */
+.restaurant-item.selected::before {
+  content: '';
+  position: absolute;
+  top: -6rpx;
+  left: -6rpx;
+  width: calc(100% + 12rpx);
+  height: calc(100% + 12rpx);
+  border: 6rpx solid #27AE60;
+  border-radius: 30rpx;
+  z-index: -1;
+  animation: breathingGlow 2s ease-in-out infinite;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+/* 选中状态的点击效果 */
+.restaurant-item.selected:active {
+  transform: scale(0.9);
+  transition: transform 0.1s ease;
+}
+
+/* 绿色呼吸闪光动画 - 适配边框实现 */
+@keyframes breathingGlow {
+  0% {
+    border-color: #27AE60;
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    border-color: #2ECC71;
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+  100% {
+    border-color: #27AE60;
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.restaurant-logo {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 5;
+}
+
+.logo-image {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  object-fit: contain;
+}
+
+/* emoji占位符样式 */
+.emoji-placeholder {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid #e9ecef;
+}
+
+.emoji-text {
+  font-size: 60rpx;
+  line-height: 1;
+}
+
+.checkmark {
+  color: white;
+  font-size: 24rpx;
+  font-weight: bold;
+}
+
+/* 餐厅名称显示样式 */
+.restaurant-name-display {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  border-radius: 0 0 24rpx 24rpx;
+  padding: 20rpx 8rpx 8rpx;
+  z-index: 10;
+}
+
+.restaurant-name-text {
+  color: white;
+  font-size: 20rpx;
+  font-weight: 500;
+  text-align: center;
+  display: block;
+  line-height: 1.2;
+  text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 添加餐厅文案样式 */
+.add-restaurant-text {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  z-index: 10;
+}
+
+.add-text-content {
+  color: #3498DB;
+  font-size: 24rpx;
+  font-weight: 600;
+  text-align: center;
+  display: block;
+  line-height: 1.2;
+}
+
+/* 添加餐厅入口 */
+.add-restaurant-section {
+  padding: 15rpx 60rpx 20rpx;
+  display: flex;
+  justify-content: center;
+}
+
+.add-restaurant-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 2rpx dashed #BDC3C7;
+  border-radius: 60rpx;
+  padding: 20rpx 40rpx;
+  min-width: 240rpx;
+  transition: all 0.3s ease;
+}
+
+.add-restaurant-btn:active {
+  transform: scale(0.95);
+  background: #F8F9FA;
+}
+
+.add-icon {
+  width: 32rpx;
+  height: 32rpx;
+  background: #3498DB;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24rpx;
+  font-weight: bold;
+  margin-right: 16rpx;
+}
+
+.add-text {
+  font-size: 28rpx;
+  color: #2C3E50;
+  font-weight: 500;
+}
+
+/* 底部操作区 */
+.bottom-actions {
+  padding: 20rpx 60rpx 80rpx;
+  display: flex;
+  justify-content: center;
+}
+
+.complete-btn {
+  width: 320rpx;
+  height: 88rpx;
+  border-radius: 44rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.complete-btn.active {
+  background: #3498DB;
+  color: white;
+  box-shadow: 0 8rpx 24rpx rgba(52, 152, 219, 0.3);
+}
+
+.complete-btn.active:active {
   transform: translateY(2rpx);
-  box-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4rpx 12rpx rgba(52, 152, 219, 0.3);
+}
+
+.complete-btn.disabled {
+  background: #ECF0F1;
+  color: #BDC3C7;
+  cursor: not-allowed;
+}
+
+/* 响应式适配 */
+@media (max-width: 375px) {
+  .restaurant-grid {
+    gap: 20rpx;
+    max-width: 540rpx;
+  }
+  
+  .main-title {
+    font-size: 42rpx;
+  }
+  
+  .header-section {
+    padding: 100rpx 40rpx 60rpx;
+  }
+}
+
+@media (min-width: 414px) {
+  .restaurant-grid {
+    gap: 40rpx;
+    max-width: 660rpx;
+  }
+  
+  .main-title {
+    font-size: 52rpx;
+  }
 }

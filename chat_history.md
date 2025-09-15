@@ -159,8 +159,47 @@
 ### 分包策略设计
 
 **分包规则：**
-- **主包** (/pages/, /utils/, /assets/) - 启动页、核心功能页（今日选择、个人中心）、全局工具函数和TabBar图标
-- **分包A** (/packageA/) - 职场嘴替页及相关组件、静态资源、逻辑，自包含模块
+- **主包** (/pages/, /utils/, /components/) - 启动页、加载页、核心功能页（今日选择、欢迎页、职场嘴替、个人中心）、全局工具函数和TabBar图标、前10个餐厅图片
+- **分包A** (/packageA/) - 职场嘴替扩展功能(voice-extra)、餐厅ID 11-40图片资源
+- **分包B** (/packageB/) - 个人中心扩展功能(profile-extra)、餐厅ID 41+图片资源
+
+**最新分包结构：**
+
+**主包 (Main Package) - 143.22 KB 图片 + 核心功能**
+```
+├── pages/
+│   ├── loading/loading - 加载页面
+│   ├── index/index - 首页餐厅推荐 (TabBar)
+│   ├── welcome/welcome - 欢迎引导页
+│   ├── voice/index - 职场嘴替页面 (TabBar)
+│   └── profile/profile - 个人中心页面 (TabBar)
+├── utils/ - 工具函数库 (dataManager, recommendation, scoringManager等)
+├── images/restaurants/ - 餐厅ID 1-10 图片 (143.22 KB)
+├── components/ - 公共组件
+└── assets/ - 全局资源
+```
+
+**分包A (PackageA - voice-extra) - 819.2 KB 图片**
+```
+├── root: "packageA"
+├── name: "voice-extra"
+├── images/restaurants/ - 餐厅ID 11-40 图片 (819.2 KB)
+└── pages/voice/ - 职场嘴替扩展页面
+```
+
+**分包B (PackageB - profile-extra) - 1569.08 KB 图片**
+```
+├── root: "packageB"
+├── name: "profile-extra"
+├── images/restaurants/ - 餐厅ID 41+ 图片 (1569.08 KB)
+└── pages/profile/ - 个人中心扩展页面
+```
+
+**优化效果：**
+- 主包体积减少：2388.28 KB (约2.3MB)
+- 分包比例：主包 5.7% | 分包A 32.4% | 分包B 62%
+- 图片路径智能分配：buildImagePath()函数根据餐厅ID自动选择对应分包路径
+- 按需加载：首屏优先加载主包，滚动时按需加载对应分包图片
 
 **优化后的目录结构：**
 ```
@@ -180,42 +219,53 @@ miniprogram/
 │   │   └── voice/    # 职场嘴替页
 │   ├── assets/       # 分包专属资源（语录、投票相关图片）
 │   └── components/   # 分包专属组件（语录卡片、投票卡片）
+├── packageB/         # 【分包B】个人中心模块
+│   └── pages/        # 分包页面
+│       └── profile/  # 个人中心页
 └── pages/            # 【主包】页面
     ├── index/        # 今日选择页（核心功能）
-    ├── welcome/      # 欢迎页（与核心功能强相关）
-    └── profile/      # 个人中心页（需频繁访问，放主包）
+    ├── loading/      # 加载页（启动必需）
+    └── welcome/      # 欢迎页（与核心功能强相关）
 ```
 
 **分包配置详情：**
 ```json
 {
   "pages": [
-    "pages/index/index",    // 主包-核心页
-    "pages/welcome/welcome", // 主包-核心流程页
-    "pages/profile/profile"  // 主包-常用功能页
+    "pages/loading/loading",   // 主包-启动加载页
+    "pages/index/index",      // 主包-核心页
+    "pages/welcome/welcome"    // 主包-核心流程页
   ],
   "subPackages": [
     {
-      "root": "packageA",   // 分包A的根目录
-      "name": "voice",      // 分包别名
+      "root": "packageA",     // 分包A的根目录
+      "name": "voice",        // 分包别名
       "pages": [
-        "pages/voice/index" // 分包页面路径（相对于root）
+        "pages/voice/index"   // 分包页面路径（相对于root）
       ],
-      "independent": false  // 非独立分包
+      "independent": false    // 非独立分包
+    },
+    {
+      "root": "packageB",     // 分包B的根目录
+      "name": "profile",      // 分包别名
+      "pages": [
+        "pages/profile/profile" // 分包页面路径（相对于root）
+      ],
+      "independent": false    // 非独立分包
     }
   ],
   "tabBar": {
     "list": [
       {
-        "pagePath": "pages/index/index",    // 今日选择（主包）
+        "pagePath": "pages/index/index",           // 今日选择（主包）
         "text": "今日选择"
       },
       {
-        "pagePath": "packageA/pages/voice/index", // 职场嘴替（分包）
+        "pagePath": "packageA/pages/voice/index",  // 职场嘴替（分包A）
         "text": "职场嘴替"
       },
       {
-        "pagePath": "pages/profile/profile", // 个人中心（主包）
+        "pagePath": "packageB/pages/profile/profile", // 个人中心（分包B）
         "text": "个人"
       }
     ]
@@ -493,14 +543,31 @@ miniprogram/
 
 #### 项目结构现状
 ```
-主包（约2.7MB）：
-- pages/loading/     # 启动加载页
-- pages/index/       # 今日选择页（Tab）
-- pages/welcome/     # 欢迎引导页
-- pages/profile/     # 个人中心页（Tab）
+**当前分包结构 (已优化)：**
 
-分包A（packageA）：
+主包 (143.22 KB 图片)：
+- pages/loading/     # 启动加载页
+- pages/index/       # 今日选择页（Tab）- 包含buildImagePath智能路径分配
+- pages/welcome/     # 欢迎引导页
 - pages/voice/       # 职场嘴替页（Tab）
+- pages/profile/     # 个人中心页（Tab）
+- utils/            # 完整工具函数库 (dataManager, recommendation等)
+- images/restaurants/ # 餐厅ID 1-10 图片资源
+
+分包A (packageA - 819.2 KB 图片)：
+- name: "voice-extra"
+- images/restaurants/ # 餐厅ID 11-40 图片资源
+- pages/voice/       # 职场嘴替扩展功能
+
+分包B (packageB - 1569.08 KB 图片)：
+- name: "profile-extra"
+- images/restaurants/ # 餐厅ID 41+ 图片资源
+- pages/profile/     # 个人中心扩展功能
+
+**性能优化成果：**
+- 主包减少 2388.28 KB，启动速度显著提升
+- 智能图片分包，按需加载机制完善
+- 总图片 2531.5 KB，合理分布在三个包中
 ```
 
 ---

@@ -1,27 +1,84 @@
 <!--pages/welcome/welcome.wxml-->
-<!--欢迎页面模板-->
+<!--新用户欢迎页面 - 品牌选择-->
 <view class="welcome-container">
-  <swiper class="slides" bindchange="onSlideChange" indicator-dots="true" indicator-color="rgba(255,255,255,0.5)" indicator-active-color="#fff" autoplay="true" interval="3000" circular="true">
-    <swiper-item wx:for="{{slides}}" wx:key="index" class="slide">
-      <view class="slide-content">
-        <view class="slide-image">
-          <!-- 这里可以放置图片，目前用渐变背景代替 -->
-          <view class="image-placeholder slide-{{index}}"></view>
-        </view>
-        <view class="slide-text">
-          <text class="slide-title">{{item.title}}</text>
-          <text class="slide-subtitle">{{item.subtitle}}</text>
-          <text class="slide-description">{{item.description}}</text>
-        </view>
-      </view>
-    </swiper-item>
-  </swiper>
+  <!-- 背景渐变 -->
+  <view class="background-gradient"></view>
   
-  <view class="bottom-section">
-    <view class="indicators">
-      <view wx:for="{{slides}}" wx:key="index" class="indicator {{currentSlide === index ? 'active' : ''}}"></view>
+  <!-- 顶部文案区 -->
+  <view class="header-section">
+    <text class="main-title">欢迎，请选择感兴趣的餐厅</text>
+    <view class="selection-counter">
+      <text class="counter-text">已选择 {{selectedRestaurants.length}} 家餐厅</text>
+    </view>
+  </view>
+  
+  <!-- 品牌选择区 -->
+  <view class="brand-selection-area">
+    <view wx:if="{{isLoading}}" class="loading-container">
+      <text class="loading-text">正在加载餐厅数据...</text>
     </view>
     
-    <button class="start-btn" bindtap="goToIndex">开始使用</button>
+    <view wx:else class="restaurant-selection">
+      <scroll-view class="restaurant-scroll" scroll-y="true" enhanced="true" show-scrollbar="false" scroll-with-animation="true">
+        <!-- 3列网格布局 -->
+        <view class="grid-layout">
+          <view 
+            wx:for="{{restaurants}}" 
+            wx:key="id" 
+            class="restaurant-item {{selectedRestaurants.indexOf(item.id) !== -1 ? 'selected' : ''}} {{item.name === '更多餐厅' ? 'more-restaurant-item' : ''}}"
+            data-id="{{item.id}}"
+            data-selected="{{selectedRestaurants.indexOf(item.id) !== -1}}"
+            bindtap="{{item.name === '更多餐厅' ? 'onAddCustomRestaurant' : 'onRestaurantTap'}}"
+          >
+            <view class="restaurant-logo">
+              <!-- 自定义餐厅显示emoji -->
+              <view wx:if="{{item.category === '自定义'}}" class="emoji-placeholder">
+                <text class="emoji-text">🍽️</text>
+              </view>
+              <!-- 普通餐厅显示图片 -->
+              <image wx:else
+                src="{{item.logoPath}}"
+                mode="aspectFill"
+                class="logo-image"
+                lazy-load="true"
+              />
+              <!-- 新餐厅角标 -->
+              <view wx:if="{{item.isNew}}" class="new-badge">
+                <text class="new-text">New</text>
+              </view>
+            </view>
+            <!-- 餐厅名称显示 -->
+            <view class="restaurant-name-display" wx:if="{{item.name !== '更多餐厅'}}">
+              <text class="restaurant-name-text">{{item.name}}</text>
+            </view>
+            <!-- 更多餐厅文案显示 -->
+            <view class="add-restaurant-text" wx:if="{{item.name === '更多餐厅'}}">
+              <text class="add-text-content">+添加餐厅</text>
+            </view>
+
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+  
+
+  <!-- 添加餐厅入口 -->
+  <view class="add-restaurant-section">
+    <view class="add-restaurant-btn" bindtap="onAddCustomRestaurant">
+      <view class="add-icon">+</view>
+      <text class="add-text">添加餐厅</text>
+    </view>
+  </view>
+  
+  <!-- 底部操作区 -->
+  <view class="bottom-actions">
+    <button 
+      class="complete-btn {{selectedRestaurants.length > 0 ? 'active' : 'disabled'}}"
+      bindtap="onCompleteSelection"
+      disabled="{{selectedRestaurants.length === 0}}"
+    >
+      确认选择
+    </button>
   </view>
 </view>

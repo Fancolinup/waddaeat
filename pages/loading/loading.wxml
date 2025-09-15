@@ -7,6 +7,7 @@
     </view>
     
     <view class="loading-section">
+      <view class="loading-spinner"></view>
       <view class="progress-bar">
         <view class="progress-fill" style="width: {{progress}}%"></view>
       </view>

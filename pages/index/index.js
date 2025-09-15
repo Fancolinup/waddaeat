@@ -117,6 +117,24 @@ Page({
   },
 
   /**
+   * 构建餐厅图片路径
+   */
+  buildImagePath(restaurantId) {
+    // 前10个餐厅(ID 1-10)使用主包路径
+    if (restaurantId >= 1 && restaurantId <= 10) {
+      return `/images/restaurants/${restaurantId}.png`;
+    }
+    // 第11-40个餐厅使用packageA
+    else if (restaurantId >= 11 && restaurantId <= 40) {
+      return `/packageA/images/restaurants/${restaurantId}.png`;
+    }
+    // 第41个及以后的餐厅使用packageB
+    else {
+      return `/packageB/images/restaurants/${restaurantId}.png`;
+    }
+  },
+
+  /**
    * 加载餐厅数据
    */
   loadRestaurants() {
@@ -133,7 +151,7 @@ Page({
       return {
         id: item.id,
         name: item.name,
-        image: `/packageRestaurant/images/restaurantpic/${item.id}.png`,
+        image: this.buildImagePath(item.id),
         rating: ((item.popularityScore || 0) * 5).toFixed(1),
         category: item.type,
         discount: item.dynamicPromotions && item.dynamicPromotions.length > 0 ? 
@@ -175,7 +193,7 @@ Page({
       return {
         id: item.id,
         name: item.name,
-        image: `/packageRestaurant/images/restaurantpic/${item.id}.png`,
+        image: this.buildImagePath(item.id),
         rating: ((item.popularityScore || 0) * 5).toFixed(1),
         category: item.type,
         discount: item.dynamicPromotions && item.dynamicPromotions.length > 0 ? 

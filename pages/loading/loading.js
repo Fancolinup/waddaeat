@@ -11,6 +11,9 @@ Page({
   },
 
   startLoading: function () {
+    // 预加载欢迎页和其他页面的图片资源
+    this.preloadImages();
+    
     let progress = 0;
     const timer = setInterval(() => {
       progress += Math.random() * 20;
@@ -33,5 +36,16 @@ Page({
         });
       }
     }, 100);
+  },
+
+  // 预加载图片资源
+  preloadImages: function () {
+    // 更新加载文本提示
+    this.setData({
+      loadingText: '正在加载资源...'
+    });
+    
+    // 微信小程序会自动缓存图片资源，无需手动预加载
+    console.log('图片资源将在使用时自动加载');
   }
 });

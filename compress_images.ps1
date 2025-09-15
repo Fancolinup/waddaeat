@@ -1,23 +1,30 @@
 # 图片压缩脚本
 # 此脚本使用System.Drawing来调整图片大小，减少文件体积
 
-# 目标目录
-$targetDir = "D:\Projects\Eatigo\packageRestaurant\images\restaurantpic"
+# 目标目录 - 现在支持多个分包目录
+$targetDirs = @(
+    "D:\Projects\Eatigo\images\restaurants",
+    "D:\Projects\Eatigo\packageA\images\restaurants",
+    "D:\Projects\Eatigo\packageB\images\restaurants"
+)
 
-# 确保目标目录存在
-if (-not (Test-Path $targetDir)) {
-    Write-Host "目标目录不存在: $targetDir" -ForegroundColor Red
-    exit 1
+# 确保目标目录存在并收集所有图片文件
+$allPngFiles = @()
+foreach ($targetDir in $targetDirs) {
+    if (Test-Path $targetDir) {
+        $pngFiles = Get-ChildItem -Path $targetDir -Filter "*.png"
+        $allPngFiles += $pngFiles
+        Write-Host "找到目录: $targetDir ($($pngFiles.Count) 个文件)" -ForegroundColor Yellow
+    } else {
+        Write-Host "目录不存在，跳过: $targetDir" -ForegroundColor Gray
+    }
 }
 
 # 加载System.Drawing程序集
 Add-Type -AssemblyName System.Drawing
 
-# 获取所有PNG图片
-$pngFiles = Get-ChildItem -Path $targetDir -Filter "*.png"
-
 # 统计信息
-$totalFiles = $pngFiles.Count
+$totalFiles = $allPngFiles.Count
 $processedFiles = 0
 $totalOriginalSize = 0
 $totalOptimizedSize = 0
@@ -25,7 +32,7 @@ $totalOptimizedSize = 0
 Write-Host "开始压缩 $totalFiles 个图片文件..." -ForegroundColor Cyan
 
 # 处理每个图片
-foreach ($file in $pngFiles) {
+foreach ($file in $allPngFiles) {
     $processedFiles++
     $originalSize = $file.Length
     $totalOriginalSize += $originalSize

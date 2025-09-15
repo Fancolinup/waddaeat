@@ -3,15 +3,19 @@
     "pages/loading/loading",
     "pages/index/index",
     "pages/welcome/welcome",
+    "pages/voice/index",
     "pages/profile/profile"
   ],
   "subpackages": [
     {
       "root": "packageA",
-      "name": "voice",
-      "pages": [
-        "pages/voice/index"
-      ]
+      "name": "voice-extra",
+      "pages": []
+    },
+    {
+      "root": "packageB",
+      "name": "profile-extra",
+      "pages": []
     }
   ],
   "window": {
@@ -34,7 +38,7 @@
         "text": "今日选择"
       },
       {
-        "pagePath": "packageA/pages/voice/index",
+        "pagePath": "pages/voice/index",
         "iconPath": "images/icon_voice.png",
         "selectedIconPath": "images/icon_voice_selected.png",
         "text": "职场嘴替"
