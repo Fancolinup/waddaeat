@@ -23,9 +23,13 @@ function generateRecommendations(userData, count = 5) {
       return [];
     }
 
-    // 获取餐厅数据
-    const restaurantData = getRestaurantData();
-    if (!restaurantData || !Array.isArray(restaurantData)) {
+    // 获取餐厅数据（注意：getRestaurantData 返回的是对象，包含 restaurants 数组）
+    const data = getRestaurantData();
+    const restaurants = data && Array.isArray(data.restaurants)
+      ? data.restaurants
+      : (Array.isArray(data) ? data : []);
+
+    if (!restaurants.length) {
       console.error('餐厅数据无效，无法生成推荐');
       return [];
     }
@@ -38,7 +42,7 @@ function generateRecommendations(userData, count = 5) {
     console.log(`推荐算法权重 - 决策次数: ${totalDecisions}, W1(评分): ${W1.toFixed(2)}, W2(偏好): ${W2.toFixed(2)}`);
 
     // 为每个餐厅计算推荐分数
-    const scoredRestaurants = restaurantData.map(restaurant => {
+    const scoredRestaurants = restaurants.map(restaurant => {
       try {
         // 1. 获取特定餐厅评分并标准化
         const specificScore = getCurrentRestaurantScore(userData, restaurant.id, restaurant);

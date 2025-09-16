@@ -2,7 +2,6 @@
   "pages": [
     "pages/loading/loading",
     "pages/index/index",
-    "pages/welcome/welcome",
     "pages/voice/index",
     "pages/profile/profile"
   ],
@@ -10,7 +9,9 @@
     {
       "root": "packageA",
       "name": "voice-extra",
-      "pages": []
+      "pages": [
+        "pages/welcome/welcome"
+      ]
     },
     {
       "root": "packageB",

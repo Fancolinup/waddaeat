@@ -188,20 +188,19 @@
   box-shadow: 0 8rpx 24rpx rgba(39, 174, 96, 0.5);
 }
 
-/* 选中状态的边框效果 - 使用伪元素 */
+/* 选中状态的边框效果 - 绿色描边 */
 .restaurant-item.selected::before {
   content: '';
   position: absolute;
-  top: -6rpx;
-  left: -6rpx;
-  width: calc(100% + 12rpx);
-  height: calc(100% + 12rpx);
-  border: 6rpx solid #27AE60;
-  border-radius: 30rpx;
-  z-index: -1;
-  animation: breathingGlow 2s ease-in-out infinite;
+  top: -4rpx;
+  left: -4rpx;
+  right: -4rpx;
+  bottom: -4rpx;
+  border: 4rpx solid #27AE60;
+  border-radius: 28rpx;
+  box-shadow: 0 0 0 2rpx rgba(39, 174, 96, 0.2);
   pointer-events: none;
-  box-sizing: border-box;
+  display: block;
 }
 
 /* 选中状态的点击效果 */

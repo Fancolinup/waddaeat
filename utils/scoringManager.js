@@ -22,17 +22,30 @@ function isUserAddedRestaurant(restaurantId) {
 }
 
 /**
- * 检查是否为欢迎页选择的餐厅
+ * 检查是否为欢迎页选择的餐厅（兼容两种机制）
+ * - 旧：按餐厅ID（userData.welcomeSelections）
+ * - 新：按品牌名称（userData.welcomeSelectionsByBrand，与 restaurantData.name 匹配）
  * @param {string} restaurantId - 餐厅ID
  * @param {Object} userData - 用户数据对象
+ * @param {Object} restaurantData - 餐厅数据对象（包含 name 字段）
  * @returns {boolean} 是否为欢迎页选择的餐厅
  */
-function isWelcomeSelection(restaurantId, userData) {
+function isWelcomeSelection(restaurantId, userData, restaurantData) {
   try {
-    if (!userData || !userData.welcomeSelections || !Array.isArray(userData.welcomeSelections)) {
-      return false;
+    if (!userData) return false;
+
+    // 1) 旧逻辑：按餐厅ID
+    if (Array.isArray(userData.welcomeSelections) && userData.welcomeSelections.includes(restaurantId)) {
+      return true;
     }
-    return userData.welcomeSelections.includes(restaurantId);
+
+    // 2) 新逻辑：按品牌名称
+    const brandName = restaurantData && (restaurantData.name || restaurantData.brandName);
+    if (brandName && Array.isArray(userData.welcomeSelectionsByBrand)) {
+      return userData.welcomeSelectionsByBrand.includes(brandName);
+    }
+
+    return false;
   } catch (error) {
     console.error('检查欢迎页选择餐厅时出错:', error);
     return false;
@@ -83,7 +96,7 @@ function getCurrentRestaurantScore(userData, restaurantId, restaurantData) {
       return 9; // 用户手动添加的餐厅
     }
 
-    if (isWelcomeSelection(restaurantId, userData)) {
+    if (isWelcomeSelection(restaurantId, userData, restaurantData)) {
       return 8; // 用户欢迎页选择的餐厅
     }
 
@@ -139,7 +152,7 @@ function updateRestaurantScore(userData, restaurantId, action, restaurantData) {
     if (isUserAddedRestaurant(restaurantId)) {
       // 用户手动添加的餐厅
       scoreChange = action === 'accept' ? 1 : -0.5;
-    } else if (isWelcomeSelection(restaurantId, userData)) {
+    } else if (isWelcomeSelection(restaurantId, userData, restaurantData)) {
       // 用户欢迎页选择的餐厅
       scoreChange = action === 'accept' ? 1.5 : -0.8;
     } else {

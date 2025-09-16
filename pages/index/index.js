@@ -116,22 +116,105 @@ Page({
     })
   },
 
+
   /**
-   * 构建餐厅图片路径
+   * 获取品牌拼音映射（与欢迎页保持一致）
    */
-  buildImagePath(restaurantId) {
-    // 前10个餐厅(ID 1-10)使用主包路径
-    if (restaurantId >= 1 && restaurantId <= 10) {
-      return `/images/restaurants/${restaurantId}.png`;
+  getPinyinMap() {
+    return {
+      "Baker&Spice": "Baker&Spice",
+      "超级碗": "chaojiwan",
+      "陈香贵": "chenxianggui",
+      "汉堡王": "hanbaowang",
+      "肯德基": "kendeji",
+      "蓝蛙": "lanwa",
+      "麦当劳": "maidanglao",
+      "马记永": "majiyong",
+      "莆田餐厅": "putiancanting",
+      "蜀大侠": "shudaxia",
+      "我格司": "wogesi",
+      "西贝莜面村": "xibeiyoumiancun",
+      "海底捞": "haidilao",
+      "鼎泰丰": "dingtaifeng",
+      "呷哺呷哺": "xiabuxiabu",
+      "星巴克": "xingbake",
+      "喜茶": "xicha",
+      "南京大牌档": "nanjingdapaidang",
+      "鹿港小镇": "lugangxiaozhen",
+      "唐宫": "tanggong",
+      "外婆家": "waipojia",
+      "乐乐茶": "lelecha",
+      "良品铺子": "liangpinpuzi",
+      "喜家德": "xijiade",
+      "三米粥铺": "sanmizhoupu",
+      "南翔馒头店": "nanxiangmantoudian",
+      "那家小馆": "najiaxiaoguan",
+      "新元素": "xinyuansu",
+      "奈雪的茶": "naixuedecha",
+      "永和大王": "yonghedawang",
+      "小杨生煎": "xiaoyangshengjian",
+      "云海肴": "yunhaiyao",
+      "西树泡芙": "xishupaofu",
+      "喜茶 GO": "xichago",
+      "一点点": "yidiandian",
+      "新白鹿": "xinbailu",
+      "小南国": "xiaonanguo",
+      "小龙坎": "xiaolongkan",
+      "谭鸭血": "tanyaxie",
+      "更多餐厅": "placeholder"
+    };
+  },
+
+  // 获取分包A小图标文件名列表（拼音，不含后缀）
+  getPackageAIcons() {
+    return [
+      'bifengtang','diandude','dingtaifeng','duxiaoyue','haidilao','hefulaomian','jiangbianchengwai','jiyejia','lugangxiaozhen','lvchacanting','naixuedecha','nanjingdapaidang','nanxiangmantoudian','shiqijia','shudufeng','songwu','taiersuancaiyu','tanggong','waipojia','wangxiangyuan','weiqianlamian','xiabuxiabu','xiaoyangshengjian','xibeiyoumiancun','xicha','xingbake','xinyuansu','yelixiali','yifengtang','yunhaiyao'
+    ];
+  },
+
+  // 获取分包B小图标文件名列表（拼音，不含后缀）
+  getPackageBIcons() {
+    return [
+      'axiangmixian','bangyuehan','banumaoduhuoguo','bishengke','cailangangshidianxin','cocodouke','coucouhuoguo','dalongyi','dameile','damixiansheng','daniangshuijiao','diantaixianghuoguo','fengmaokaochuan','gelaoguan','guimanlong','guoqiaomixian','gutiandaoxiang','henjiuyiqianyangrouchuan','hudafandian','jixianghuntun','laoshengchang','lelecha','malayouhuo','muwushaokao','qifentian','saliya','suxiaoliu','tangxiansheng','tanyaxie','tianhaoyun','wanguizhimian','xiaolongkan','xiaonanguo','xinbailu','xinxianghui','yidiandian','yonghedawang','zhenggongfu','zuotingyouyuan'
+    ];
+  },
+
+  /**
+   * 根据品牌名构建分包图标路径，统一使用高清图
+   */
+  getRestaurantIconPath(name) {
+    const pinyin = this.getPinyinMap()[name];
+    if (!pinyin || pinyin === 'placeholder') {
+      return '/packageA/images/FullRest/placeholder.png';
     }
-    // 第11-40个餐厅使用packageA
-    else if (restaurantId >= 11 && restaurantId <= 40) {
-      return `/packageA/images/restaurants/${restaurantId}.png`;
+    
+    // 检查分包A是否有高清图
+    const aFullIcons = this.getPackageAFullIcons();
+    if (aFullIcons.includes(pinyin)) {
+      return `/packageA/images/FullRest/${pinyin}.png`;
     }
-    // 第41个及以后的餐厅使用packageB
-    else {
-      return `/packageB/images/restaurants/${restaurantId}.png`;
+    
+    // 检查分包B是否有高清图
+    const bFullIcons = this.getPackageBFullIcons();
+    if (bFullIcons.includes(pinyin)) {
+      return `/packageB/images/FullRest/${pinyin}.png`;
     }
+    
+    return '/packageA/images/FullRest/placeholder.png';
+  },
+
+  // 获取分包A高清图标文件名列表（拼音，不含后缀）
+  getPackageAFullIcons() {
+    return [
+      'Baker&Spice','bifengtang','diandude','dingtaifeng','duxiaoyue','haidilao','hefulaomian','jiangbianchengwai','jiyejia','lugangxiaozhen','lvchacanting','naixuedecha','nanjingdapaidang','nanxiangmantoudian','shiqijia','shudufeng','songwu','taiersuancaiyu','tanggong','waipojia','wangxiangyuan','weiqianlamian','xiabuxiabu','xiaoyangshengjian','xibeiyoumiancun','xicha','xingbake','xinyuansu','yelixiali','yifengtang','yunhaiyao','chaojiwan','chenxianggui','hanbaowang','kendeji','lanwa','maidanglao','majiyong','putiancanting','shudaxia','wogesi','tanyaxie','placeholder'
+    ];
+  },
+
+  // 获取分包B高清图标文件名列表（拼音，不含后缀） 
+  getPackageBFullIcons() {
+    return [
+      'axiangmixian','bangyuehan','banumaoduhuoguo','bishengke','cailangangshidianxin','cocodouke','coucouhuoguo','dalongyi','dameile','damixiansheng','daniangshuijiao','diantaixianghuoguo','fengmaokaochuan','gelaoguan','guimanlong','guoqiaomixian','gutiandaoxiang','henjiuyiqianyangrouchuan','hudafandian','jixianghuntun','laoshengchang','lelecha','malayouhuo','muwushaokao','qifentian','saliya','suxiaoliu','tangxiansheng','tianhaoyun','wanguizhimian','xiaolongkan','xiaonanguo','xinbailu','xinxianghui','yidiandian','yonghedawang','zhenggongfu','zuotingyouyuan'
+    ];
   },
 
   /**
@@ -141,17 +224,15 @@ Page({
     wx.showLoading({
       title: '加载中...'
     })
-    
     // 从数据管理器获取餐厅数据
     const dataManager = require('../../utils/dataManager.js');
     const restaurantData = dataManager.getRestaurantData();
-    
     // 转换数据格式
     const restaurants = restaurantData.restaurants.slice(0, 10).map(item => {
       return {
         id: item.id,
         name: item.name,
-        image: this.buildImagePath(item.id),
+        image: this.getRestaurantIconPath(item.name),
         rating: ((item.popularityScore || 0) * 5).toFixed(1),
         category: item.type,
         discount: item.dynamicPromotions && item.dynamicPromotions.length > 0 ? 
@@ -159,14 +240,48 @@ Page({
         distance: '附近'
       };
     });
-    
     this.setData({
       restaurants: restaurants
     });
-    
     wx.hideLoading();
   },
-  
+
+  /**
+   * 加载更多餐厅数据
+   */
+  loadMoreRestaurants() {
+    // 已加载的餐厅数量
+    const currentCount = this.data.restaurants.length;
+    // 从数据管理器获取更多餐厅数据
+    const dataManager = require('../../utils/dataManager.js');
+    const restaurantData = dataManager.getRestaurantData();
+    // 每次加载10个餐厅
+    const moreRestaurants = restaurantData.restaurants.slice(currentCount, currentCount + 10).map(item => {
+      return {
+        id: item.id,
+        name: item.name,
+        image: this.getRestaurantIconPath(item.name),
+        rating: ((item.popularityScore || 0) * 5).toFixed(1),
+        category: item.type,
+        discount: item.dynamicPromotions && item.dynamicPromotions.length > 0 ? 
+                 item.dynamicPromotions[0].promoText : '无优惠',
+        distance: '附近'
+      };
+    });
+    // 如果没有更多数据
+    if (moreRestaurants.length === 0) {
+      wx.showToast({
+        title: '没有更多餐厅了',
+        icon: 'none'
+      });
+      return;
+    }
+    // 合并数据
+    this.setData({
+      restaurants: [...this.data.restaurants, ...moreRestaurants]
+    });
+  },
+
   /**
    * 餐厅点击事件
    */
@@ -193,7 +308,7 @@ Page({
       return {
         id: item.id,
         name: item.name,
-        image: this.buildImagePath(item.id),
+        image: this.getRestaurantIconPath(item.name),
         rating: ((item.popularityScore || 0) * 5).toFixed(1),
         category: item.type,
         discount: item.dynamicPromotions && item.dynamicPromotions.length > 0 ? 

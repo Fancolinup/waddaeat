@@ -24,11 +24,10 @@
         <view class="grid-layout">
           <view 
             wx:for="{{restaurants}}" 
-            wx:key="id" 
-            class="restaurant-item {{selectedRestaurants.indexOf(item.id) !== -1 ? 'selected' : ''}} {{item.name === '更多餐厅' ? 'more-restaurant-item' : ''}}"
-            data-id="{{item.id}}"
-            data-selected="{{selectedRestaurants.indexOf(item.id) !== -1}}"
-            bindtap="{{item.name === '更多餐厅' ? 'onAddCustomRestaurant' : 'onRestaurantTap'}}"
+            wx:key="sid" 
+            class="restaurant-item {{selectedRestaurants.indexOf(item.sid) !== -1 ? 'selected' : ''}}"
+            data-id="{{item.sid}}"
+            bindtap="onRestaurantTap"
           >
             <view class="restaurant-logo">
               <!-- 自定义餐厅显示emoji -->
@@ -40,22 +39,30 @@
                 src="{{item.logoPath}}"
                 mode="aspectFill"
                 class="logo-image"
-                lazy-load="true"
+                binderror="onImageError"
+                data-id="{{item.sid}}"
               />
               <!-- 新餐厅角标 -->
               <view wx:if="{{item.isNew}}" class="new-badge">
                 <text class="new-text">New</text>
               </view>
             </view>
-            <!-- 餐厅名称显示 -->
-            <view class="restaurant-name-display" wx:if="{{item.name !== '更多餐厅'}}">
+            <!-- 餐厅名称显示（统一显示） -->
+            <view class="restaurant-name-display">
               <text class="restaurant-name-text">{{item.name}}</text>
             </view>
-            <!-- 更多餐厅文案显示 -->
-            <view class="add-restaurant-text" wx:if="{{item.name === '更多餐厅'}}">
-              <text class="add-text-content">+添加餐厅</text>
-            </view>
+          </view>
 
+          <!-- 列表末尾功能单元格：添加餐厅，与底部按钮一致的功能 -->
+          <view class="restaurant-item more-restaurant-item" bindtap="onAddCustomRestaurant">
+            <view class="restaurant-logo">
+              <view class="emoji-placeholder">
+                <text class="emoji-text">＋</text>
+              </view>
+            </view>
+            <view class="restaurant-name-display">
+              <text class="restaurant-name-text">添加餐厅</text>
+            </view>
           </view>
         </view>
       </scroll-view>
