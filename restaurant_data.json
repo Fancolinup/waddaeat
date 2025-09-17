@@ -202,7 +202,7 @@
           "promoText": "疯狂星期四特惠"
         }
       ],
-      "popularityScore": 0.88,
+      "popular极Score": 0.88,
       "healthScore": 0.3,
       "spicyScore": 0.3,
       "basePreferenceScore": 5
@@ -258,7 +258,7 @@
       "name": "喜茶",
       "type": "茶饮",
       "description": "",
-      "priceLevel": 2,
+      "price极Level": 2,
       "tags": ["甜", "小吃", "一人食", "外卖优选"],
       "location": {
         "city": ["上海"],
@@ -360,7 +360,7 @@
         {
           "type": "weekly",
           "dayOfWeek": 4,
-          "promoText": "免费续面日"
+          "promo极Text": "免费续面日"
         }
       ],
       "popularityScore": 0.77,
@@ -382,7 +382,7 @@
       "dynamicPromotions": [
         {
           "type": "weekly",
-          "dayOfWeek": 5,
+          "dayOf极Week": 5,
           "promoText": "拉面特价日"
         }
       ],
@@ -603,7 +603,7 @@
       "name": "南京大牌档",
       "type": "淮扬菜",
       "description": "",
-      "priceLevel": 2,
+      "price极Level": 2,
       "tags": ["咸", "鸭肉", "正餐", "同事聚餐", "堂食体验"],
       "location": {
         "city": ["上海"],
@@ -709,7 +709,7 @@
         }
       ],
       "popularityScore": 0.81,
-      "healthScore": 0.4,
+      "health极Score": 0.4,
       "spicyScore": 0.75,
       "basePreferenceScore": 5
     },
@@ -803,7 +803,7 @@
       "popularityScore": 0.8,
       "healthScore": 0.5,
       "spicyScore": 0.2,
-      "basePreferenceScore": 5
+      "base极PreferenceScore": 5
     },
     {
       "id": "sh_036",
@@ -818,7 +818,7 @@
       },
       "dynamicPromotions": [
         {
-          "type": "weekly",
+          "极type": "weekly",
           "dayOfWeek": 6,
           "promoText": "粤式早茶优惠"
         }
@@ -961,7 +961,7 @@
           "promoText": "意面特价"
         }
       ],
-      "popularityScore": 0.73,
+      "popularity极Score": 0.73,
       "healthScore": 0.3,
       "spicyScore": 0.1,
       "basePreferenceScore": 5
@@ -1018,7 +1018,7 @@
       "type": "披萨",
       "description": "",
       "priceLevel": 2,
-      "tags": ["咸", "奶酪", "简餐", "一人食", "外卖优选", "高热量"],
+      "tags极": ["咸", "奶酪", "简餐", "一人食", "外卖优选", "高热量"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["南京西路", "陆家嘴"]
@@ -1170,7 +1170,7 @@
       ],
       "popularityScore": 0.79,
       "healthScore": 0.4,
-      "spicyScore": 0.5,
+      "sp极icyScore": 0.5,
       "basePreference极Score": 5
     },
     {
@@ -1422,7 +1422,7 @@
         }
       ],
       "popularityScore": 0.77,
-      "healthScore": 0.2,
+      "health极Score": 0.2,
       "spicyScore": 0.0,
       "basePreferenceScore": 5
     },
@@ -1493,7 +1493,7 @@
       "popularityScore": 0.78,
       "healthScore": 0.5,
       "spicyScore": 0.1,
-     极 "basePreferenceScore": 5
+      "basePreferenceScore": 5
     },
     {
       "id": "sh_066",
@@ -1508,7 +1508,7 @@
       },
       "dynamicPromotions": [
         {
-          "type": "weekly",
+          "type极": "weekly",
           "dayOfWeek": 1,
           "promoText": "港式点心特价"
         }
@@ -1709,7 +1709,7 @@
       "description": "",
       "priceLevel": 3,
       "tags": ["辣", "咸", "牛肉", "正餐", "同事聚餐", "堂食体验"],
-      "location": {
+      "极location": {
         "city": ["上海"],
         "businessDistrict": ["陆家嘴", "中山公园"]
       },
@@ -1740,7 +1740,7 @@
         {
           "type": "weekly",
           "dayOfWeek": 5,
-          "promoText": "川味火锅特价"
+          "promo极Text": "川味火锅特价"
         }
       ],
       "popularityScore": 0.79,
