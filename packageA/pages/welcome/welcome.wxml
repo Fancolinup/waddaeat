@@ -25,7 +25,7 @@
           <view 
             wx:for="{{restaurants}}" 
             wx:key="sid" 
-            class="restaurant-item {{selectedRestaurants.indexOf(item.sid) !== -1 ? 'selected' : ''}}"
+            class="restaurant-item {{item.selected ? 'selected' : ''}}"
             data-id="{{item.sid}}"
             bindtap="onRestaurantTap"
           >

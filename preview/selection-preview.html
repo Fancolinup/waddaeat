@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>选中态描边颜色预览</title>
+  <style>
+    :root {
+      --radius: 14px; /* 对应小程序 28rpx 左右 */
+      --ring: 5px;    /* 环形描边粗细 */
+      --glow-blur: 12px;
+      --glow-spread: 2px;
+      --shadow-y: 8px;
+      --shadow-blur: 24px;
+      --bg: #f7f8fa;
+      --card-bg: #fff;
+      --text: #111827;
+      --muted: #6b7280;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif;
+    }
+    .wrap {
+      max-width: 1120px;
+      margin: 24px auto;
+      padding: 0 16px 64px;
+    }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    p.note { color: var(--muted); margin: 0 0 20px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+    @media (max-width: 920px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      position: relative;
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      padding: 18px;
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      transition: box-shadow .2s ease, transform .2s ease;
+    }
+    .card__content {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .badge {
+      font-size: 12px; color: var(--muted); background: #f2f4f7; padding: 3px 8px; border-radius: 999px;
+    }
+    .hex { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; color: #475569; font-size: 13px; }
+
+    /* 选中态：使用环形描边 + 外发光 + 柔和下投影 */
+    .card--selected {
+      box-shadow:
+        0 0 0 var(--ring) var(--accent-hex),
+        0 0 var(--glow-blur) var(--glow-spread) rgba(var(--accent), 0.18),
+        0 var(--shadow-y) var(--shadow-blur) rgba(var(--accent), 0.22);
+    }
+
+    /* 颜色变量（RGB 用于 rgba 可变透明度；HEX 用于实体环形描边） */
+    .c-2F80ED { --accent: 47,128,237;  --accent-hex: #2F80ED; }
+    .c-2D9CDB { --accent: 45,156,219;  --accent-hex: #2D9CDB; }
+    .c-FF3D71 { --accent: 255,61,113;  --accent-hex: #FF3D71; }
+    .c-FF8A00 { --accent: 255,138,0;   --accent-hex: #FF8A00; }
+    .c-7C4DFF { --accent: 124,77,255;  --accent-hex: #7C4DFF; }
+    .c-14B8A6 { --accent: 20,184,166;  --accent-hex: #14B8A6; }
+
+    /* 悬停轻微抬升，仅用于网页预览的交互反馈 */
+    .card:hover { transform: translateY(-2px); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>选中态描边颜色预览（不修改项目实体）</h1>
+    <p class="note">样式模拟了小程序中当前的选中态：5px 环形描边 + 轻微发光 + 柔和下投影。以下为 6 种候选色的并排对比。</p>
+
+    <div class="grid">
+      <div class="card card--selected c-2F80ED">
+        <div class="card__content">
+          <span class="badge">偏冷、专业</span>
+          <div>Royal Blue</div>
+          <div class="hex">#2F80ED</div>
+        </div>
+      </div>
+      <div class="card card--selected c-2D9CDB">
+        <div class="card__content">
+          <span class="badge">偏冷、专业</span>
+          <div>Electric Blue</div>
+          <div class="hex">#2D9CDB</div>
+        </div>
+      </div>
+
+      <div class="card card--selected c-FF3D71">
+        <div class="card__content">
+          <span class="badge">更醒目</span>
+          <div>Vivid Pink</div>
+          <div class="hex">#FF3D71</div>
+        </div>
+      </div>
+      <div class="card card--selected c-FF8A00">
+        <div class="card__content">
+          <span class="badge">更醒目</span>
+          <div>Coral Orange</div>
+          <div class="hex">#FF8A00</div>
+        </div>
+      </div>
+
+      <div class="card card--selected c-7C4DFF">
+        <div class="card__content">
+          <span class="badge">高级感、不喧宾</span>
+          <div>Amethyst Purple</div>
+          <div class="hex">#7C4DFF</div>
+        </div>
+      </div>
+      <div class="card card--selected c-14B8A6">
+        <div class="card__content">
+          <span class="badge">高级感、不喧宾</span>
+          <div>Teal</div>
+          <div class="hex">#14B8A6</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

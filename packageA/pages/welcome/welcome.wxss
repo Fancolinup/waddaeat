@@ -167,6 +167,13 @@
   outline: none;
 }
 
+/* 默认态：确保不存在任何伪元素描边 */
+.restaurant-item::before {
+  content: none !important;
+  display: none !important;
+  border: none !important;
+}
+
 /* 未选中状态强制重置 */
 .restaurant-item:not(.selected) {
   border: none !important;
@@ -174,7 +181,9 @@
 }
 
 .restaurant-item:not(.selected)::before {
+  content: none !important;
   display: none !important;
+  border: none !important;
 }
 
 /* 点击缩放动画 */
@@ -183,24 +192,22 @@
   transition: transform 0.1s ease;
 }
 
-/* 选中状态的餐厅项样式 */
+/* 选中状态的餐厅项样式：仅使用 box-shadow 圆环，不使用 border 避免布局变化 */
 .restaurant-item.selected {
-  box-shadow: 0 8rpx 24rpx rgba(39, 174, 96, 0.5);
+  /* 加粗描边 + 轻微发光 + 柔和投影（紫晶色） */
+  box-shadow: 
+    0 0 0 5rpx #7C4DFF,                 /* 加粗的环形描边，不改变布局 */
+    0 0 12rpx 2rpx rgba(124, 77, 255, 0.16), /* 轻微的外发光，提升高级感 */
+    0 8rpx 24rpx rgba(124, 77, 255, 0.22)    /* 柔和下投影，保持质感 */
+    !important;
+  border-radius: 28rpx;
 }
 
-/* 选中状态的边框效果 - 绿色描边 */
+/* 关闭选中态伪元素（小程序兼容性考虑） */
 .restaurant-item.selected::before {
-  content: '';
-  position: absolute;
-  top: -4rpx;
-  left: -4rpx;
-  right: -4rpx;
-  bottom: -4rpx;
-  border: 4rpx solid #27AE60;
-  border-radius: 28rpx;
-  box-shadow: 0 0 0 2rpx rgba(39, 174, 96, 0.2);
-  pointer-events: none;
-  display: block;
+  content: none !important;
+  display: none !important;
+  border: none !important;
 }
 
 /* 选中状态的点击效果 */
@@ -209,20 +216,20 @@
   transition: transform 0.1s ease;
 }
 
-/* 绿色呼吸闪光动画 - 适配边框实现 */
+/* 紫色呼吸闪光动画 - 适配边框实现（保留以兼容未来复用，但当前未用 border 渲染） */
 @keyframes breathingGlow {
   0% {
-    border-color: #27AE60;
+    border-color: #7C4DFF;
     opacity: 1;
     transform: scale(1);
   }
   50% {
-    border-color: #2ECC71;
-    opacity: 0.8;
+    border-color: #A08BFF; /* 紫色更亮一档的中间态 */
+    opacity: 0.85;
     transform: scale(1.02);
   }
   100% {
-    border-color: #27AE60;
+    border-color: #7C4DFF;
     opacity: 1;
     transform: scale(1);
   }

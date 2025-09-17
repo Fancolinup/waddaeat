@@ -573,3 +573,43 @@ miniprogram/
 ---
 
 *此文件将持续更新记录开发过程中的所有重要对话内容*
+
+---
+
+### 2025-09-17 欢迎页重要改动（最新摘要）
+
+本节为对 packageA/pages/welcome 的最新一次集中修改摘要，追加记录在文末，便于后续追踪与对比（不删除历史）。
+
+- 颜色与样式
+  - 主色从绿色改为紫晶色：#7C4DFF；统一移除旧绿色（#27AE60、#2ECC71）残留。
+  - 选中态采用 box-shadow 圆环，避免因 border 导致的布局抖动：0 0 0 5rpx #7C4DFF；
+    - 外发光：rgba(124,77,255,0.16)
+    - 柔和下投影：rgba(124,77,255,0.22)
+  - 呼吸动画统一为紫色梯度：#7C4DFF → #A08BFF → #7C4DFF（透明度优化为 0.85）。
+
+- 交互与行为
+  - 手动添加餐厅默认即为选中：新增项的 selected = true，并立刻把其 sid 推入 selectedRestaurants。
+  - 添加成功后提示：wx.showToast 文案为“已添加至列表末尾”，时长 1500ms。
+
+- 模板与状态绑定
+  - 以 item.selected 直接控制 selected 类；不再通过 selectedRestaurants.indexOf(item.sid) 做选中判断，避免类型/比较异常导致“默认全选”。
+  - sid 统一为字符串类型，确保与 selectedRestaurants 的比较一致。
+
+- 存储与持久化
+  - 使用 wx.setStorageSync('welcomeSelections', selectedRestaurants) 持久化用户在欢迎页的选择结果。
+
+- 兼容性与稳定性
+  - 通过纯 box-shadow 环形描边提升不同终端一致性；不改变布局盒模型。
+  - 图片加载失败提供兜底回退到可用 logo 或占位图，避免重复触发错误。
+
+- 影响范围与文件
+  - 主要涉及：welcome.wxss（选中态样式与动画配色）、welcome.js（新增默认选中与 Toast 提示）。
+  - 未改动其它业务模块及静态数据文件。
+
+- 辅助预览（不影响小程序实体）
+  - 颜色对比页：preview/selection-preview.html（6 种主色并排对比）。
+  - 添加交互演示：preview/add-custom-preview.html（新增项默认选中 + 提示）。
+
+- 验证建议
+  - 模拟器：验证选中高亮是否为紫晶色、卡片无布局抖动、Toast 文案正确。
+  - 真机：清缓存后重跑，确认 logo 回退正常、欢迎页守卫逻辑与持久化一致。

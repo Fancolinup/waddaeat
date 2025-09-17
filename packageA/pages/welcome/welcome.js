@@ -66,7 +66,8 @@ Page({
             category: r.category || r.type || '',
             rating: r.rating || 0,
             logoPath: this.getRestaurantLogo(name),
-            hdLogoPath: this.getRestaurantHDLogo(name)
+            hdLogoPath: this.getRestaurantHDLogo(name),
+            selected: false
           };
         });
 
@@ -113,7 +114,8 @@ Page({
             category: '',
             rating: 0,
             logoPath: this.getRestaurantLogo(name),
-            hdLogoPath: this.getRestaurantHDLogo(name)
+            hdLogoPath: this.getRestaurantHDLogo(name),
+            selected: false
           });
         }
       });
@@ -141,7 +143,7 @@ Page({
       { id: 8, name: "马记永", category: "兰州拉面", rating: 4.2 },
       { id: 9, name: "莆田餐厅", category: "闽菜", rating: 4.6 },
       { id: 10, name: "蜀大侠", category: "火锅", rating: 4.5 },
-      { id: 11, name: "我格司", category: "汉堡", rating: 4.3 },
+      { id: 11, name: "沃歌斯", category: "汉堡", rating: 4.3 },
       { id: 12, name: "西贝莜面村", category: "西北菜", rating: 4.4 },
       { id: 13, name: "海底捞", category: "火锅", rating: 4.6 },
       { id: 14, name: "鼎泰丰", category: "小笼包", rating: 4.7 },
@@ -159,7 +161,8 @@ Page({
       ...restaurant,
       sid: String(restaurant.id),
       logoPath: this.getRestaurantLogo(restaurant.name),
-      hdLogoPath: this.getRestaurantHDLogo(restaurant.name)
+      hdLogoPath: this.getRestaurantHDLogo(restaurant.name),
+      selected: false
     }));
     
     this.setData({
@@ -184,7 +187,7 @@ Page({
       "马记永": "majiyong",
       "莆田餐厅": "putiancanting",
       "蜀大侠": "shudaxia",
-      "我格司": "wogesi",
+      "沃歌斯": "wogesi",
       "西贝莜面村": "xibeiyoumiancun",
       "海底捞": "haidilao",
       "鼎泰丰": "dingtaifeng",
@@ -212,6 +215,17 @@ Page({
       "新白鹿": "xinbailu",
       "小南国": "xiaonanguo",
       "小龙坎": "xiaolongkan",
+      "大娘水饺": "daniangshuijiao",
+      "苏小柳": "suxiaoliu",
+      "蔡澜港式点心": "cailangangshidianxin",
+      "添好运": "tianhaoyun",
+      "很久以前羊肉串": "henjiuyiqianyangrouchuan",
+      "丰茂烤串": "fengmaokaochuan",
+      "木屋烧烤": "muwushaokao",
+      "胡大饭店": "hudafandian",
+      "哥老官": "gelaoguan",
+      "左庭右院": "zuotingyouyuan",
+      "巴奴毛肚火锅": "banumaoduhuoguo",
       "更多餐厅": "placeholder",
       "和府捞面": "hefulaomian",
       "味千拉面": "weiqianlamian",
@@ -287,7 +301,7 @@ Page({
     }
     const bIcons = this.getPackageBFullIcons();
     if (bIcons.includes(pinyin)) {
-      return `/packageB/images/FullRest/${pinyin}.png`;
+      return `/packageA/images/FullRest/${pinyin}.png`;
     }
     return '/packageA/images/FullRest/placeholder.png';
   },
@@ -301,23 +315,34 @@ Page({
   onRestaurantTap: function (e) {
     const restaurantSid = String(e.currentTarget.dataset.id); // 保持字符串
     let selectedRestaurants = [...this.data.selectedRestaurants];
-    
     const index = selectedRestaurants.indexOf(restaurantSid);
+
+    let willBeSelected = false;
     if (index > -1) {
       // 取消选择
       selectedRestaurants.splice(index, 1);
+      willBeSelected = false;
     } else {
       // 添加选择
       selectedRestaurants.push(restaurantSid);
+      willBeSelected = true;
     }
-    
+
+    // 同步更新餐厅项的 selected 字段
+    const restaurants = this.data.restaurants.slice();
+    const rIdx = restaurants.findIndex(r => r.sid === restaurantSid);
+    if (rIdx !== -1) {
+      restaurants[rIdx] = { ...restaurants[rIdx], selected: willBeSelected };
+    }
+
     this.setData({
-      selectedRestaurants
+      selectedRestaurants,
+      restaurants
     });
-    
+
     // 添加调试日志
     console.log('点击餐厅SID:', restaurantSid, '当前选中:', selectedRestaurants);
-    const found = this.data.restaurants.find(r => r.sid === restaurantSid);
+    const found = restaurants.find(r => r.sid === restaurantSid);
     console.log('餐厅数据:', found);
   },
 
@@ -365,11 +390,27 @@ Page({
       category: '自定义',
       rating: 0,
       logoPath: '/packageA/images/FullRest/placeholder.png',
-      hdLogoPath: '/packageA/images/FullRest/placeholder.png'
+      hdLogoPath: '/packageA/images/FullRest/placeholder.png',
+      selected: true
     };
     const updatedRestaurants = [...this.data.restaurants, newRestaurant];
+
+    // 新增项目默认选中，同时同步 selectedRestaurants
+    const updatedSelectedRestaurants = this.data.selectedRestaurants.slice();
+    if (!updatedSelectedRestaurants.includes(sid)) {
+      updatedSelectedRestaurants.push(sid);
+    }
+
     this.setData({
-      restaurants: updatedRestaurants
+      restaurants: updatedRestaurants,
+      selectedRestaurants: updatedSelectedRestaurants
+    });
+
+    // 成功提示：已添加至列表末尾
+    wx.showToast({
+      title: '已添加至列表末尾',
+      icon: 'success',
+      duration: 1500
     });
   },
 
@@ -389,13 +430,13 @@ Page({
 
     if (pinyin) {
       if (item.logoPath.indexOf('/packageA/') === 0 && bIcons.includes(pinyin)) {
-        item.logoPath = `/packageB/images/FullRest/${pinyin}.png`;
+        item.logoPath = `/packageA/images/FullRest/${pinyin}.png`;
       } else if (item.logoPath.indexOf('/packageB/') === 0 && aIcons.includes(pinyin)) {
         item.logoPath = `/packageA/images/FullRest/${pinyin}.png`;
       } else if (aIcons.includes(pinyin)) {
         item.logoPath = `/packageA/images/FullRest/${pinyin}.png`;
       } else if (bIcons.includes(pinyin)) {
-        item.logoPath = `/packageB/images/FullRest/${pinyin}.png`;
+        item.logoPath = `/packageA/images/FullRest/${pinyin}.png`;
       } else {
         item.logoPath = '/packageA/images/FullRest/placeholder.png';
       }

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wheel Preview - 今日选择</title>
+  <style>
+    :root { --rpx: 1px; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background: #f7f8fa; }
+    .page { min-height: 100vh; padding: 20px 20px 120px; background:
+      radial-gradient(120% 120% at 0% 0%, #e6f0ff 0%, rgba(255,255,255,0.9) 40%),
+      radial-gradient(120% 120% at 100% 0%, #ffe6f0 0%, rgba(255,255,255,0.9) 40%),
+      radial-gradient(120% 120% at 50% 100%, #e8fff3 0%, rgba(255,255,255,0.9) 40%); }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+    .title { font-size: 24px; font-weight: 700; color: #111; }
+    .controls { display: flex; gap: 12px; align-items: center; }
+    .controls select { padding: 6px 10px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; }
+
+    .wheel-wrapper { position: relative; margin: 20px auto 20px; width: 620px; height: 620px; max-width: 92vw; max-height: 92vw; }
+    .pointer { position: absolute; left: 50%; top: -10px; transform: translateX(-50%); width: 0; height: 0; border-left: 18px solid transparent; border-right: 18px solid transparent; border-bottom: 36px solid #ff4d4f; filter: drop-shadow(0 6px 8px rgba(0,0,0,0.15)); z-index: 3; }
+
+    /* Base wheel */
+    .wheel { position: relative; width: 100%; height: 100%; border-radius: 50%; box-shadow: inset 0 0 0 16px rgba(255,255,255,0.7), 0 20px 40px rgba(0,0,0,0.12); transition: transform 2.8s cubic-bezier(.24,.8,.26,1); overflow: hidden; }
+
+    /* Palette A: Modern Neutrals */
+    .wheel.palette-a { background: conic-gradient(
+      #0f172a 0 30deg, #1f2937 30deg 60deg, #374151 60deg 90deg, #4b5563 90deg 120deg,
+      #6b7280 120deg 150deg, #94a3b8 150deg 180deg, #cbd5e1 180deg 210deg, #e2e8f0 210deg 240deg,
+      #9ca3af 240deg 270deg, #64748b 270deg 300deg, #475569 300deg 330deg, #334155 330deg 360deg
+    ); }
+
+    /* Palette B: Warm Sandstone */
+    .wheel.palette-b { background: conic-gradient(
+      #7f5539 0 30deg, #9c6644 30deg 60deg, #b08968 60deg 90deg, #ddb892 90deg 120deg,
+      #e6ccb2 120deg 150deg, #a68a64 150deg 180deg, #936639 180deg 210deg, #b07d62 210deg 240deg,
+      #c89f77 240deg 270deg, #e0bfa5 270deg 300deg, #a98467 300deg 330deg, #8c6a5d 330deg 360deg
+    ); }
+
+    /* Palette C: Pastel Luxe */
+    .wheel.palette-c { background: conic-gradient(
+      #c7d2fe 0 30deg, #bfdbfe 30deg 60deg, #a7f3d0 60deg 90deg, #fbcfe8 90deg 120deg,
+      #fde68a 120deg 150deg, #a5f3fc 150deg 180deg, #ddd6fe 180deg 210deg, #bae6fd 210deg 240deg,
+      #bbf7d0 240deg 270deg, #f5d0fe 270deg 300deg, #fef3c7 300deg 330deg, #cffafe 330deg 360deg
+    ); }
+
+    .wheel-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(16, 38, 73, 0.12), inset 0 0 0 8px rgba(255,255,255,0.7); }
+    .spin-btn { background: #111; color: #fff; border-radius: 999px; padding: 12px 28px; font-weight: 600; border: none; cursor: pointer; }
+
+    .wheel-item { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 50% 50%; }
+    /* radial character style */
+    .ch { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 18px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.15); -webkit-text-stroke: 0.6px rgba(0,0,0,0.2); }
+    .font-1 { font-family: 'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans SC',sans-serif; font-weight: 800; letter-spacing: 0.5px; }
+    .font-2 { font-family: 'Songti SC','Noto Serif SC','STSong',serif; font-weight: 700; letter-spacing: 0.8px; }
+    .font-3 { font-family: 'Kaiti SC','STKaiti','HanziPen SC','Hannotate SC',cursive; font-weight: 700; letter-spacing: 0.5px; }
+    .font-4 { font-family: 'SF Pro Rounded','Helvetica Neue','Arial Rounded MT Bold','PingFang SC',sans-serif; font-weight: 800; letter-spacing: 0.4px; }
+    /* Optional gradient text look */
+    .accent { background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: none; -webkit-text-stroke: 0.8px rgba(0,0,0,0.3); }
+
+    .glass { background: rgba(255,255,255,0.8); border-radius: 24px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); backdrop-filter: blur(20px); }
+    .decision-card { padding: 24px; margin: 20px 0; }
+    .restaurant-row { display: flex; align-items: center; gap: 20px; }
+    .rest-logo { width: 100px; height: 100px; border-radius: 20px; object-fit: contain; }
+    .rest-info { flex: 1; }
+    .rest-name { font-size: 22px; font-weight: 700; color: #111; }
+    .rest-type { font-size: 14px; color: #666; margin-top: 4px; }
+    .rest-promo { font-size: 14px; color: #444; margin-top: 8px; }
+    .action-row { display: flex; gap: 16px; margin-top: 20px; }
+    .btn { padding: 14px 24px; border-radius: 16px; background: #eff1f5; color: #111; border: none; cursor: pointer; }
+    .btn.primary { background: #2563eb; color: #fff; }
+
+    .shortlist { padding: 20px; }
+    .shortlist-title { font-size: 18px; color: #111; margin-bottom: 12px; }
+    .shortlist-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .short-item { position: relative; height: 140px; border-radius: 16px; background: rgba(255,255,255,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .short-item.placeholder { border: 2px dashed rgba(0,0,0,0.08); background: transparent; }
+    .short-icon { width: 64px; height: 64px; object-fit: contain; }
+    .short-name { font-size: 14px; color: #333; margin-top: 6px; max-width: 140px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+    .short-remove { position: absolute; right: 8px; top: 2px; color: #888; cursor: pointer; }
+
+    .share-bar { position: fixed; left: 20px; right: 20px; bottom: 20px; padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .share-text { font-size: 14px; color: #222; flex: 1; margin-right: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="title">今天吃什么？ — 字体/配色 预览</div>
+      <div class="controls">
+        <label>字体方案：
+          <select id="fontSelect">
+            <option value="font-1">方案 A · 现代黑体（粗重）</option>
+            <option value="font-2">方案 B · 雅致宋体（衬线）</option>
+            <option value="font-3">方案 C · 书法楷体（手写）</option>
+            <option value="font-4">方案 D · 圆体（现代）</option>
+            <option value="accent">方案 E · 渐变描边（强调）</option>
+          </select>
+        </label>
+        <label>配色方案：
+          <select id="paletteSelect">
+            <option value="palette-a">A · Modern Neutrals</option>
+            <option value="palette-b">B · Warm Sandstone</option>
+            <option value="palette-c">C · Pastel Luxe</option>
+          </select>
+        </label>
+        <button class="btn" id="reroll">再来一次</button>
+      </div>
+    </div>
+
+    <div class="wheel-wrapper">
+      <div class="wheel palette-b" id="wheel">
+        <!-- labels will be inserted by JS -->
+        <div class="wheel-center"><button id="spinBtn" class="spin-btn">开始</button></div>
+      </div>
+      <div class="pointer"></div>
+    </div>
+
+    <div class="decision-card glass" id="decision" style="display:none;">
+      <div class="restaurant-row">
+        <img class="rest-logo" id="restLogo" src="/images/placeholder.svg" />
+        <div class="rest-info">
+          <div class="rest-name" id="restName">-</div>
+          <div class="rest-type" id="restType">餐厅</div>
+          <div class="rest-promo" id="restPromo">优惠信息：敬请期待</div>
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn primary">就它了</button>
+        <button class="btn" id="reroll2">再来一次</button>
+        <button class="btn">加入备选</button>
+      </div>
+    </div>
+
+    <div class="shortlist glass">
+      <div class="shortlist-title">备选</div>
+      <div class="shortlist-grid">
+        <div class="short-item placeholder"></div>
+        <div class="short-item placeholder"></div>
+        <div class="short-item placeholder"></div>
+        <div class="short-item placeholder"></div>
+      </div>
+    </div>
+
+    <div class="share-bar glass">
+      <div class="share-text" id="shareText">今天吃什么？</div>
+      <button class="btn" id="copyBtn">复制</button>
+    </div>
+  </div>
+
+  <script>
+    const wheel = document.getElementById('wheel');
+    const spinBtn = document.getElementById('spinBtn');
+    const rerollBtn = document.getElementById('reroll');
+    const rerollBtn2 = document.getElementById('reroll2');
+    const shareTextEl = document.getElementById('shareText');
+    const decision = document.getElementById('decision');
+    const restNameEl = document.getElementById('restName');
+    const restLogoEl = document.getElementById('restLogo');
+    const fontSelect = document.getElementById('fontSelect');
+    const paletteSelect = document.getElementById('paletteSelect');
+
+    const names = [
+      '麦当劳','肯德基','星巴克','汉堡王','喜茶','呷哺呷哺','海底捞','西贝莜面村','沃歌斯','莆田餐厅','小杨生煎','鹿港小镇'
+    ];
+    const wheelRadius = 260; // px
+
+    // set default to palette B and font A
+    paletteSelect.value = 'palette-b';
+    fontSelect.value = 'font-1';
+
+    function clearItems(){
+      Array.from(wheel.querySelectorAll('.wheel-item')).forEach(el => el.remove());
+    }
+
+    function renderItems() {
+      clearItems();
+      const step = 360 / names.length;
+      const fontClass = fontSelect.value || 'font-1';
+      const labelStart = 90; // px from center
+      const labelOuterMargin = 30; // px from outer edge
+      const available = Math.max(0, wheelRadius - labelOuterMargin - labelStart);
+      names.forEach((name, idx) => {
+        const angle = idx * step;
+        const item = document.createElement('div');
+        item.className = 'wheel-item';
+        item.style.transform = `rotate(${angle}deg)`;
+
+        const chars = Array.from(name);
+        const rawStep = chars.length > 1 ? Math.floor(available / (chars.length - 1)) : available;
+        const labelStep = Math.min(30, rawStep);
+        chars.forEach((ch, cidx) => {
+          const el = document.createElement('div');
+          el.className = `ch ${fontClass}`;
+          el.textContent = ch;
+          el.style.transform = `translate(-50%, -50%) translateY(-${labelStart + cidx * labelStep}px)`;
+          item.appendChild(el);
+        });
+
+        wheel.appendChild(item);
+      });
+    }
+
+    let rotateDeg = 0;
+    function pickShareText(restaurant) {
+      fetch('/shareWording.json').then(r => r.json()).then(list => {
+        if (Array.isArray(list) && list.length) {
+          const tpl = list[Math.floor(Math.random()*list.length)] || '';
+          shareTextEl.textContent = tpl.replace('{restaurant}', restaurant || '它');
+        }
+      }).catch(() => {
+        shareTextEl.textContent = '今天吃什么？';
+      });
+    }
+
+    function onSpin() {
+      const count = names.length;
+      const step = 360 / count;
+      const targetIndex = Math.floor(Math.random() * count);
+      const targetAngle = 360 * 5 + (360 - targetIndex * step - step/2);
+      rotateDeg += targetAngle; // 累积，保持方向一致
+      wheel.style.transform = `rotate(${rotateDeg}deg)`;
+      setTimeout(() => {
+        const hit = names[targetIndex];
+        decision.style.display = 'block';
+        restNameEl.textContent = hit;
+        pickShareText(hit);
+      }, 2800);
+    }
+
+    renderItems();
+    pickShareText('它');
+    spinBtn.addEventListener('click', onSpin);
+    rerollBtn.addEventListener('click', onSpin);
+    rerollBtn2.addEventListener('click', onSpin);
+
+    fontSelect.addEventListener('change', renderItems);
+    paletteSelect.addEventListener('change', () => {
+      wheel.classList.remove('palette-a','palette-b','palette-c');
+      wheel.classList.add(paletteSelect.value);
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      const text = shareTextEl.textContent || '';
+      navigator.clipboard.writeText(text).then(()=> alert('已复制')).catch(()=> alert('复制失败'));
+    });
+  </script>
+</body>
+</html>

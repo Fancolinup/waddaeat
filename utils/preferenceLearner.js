@@ -242,18 +242,28 @@ function updateUserPreference(restaurantId, feedback) {
  * @param {Object} restaurant 餐厅数据对象
  * @returns {number} 偏好匹配得分 (0-10分)
  */
-function calculatePreferenceScore(restaurant) {
+function calculatePreferenceScore(restaurant, tasteProfileOverride) {
   if (!restaurant || typeof restaurant !== 'object') {
     console.error('[PreferenceLearner] 计算偏好得分失败：餐厅数据无效');
     return 5; // 返回默认中等分数
   }
   
   try {
-    // 获取用户数据
-    const userData = dataManager.getUserData();
-    if (!userData || !userData.tasteProfile) {
-      console.error('[PreferenceLearner] 计算偏好得分失败：无法获取用户数据');
-      return restaurant.basePreferenceScore || 5;
+    // 优先使用外部传入的口味画像；否则尝试从本地用户数据获取
+    let userData = null;
+    let tasteProfile = tasteProfileOverride;
+    if (!tasteProfile) {
+      try {
+        userData = dataManager.getUserData();
+        tasteProfile = userData && userData.tasteProfile;
+      } catch (e) {
+        // 忽略，稍后采用降级逻辑
+      }
+    }
+
+    // 若仍不可用，则降级为空画像（不再报错），最终会更多依赖基础分/其他特征
+    if (!tasteProfile || typeof tasteProfile !== 'object') {
+      tasteProfile = {};
     }
     
     // 提取餐厅特征向量
@@ -267,11 +277,10 @@ function calculatePreferenceScore(restaurant) {
     let tasteMatchScore = 0;
     let totalTasteWeight = 0;
     
-    Object.keys(userData.tasteProfile).forEach(taste => {
-      if (featureVector.taste.hasOwnProperty(taste) && FEATURE_WEIGHTS.taste.hasOwnProperty(taste)) {
-        // 计算用户偏好与餐厅特征的相似度 (1 - 差值的绝对值)
-        const similarity = 1 - Math.abs(userData.tasteProfile[taste] - featureVector.taste[taste]);
-        // 加权累加
+    Object.keys(FEATURE_WEIGHTS.taste).forEach(taste => {
+      if (featureVector.taste.hasOwnProperty(taste)) {
+        const userPref = typeof tasteProfile[taste] === 'number' ? tasteProfile[taste] : 0.5;
+        const similarity = 1 - Math.abs(userPref - featureVector.taste[taste]);
         tasteMatchScore += similarity * FEATURE_WEIGHTS.taste[taste];
         totalTasteWeight += FEATURE_WEIGHTS.taste[taste];
       }
@@ -281,21 +290,17 @@ function calculatePreferenceScore(restaurant) {
     const normalizedTasteScore = totalTasteWeight > 0 ? tasteMatchScore / totalTasteWeight : 0.5;
     
     // 计算其他特征匹配度 (健康度、流行度、价格)
-    // 这里简化处理，实际可根据用户历史行为分析偏好
     const healthFactor = featureVector.other.health * FEATURE_WEIGHTS.other.health;
     const popularityFactor = featureVector.other.popularity * FEATURE_WEIGHTS.other.popularity;
     
     // 价格因子 (假设中等价位最受欢迎)
-    const idealPrice = 0.5; // 理想价格水平 (0-1范围内的0.5代表中等价位)
+    const idealPrice = 0.5;
     const priceSimilarity = 1 - Math.abs(idealPrice - featureVector.other.price);
     const priceFactor = priceSimilarity * FEATURE_WEIGHTS.other.price;
     
-    // 计算总权重
     const totalOtherWeight = FEATURE_WEIGHTS.other.health + 
                             FEATURE_WEIGHTS.other.popularity + 
                             FEATURE_WEIGHTS.other.price;
-    
-    // 归一化其他特征分数 (0-1)
     const normalizedOtherScore = (healthFactor + popularityFactor + priceFactor) / totalOtherWeight;
     
     // 组合口味分数和其他特征分数 (口味占70%，其他特征占30%)
@@ -304,13 +309,18 @@ function calculatePreferenceScore(restaurant) {
     // 转换为10分制
     let finalScore = combinedScore * 10;
     
-    // 考虑历史评分 (如果有)
-    if (userData.restaurantScores && userData.restaurantScores[restaurant.id]) {
-      // 历史评分占40%权重
-      finalScore = finalScore * 0.6 + userData.restaurantScores[restaurant.id] * 0.4;
-    } else if (restaurant.basePreferenceScore) {
-      // 使用基础偏好分数占20%权重
-      finalScore = finalScore * 0.8 + restaurant.basePreferenceScore * 0.2;
+    // 历史评分加权（尽力获取，获取失败则跳过而不报错）
+    try {
+      if (!userData) userData = dataManager.getUserData();
+      if (userData && userData.restaurantScores && userData.restaurantScores[restaurant.id] != null) {
+        finalScore = finalScore * 0.6 + userData.restaurantScores[restaurant.id] * 0.4;
+      } else if (restaurant.basePreferenceScore != null) {
+        finalScore = finalScore * 0.8 + restaurant.basePreferenceScore * 0.2;
+      }
+    } catch (e) {
+      if (restaurant.basePreferenceScore != null) {
+        finalScore = finalScore * 0.8 + restaurant.basePreferenceScore * 0.2;
+      }
     }
     
     // 确保最终分数在0-10范围内

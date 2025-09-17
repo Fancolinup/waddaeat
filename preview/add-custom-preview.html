@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>添加自定义餐厅 - 行为预览（不改动小程序实体）</title>
+  <style>
+    :root {
+      --radius: 14px; /* 约等于 28rpx */
+      --ring: 5px;    /* 约等于 5rpx */
+      --glow-blur: 12px;
+      --glow-spread: 2px;
+      --shadow-y: 8px;
+      --shadow-blur: 24px;
+      --bg: #f7f8fa;
+      --card-bg: #fff;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: 124,77,255;  /* #7C4DFF */
+      --accent-hex: #7C4DFF;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif; }
+    .wrap { max-width: 960px; margin: 24px auto; padding: 0 16px 64px; }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    p.note { color: var(--muted); margin: 0 0 16px; }
+
+    .toolbar { display: flex; gap: 12px; margin-bottom: 16px; }
+    .btn { appearance: none; border: 0; background: var(--accent-hex); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 14px; cursor: pointer; box-shadow: 0 6px 18px rgba(var(--accent), .25); }
+    .btn:active { transform: translateY(1px); }
+
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    @media (max-width: 840px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+
+    .card { position: relative; border-radius: var(--radius); background: var(--card-bg); padding: 16px; min-height: 110px; display: flex; align-items: center; justify-content: center; text-align: center; transition: box-shadow .2s ease; }
+    .card .title { font-weight: 600; }
+    .card .sub { margin-top: 6px; color: var(--muted); font-size: 12px; }
+
+    /* 选中态样式（与小程序保持一致：环形描边 + 发光 + 柔和投影） */
+    .selected { box-shadow: 0 0 0 var(--ring) var(--accent-hex), 0 0 var(--glow-blur) var(--glow-spread) rgba(var(--accent), 0.16), 0 var(--shadow-y) var(--shadow-blur) rgba(var(--accent), 0.22) !important; border-radius: var(--radius); }
+
+    /* Toast */
+    .toast { position: fixed; left: 50%; top: 20px; transform: translateX(-50%); background: rgba(17,24,39,.9); color: #fff; padding: 10px 14px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.18); opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>“添加自定义餐厅” 交互预览</h1>
+    <p class="note">模拟以下行为：点击“添加餐厅”后，新增卡片出现在列表末尾，且默认高亮选中，同时出现提示“已添加至列表末尾”。</p>
+
+    <div class="toolbar">
+      <button class="btn" id="addBtn">添加餐厅（模拟）</button>
+    </div>
+
+    <div class="grid" id="grid">
+      <div class="card"><div><div class="title">品牌 A</div><div class="sub">默认未选中</div></div></div>
+      <div class="card selected"><div><div class="title">品牌 B</div><div class="sub">示例：已选中</div></div></div>
+      <div class="card"><div><div class="title">品牌 C</div><div class="sub">默认未选中</div></div></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">已添加至列表末尾</div>
+
+  <script>
+    const addBtn = document.getElementById('addBtn');
+    const grid = document.getElementById('grid');
+    const toast = document.getElementById('toast');
+    let customIdx = 1;
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => { toast.classList.remove('show'); }, 1500);
+    }
+
+    addBtn.addEventListener('click', () => {
+      const card = document.createElement('div');
+      card.className = 'card selected';
+      card.innerHTML = `<div><div class="title">自定义餐厅 ${customIdx++}</div><div class="sub">默认已选中</div></div>`;
+      grid.appendChild(card);
+      showToast('已添加至列表末尾');
+    });
+  </script>
+</body>
+</html>
