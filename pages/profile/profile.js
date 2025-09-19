@@ -26,7 +26,10 @@ Page({
    * 生命周期函数--监听页面显示
    */
   onShow() {
-
+    // 自定义 tabBar 选中态
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setData({ selected: 2 });
+    }
   },
 
   /**

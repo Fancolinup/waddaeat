@@ -11,6 +11,13 @@ Page({
     this.loadDialogues();
   },
 
+  onShow: function () {
+    // 自定义 tabBar 选中态
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setData({ selected: 1 });
+    }
+  },
+
   loadDialogues: function () {
     // 加载对话数据
     // 这里将使用现有的 Pilot dialogues.json 数据

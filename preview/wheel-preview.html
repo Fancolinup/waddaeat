@@ -43,6 +43,41 @@
       #bbf7d0 240deg 270deg, #f5d0fe 270deg 300deg, #fef3c7 300deg 330deg, #cffafe 330deg 360deg
     ); }
 
+    /* Palette D: Cool Breeze */
+    .wheel.palette-d { background: conic-gradient(
+      #0ea5e9 0 30deg, #06b6d4 30deg 60deg, #14b8a6 60deg 90deg, #22c55e 90deg 120deg,
+      #2dd4bf 120deg 150deg, #38bdf8 150deg 180deg, #60a5fa 180deg 210deg, #3b82f6 210deg 240deg,
+      #2563eb 240deg 270deg, #1d4ed8 270deg 300deg, #0891b2 300deg 330deg, #0f766e 330deg 360deg
+    ); }
+
+    /* Palette E: Citrus Punch */
+    .wheel.palette-e { background: conic-gradient(
+      #ef4444 0 30deg, #f97316 30deg 60deg, #f59e0b 60deg 90deg, #eab308 90deg 120deg,
+      #84cc16 120deg 150deg, #10b981 150deg 180deg, #34d399 180deg 210deg, #22c55e 210deg 240deg,
+      #a3e635 240deg 270deg, #fde047 270deg 300deg, #fb923c 300deg 330deg, #f43f5e 330deg 360deg
+    ); }
+
+    /* Palette F: Sakura Pastel */
+    .wheel.palette-f { background: conic-gradient(
+      #ffe4e6 0 30deg, #fecdd3 30deg 60deg, #fbcfe8 60deg 90deg, #e9d5ff 90deg 120deg,
+      #dbeafe 120deg 150deg, #bae6fd 150deg 180deg, #bbf7d0 180deg 210deg, #dcfce7 210deg 240deg,
+      #fef9c3 240deg 270deg, #ffedd5 270deg 300deg, #fde68a 300deg 330deg, #c7d2fe 330deg 360deg
+    ); }
+
+    /* Palette G: Neo Pop High Contrast */
+    .wheel.palette-g { background: conic-gradient(
+      #111827 0 30deg, #f59e0b 30deg 60deg, #0ea5e9 60deg 90deg, #ef4444 90deg 120deg,
+      #10b981 120deg 150deg, #a855f7 150deg 180deg, #f43f5e 180deg 210deg, #22c55e 210deg 240deg,
+      #eab308 240deg 270deg, #3b82f6 240deg 300deg, #fb7185 300deg 330deg, #9333ea 330deg 360deg
+    ); }
+
+    /* Palette H: Classic Primary Bold */
+    .wheel.palette-h { background: conic-gradient(
+      #e11d48 0 30deg, #ea580c 30deg 60deg, #f59e0b 60deg 90deg, #84cc16 90deg 120deg,
+      #16a34a 120deg 150deg, #0ea5e9 150deg 180deg, #2563eb 180deg 210deg, #1d4ed8 210deg 240deg,
+      #9333ea 240deg 270deg, #7e22ce 270deg 300deg, #db2777 300deg 330deg, #be123c 330deg 360deg
+    ); }
+
     .wheel-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(16, 38, 73, 0.12), inset 0 0 0 8px rgba(255,255,255,0.7); }
     .spin-btn { background: #111; color: #fff; border-radius: 999px; padding: 12px 28px; font-weight: 600; border: none; cursor: pointer; }
 
@@ -100,6 +135,11 @@
             <option value="palette-a">A · Modern Neutrals</option>
             <option value="palette-b">B · Warm Sandstone</option>
             <option value="palette-c">C · Pastel Luxe</option>
+            <option value="palette-d">D · Cool Breeze（冷调清爽）</option>
+            <option value="palette-e">E · Citrus Punch（柑橘活力）</option>
+            <option value="palette-f">F · Sakura Pastel（樱花马卡龙）</option>
+            <option value="palette-g">G · Neo Pop（高对比霓虹）</option>
+            <option value="palette-h">H · Classic Primary（经典原色）</option>
           </select>
         </label>
         <button class="btn" id="reroll">再来一次</button>
@@ -234,7 +274,7 @@
 
     fontSelect.addEventListener('change', renderItems);
     paletteSelect.addEventListener('change', () => {
-      wheel.classList.remove('palette-a','palette-b','palette-c');
+      wheel.classList.remove('palette-a','palette-b','palette-c','palette-d','palette-e','palette-f','palette-g','palette-h');
       wheel.classList.add(paletteSelect.value);
     });
 

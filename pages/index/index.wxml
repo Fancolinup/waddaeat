@@ -3,18 +3,18 @@
 
   <!-- 轮盘容器：指针向下，轮盘本身旋转，按钮保持固定 -->
   <view class="roulette-wheel-container">
-    <view class="roulette-wheel palette-b {{spinClass}}" style="transform: rotate({{rouletteRotation}}deg);">
-      <block wx:for="{{segments}}" wx:key="id">
-        <view class="roulette-item" style="transform: rotate({{item.angle}}deg)">
-          <!-- 扇区内径向排版文本：从外向内排列，末端距圆心5rpx -->
-          <view class="label-clip">
-            <block wx:for="{{item.chars}}" wx:for-index="cidx" wx:for-item="ch" wx:key="*this">
-              <text class="label-ch" style="transform: translate(-50%, -50%) translateY(-{{ ch.pos }}rpx) rotate(180deg);">{{ch.ch}}</text>
-            </block>
-          </view>
-        </view>
-      </block>
-    </view>
+    <view class="roulette-wheel palette-{{currentPaletteKey}} {{spinClass}}" style="transform: rotate({{rouletteRotation}}deg);">
+      <block wx:for="{{segments}}" wx:for-index="sidx" wx:key="sidx">
+         <view class="roulette-item" style="transform: rotate({{item.angle}}deg)">
+           <!-- 扇区内径向排版文本：从外向内排列 -->
+           <view class="label-clip">
+             <block wx:for="{{item.chars}}" wx:for-index="cidx" wx:for-item="ch" wx:key="*this">
+               <text class="label-ch" style="transform: translate(-50%, -50%) translateY(-{{ ch.pos }}rpx);">{{ch.ch}}</text>
+             </block>
+           </view>
+         </view>
+       </block>
+     </view>
 
     <!-- 边缘手型装饰 -->
     
@@ -22,19 +22,25 @@
     <!-- 指针（顶部，三角形朝下指向中心） -->
     <view class="pointer"></view>
 
-    <!-- 固定在中心的开始按钮（不随轮盘旋转） -->
-    <view class="roulette-center">
-      <view class="start-button" bindtap="spinRoulette">
-        
-        开始
+    <!-- 右上角操作按钮：配色切换 + 刷新推荐 -->
+    <view class="top-actions">
+      <view class="palette-switch" bindtap="onTogglePalette">
+        <view class="palette-wheel"></view>
       </view>
+      <image class="refresh-switch" src="/images/refresh_batch.png" bindtap="onRefreshWheel" />
+    </view>
+
+    <!-- 固定在中心的开始按钮与手型（手型独立覆盖，不影响按钮尺寸） -->
+    <view class="roulette-center">
+      <image class="start-hand" src="/images/hand.png" mode="widthFix" />
+      <view class="start-button" bindtap="spinRoulette">开始</view>
     </view>
   </view>
 
   <!-- 决策浮层 -->
   <view class="decision-layer" wx:if="{{showDecisionLayer}}">
     <view class="dl-body">
-      <image class="dl-logo" src="{{selected && selected.icon}}" mode="aspectFill" />
+      <image class="dl-logo" src="{{selected ? selected.icon : '/packageA/images/FullRest/placeholder.png'}}" mode="aspectFill" />
       <view class="dl-info">
         <view class="dl-name">{{selected && selected.name}}</view>
         <view class="dl-type">{{selected && (selected.type || '餐厅')}}</view>
@@ -65,11 +71,15 @@
   </view>
 
   <!-- 分享区（固定底部条，图标按钮在右侧，3rpx 边距） -->
-  <view class="share-bar" wx:if="{{showShareArea}}">
-    <text class="share-text">{{shareText}}</text>
-    <view class="share-actions">
-      <image class="icon-btn" src="/packageA/images/ui/copy.svg" catchtap="onCopyShare" />
-      <image class="icon-btn" src="/packageA/images/ui/refresh.svg" catchtap="onRefreshShare" />
+  <view class="share-bar">
+    <view class="share-content">
+      <text class="share-title">转发好友，一起决策</text>
+      <text class="share-text" wx:if="{{showShareArea}}">{{shareText}}</text>
     </view>
+    <view class="share-actions">
+       <image class="icon-btn" src="/images/copy.svg" catchtap="onCopyShare" />
+       <image class="icon-btn" src="/images/refresh.svg" catchtap="onRefreshShare" />
+     </view>
   </view>
+  <view class="page-bottom-spacer"></view>
 </view>

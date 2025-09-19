@@ -5,6 +5,9 @@ const { updateRestaurantScore } = require('../../utils/scoringManager');
 const { updateUserPreference } = require('../../utils/preferenceLearner');
 // removed: const shareWording = require('../../shareWording.json');
 
+// 调试时间戳辅助
+const ts = () => new Date().toISOString();
+
 Page({
   data: {
     // 轮盘 & 数据
@@ -12,10 +15,11 @@ Page({
     wheelRadius: 310, // rpx offset for icon positions
     rouletteRotation: 0,
     selected: null,
+    isSpinning: false,
 
     // UI 状态
     showDecisionLayer: false,
-    showShareArea: false,
+    showShareArea: true,
     spinClass: '',
 
     // 备选
@@ -32,10 +36,17 @@ Page({
     currentTime: '',
 
     // 文案径向布局参数（从外向内排列，末端离圆心 5rpx）
-    labelOuterMargin: 120,     // 距离外缘的安全边距（rpx）— 增大以让文字远离边缘
-    labelInnerMargin: 80,      // 末端距离圆心（rpx）— 增大以确保文字在扇形内
-    labelMinStep: 20,         // 字符最小步进（rpx）— 防止字距过密
-    labelMaxStep: 32          // 字符最大步进（rpx）— 防止字距过疏
+    labelOuterMargin: 60,      // 距离外缘的安全边距（rpx）— 更靠近边缘但不贴边
+    labelInnerMargin: 40,      // 末端距离圆心（rpx）
+    labelMinStep: 22,          // 字符最小步进（rpx）— 略增字距
+    labelMaxStep: 34,          // 字符最大步进（rpx）— 略增字距
+
+    // 配色切换
+    currentPaletteKey: 'b',
+    paletteKeys: ['b','a','f','g'],
+    
+    // 基于当前显示顺序的编号数组（1..12 -> segment索引），用于日志与后续扩展
+    displayOrder: []
   },
 
   onLoad() {
@@ -44,11 +55,31 @@ Page({
     this.updateDateTime();
     this._clock = setInterval(() => this.updateDateTime(), 60 * 1000);
     this.updatePlaceholderSlots();
+
+    // 默认每次进入页面均使用 B（不读取旧缓存），与需求保持一致
+    try {
+      this.setData({ currentPaletteKey: 'b' });
+      wx.setStorageSync('paletteKey', 'b');
+    } catch(e) {}
   },
 
   onShow() {
     // 保持 share 文案更新
     this.loadShareText();
+    // 自定义 tabBar 选中态
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setData({ selected: 0 });
+    }
+  },
+
+  // 配色切换（循环 B→A→F→G）
+  onTogglePalette() {
+    const keys = this.data.paletteKeys || ['b','a','f','g'];
+    const cur = this.data.currentPaletteKey || 'b';
+    const idx = Math.max(0, keys.indexOf(cur));
+    const next = keys[(idx + 1) % keys.length]; // 第一次点击从 b 切到 a
+    this.setData({ currentPaletteKey: next });
+    try { wx.setStorageSync('paletteKey', next); } catch(e) {}
   },
 
   onUnload() {
@@ -177,64 +208,177 @@ Page({
 
   // 初始化轮盘（12个推荐）
   initWheel(preserveRotation = false) {
-     try {
-       const userData = getUserData();
-       const recs = generateRecommendations(userData, 12);
-       const step = 360 / 12;
+    try {
+      // 用于变更对比的上一轮推荐（按 slotNo 记录）
+      const prevSegments = Array.isArray(this.data.segments) ? this.data.segments : [];
+      const prevBySlot = {};
+      for (const s of prevSegments) {
+        if (s && s.slotNo) prevBySlot[s.slotNo] = s.name || '';
+      }
+
+      const userData = getUserData();
+      const recs = generateRecommendations(userData, 12);
+      console.log(`[${ts()}] 推荐列表(生成/刷新)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''}`));
+      const count = 12;
+      const step = 360 / count;
       const { wheelRadius, labelOuterMargin, labelInnerMargin, labelMinStep, labelMaxStep } = this.data;
-       const segments = recs.map((r, idx) => {
-         const name = r.name || '';
-         const nameChars = String(name).split('');
-        // 外沿与内沿位置（增加外缘安全边距，字符在扇区内部显示）
+      const pointerAngle = 0; // 修正：指针在CSS中位于top位置，对应0°
+
+      // 保持推荐顺序(1..12)，不因指针对齐而重排
+      const segments = Array.from({ length: count }, (_, idx) => {
+        const r = recs[idx];
+        const name = (r && r.name) ? r.name : '';
+        const nameChars = String(name).split('');
         const outer = Math.max(0, wheelRadius - labelOuterMargin);
         const inner = Math.max(0, labelInnerMargin);
         const available = Math.max(0, outer - inner);
-         let chars = [];
-         if (nameChars.length <= 1) {
+        let chars = [];
+        if (nameChars.length <= 1) {
           chars = [{ ch: nameChars[0] || '', pos: Math.max(inner, Math.min(outer, Math.round((outer + inner) / 2))) }];
-         } else {
+        } else {
           const rawStep = available / (nameChars.length - 1);
-          // 将步进限制在可读范围，避免过密/过疏
           const stepLen = Math.max(labelMinStep, Math.min(labelMaxStep, rawStep));
-          // 起始位置需要回退，确保尾字符不越过内沿
-          const start = Math.min(outer, inner + stepLen * (nameChars.length - 1));
+          const start = outer; // 从外沿开始
           chars = nameChars.map((ch, cidx) => ({ ch, pos: Math.max(inner, Math.round(start - cidx * stepLen)) }));
-         }
-         return {
-           id: String(r.id),
-           name,
-           type: r.type,
-           icon: this.getRestaurantIconPath(name),
-           promoText: r.dynamicPromotions && r.dynamicPromotions[0] ? r.dynamicPromotions[0].promoText : '',
-           angle: idx * step,
-           chars
-         };
-       });
-       const base = { segments, selected: null, showDecisionLayer: false };
-       if (!preserveRotation) base.rouletteRotation = 0;
-       this.setData(base);
-     } catch(e) {
-       console.error('初始化轮盘失败', e);
-       this.setData({ segments: [], selected: null, showDecisionLayer: false });
-     }
-   },
+        }
+        return {
+          id: String(r.id),
+          name,
+          type: r.type,
+          icon: this.getRestaurantIconPath(name),
+          promoText: r.dynamicPromotions && r.dynamicPromotions[0] ? r.dynamicPromotions[0].promoText : '',
+          angle: idx * step + step / 2, // 该段中心角（相对轮盘自身坐标系）
+          slotNo: idx + 1,
+          chars
+        };
+      });
 
-  // 旋转开始（重绘版）
+      // 维护显示顺序：编号 -> 扇区索引（恒等映射）
+      const displayOrder = new Array(count);
+      for (let i = 0; i < count; i++) {
+        const s = segments[i];
+        displayOrder[(s.slotNo || 0) - 1] = i;
+      }
+
+      const listLog = segments.map(s => `${s.slotNo}.${s.name}`);
+      console.log(`[${ts()}] 生成转盘(12)：`, listLog);
+
+      // 输出变更状态日志（对比上一轮）
+      if (prevSegments && prevSegments.length) {
+        const diffLines = segments.map(s => {
+          const prevName = prevBySlot[s.slotNo] || '';
+          let status = '';
+          if (!prevName) status = '新';
+          else if (prevName === s.name) status = '未变';
+          else status = `变更(原: ${prevName})`;
+          return `${s.slotNo}. ${s.name} — ${status}`;
+        });
+        console.log(`[${ts()}] 换一批后推荐列表（带变更标记）：\n${diffLines.join('\n')}`);
+      } else {
+        const initLines = segments.map(s => `${s.slotNo}. ${s.name}`);
+        console.log(`[${ts()}] 初始推荐列表：\n${initLines.join('\n')}`);
+      }
+
+      // 调试：输出所有段的角度位置
+      console.log(`[${ts()}] 段角度调试：`, segments.map((s, i) => `${s.slotNo}.${s.name}@${s.angle}°`));
+
+      const base = { segments, selected: null, showDecisionLayer: false, displayOrder };
+      if (!preserveRotation) {
+        // 让 slot 1(segments[0]) 的中心角对齐到 pointerAngle
+        const s0Angle = segments[0].angle; // step/2
+        const rotationOffset = ((pointerAngle - s0Angle) % 360 + 360) % 360;
+        base.rouletteRotation = rotationOffset;
+        console.log(`[${ts()}] 初始对齐：基于段中心角 s0=${s0Angle}°，设置 rotation=${rotationOffset}°`);
+
+        // 计算此时三角形指示器所指向的餐厅（编号与名称），用于验证对齐
+        const effectiveRot0 = rotationOffset;
+        let hitIndex0 = 0;
+        let minDiff0 = 9999;
+        for (let i = 0; i < count; i++) {
+          const center0 = ((segments[i].angle + effectiveRot0) % 360 + 360) % 360;
+          let diff0 = Math.abs(center0 - pointerAngle);
+          diff0 = Math.min(diff0, 360 - diff0);
+          if (diff0 < minDiff0) { minDiff0 = diff0; hitIndex0 = i; }
+        }
+        const pointed = segments[hitIndex0];
+        console.log(`[${ts()}] 初始化完成：当前指向 编号=${pointed.slotNo}，餐厅="${pointed.name}"`);
+        
+        // 调试：输出所有段旋转后的实际位置
+        console.log(`[${ts()}] 旋转后段位置：`, segments.map((s, i) => {
+          const rotatedAngle = ((s.angle + effectiveRot0) % 360 + 360) % 360;
+          return `${s.slotNo}.${s.name}@${rotatedAngle.toFixed(1)}°`;
+        }));
+      }
+      this.setData(base);
+    } catch(e) {
+      console.error(`[${ts()}] 初始化轮盘失败`, e);
+      this.setData({ segments: [], selected: null, showDecisionLayer: false, displayOrder: [] });
+    }
+  },
+
+  // 刷新推荐：重算推荐与转盘显示，重置累计旋转角，确保指针指向第1名
+  onRefreshWheel() {
+    if (this.data.isSpinning) return;
+    console.log(`[${ts()}] 手动刷新：换一批推荐（12家），并将指针对齐第1名`);
+    // 重新生成12家推荐并重置旋转到slot1
+    this.initWheel(false);
+    // 隐藏结果浮层与分享区
+    this.setData({ showDecisionLayer: false, showShareArea: false, selected: null });
+    // 提示刷新完成
+    try { wx.showToast({ title: '转盘已刷新', icon: 'success' }); } catch(e) {}
+  },
+
+  // 旋转开始（调试版：固定720°）
   spinRoulette() {
     if (!this.data.segments.length) return;
-    const count = this.data.segments.length;
-    const step = 360 / count;
-    const targetIndex = Math.floor(Math.random() * count);
-    const targetAngle = 360 * 5 + (360 - targetIndex * step - step/2);
-    this.setData({ rouletteRotation: this.data.rouletteRotation + targetAngle, showDecisionLayer: false });
+    if (this.data.isSpinning) return; // 防重复触发
+    this.setData({ isSpinning: true });
+
+    // 恢复正常旋转：随机角度 + 多圈旋转
+    const minSpins = 3; // 最少3圈
+    const maxSpins = 6; // 最多6圈
+    const randomSpins = minSpins + Math.random() * (maxSpins - minSpins);
+    const randomAngle = Math.random() * 360; // 随机停止角度
+    const totalDelta = randomSpins * 360 + randomAngle;
+    
+    console.log(`[${ts()}] 开始转动：+${totalDelta.toFixed(1)}°（${randomSpins.toFixed(1)}圈+${randomAngle.toFixed(1)}°），当前累计角度=${this.data.rouletteRotation}`);
+
+    this.setData({ rouletteRotation: this.data.rouletteRotation + totalDelta, showDecisionLayer: false });
+
+    // 与 .roulette-wheel 的 transition: 2.8s 对齐，略放宽
     setTimeout(() => {
-      const hit = this.data.segments[targetIndex];
-      this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false });
-      // 旋转结束仅展示结果，不自动展示分享
+      const pointerAngle = 0; // 修正：指针在CSS中位于top位置，对应0°
+      const count = this.data.segments.length;
+      const step = 360 / count;
+      const finalRotation = this.data.rouletteRotation; // 最终累计角度
+      const effectiveRot = ((finalRotation % 360) + 360) % 360;
+
+      // 基于段中心角的鲁棒命中：寻找与指针角差最小的段
+      let hitIndex = 0;
+      let minDiff = 9999;
+      for (let i = 0; i < count; i++) {
+        const center = ((this.data.segments[i].angle + effectiveRot) % 360 + 360) % 360;
+        let diff = Math.abs(center - pointerAngle);
+        diff = Math.min(diff, 360 - diff); // 环形距离
+        if (diff < minDiff) { minDiff = diff; hitIndex = i; }
+      }
+      const hit = this.data.segments[hitIndex];
+
+      if (!hit || !hit.name) {
+        console.error(`[${ts()}] 转盘数据异常`, { hitIndex, segments: this.data.segments, hit });
+        this.setData({ isSpinning: false });
+        return;
+      }
+
+      // 转动结束日志：编号与命中餐厅
+      console.log(`[${ts()}] 转动结束：指针编号=${hit.slotNo}，餐厅="${hit.name}"，finalRotation=${finalRotation.toFixed(1)}，effectiveRot=${effectiveRot.toFixed(1)}，step=${step}`);
+
+      this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false });
     }, 3100);
   },
 
   onReroll() {
+    if (this.data.isSpinning) return; // 动画期间禁止再次触发
     const sel = this.data.selected;
     if (sel) {
       const userData = getUserData();
@@ -243,8 +387,7 @@ Page({
       try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'reject', source: 'roulette' }); } catch(e) {}
     }
     this.setData({ showDecisionLayer: false, showShareArea: false });
-    // 保持累计角度以避免反向旋转
-    this.initWheel(true);
+    // 保持累计角度与当前显示顺序；不刷新 segments
     this.spinRoulette();
   },
 
@@ -267,7 +410,11 @@ Page({
     if (!sel) return;
     const list = this.data.shortlist.slice(0,3);
     if (list.find(x => x.id === sel.id)) { this.setData({ showDecisionLayer: false }); return; }
-    if (list.length >= 3) { this.setData({ showDecisionLayer: false }); return; }
+    if (list.length >= 3) { 
+      this.setData({ showDecisionLayer: false }); 
+      wx.showToast({ title: '备选区已满，请先删除', icon: 'none' });
+      return; 
+    }
     list.push(sel);
     this.setData({ shortlist: list, showDecisionLayer: false });
     this.updatePlaceholderSlots();
@@ -299,7 +446,7 @@ Page({
   onRefreshShare() {
     const prev = this.data.shareText || '';
     this.loadShareText(prev);
-    wx.showToast({ title: '已刷新', icon: 'success' });
+    // 不需要额外提示框
   },
 
    // Share wording（懒加载 + 文件系统兜底，兼容真机与开发者工具）
