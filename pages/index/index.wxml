@@ -1,39 +1,41 @@
-<view class="container">
+<view class="container" bindtouchstart="onTouchStart" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd">
   <view class="title">What to Eat?</view>
 
   <!-- 轮盘容器：指针向下，轮盘本身旋转，按钮保持固定 -->
-  <view class="roulette-wheel-container">
-    <view class="roulette-wheel palette-{{currentPaletteKey}} {{spinClass}}" style="transform: rotate({{rouletteRotation}}deg);">
-      <block wx:for="{{segments}}" wx:for-index="sidx" wx:key="sidx">
-         <view class="roulette-item" style="transform: rotate({{item.angle}}deg)">
-           <!-- 扇区内径向排版文本：从外向内排列 -->
-           <view class="label-clip">
-             <block wx:for="{{item.chars}}" wx:for-index="cidx" wx:for-item="ch" wx:key="*this">
-               <text class="label-ch" style="transform: translate(-50%, -50%) translateY(-{{ ch.pos }}rpx);">{{ch.ch}}</text>
-             </block>
+  <view class="hero-area">
+    <view class="roulette-wheel-container">
+      <view class="roulette-wheel palette-{{currentPaletteKey}} {{spinClass}}" style="transform: rotate({{rouletteRotation}}deg);">
+        <block wx:for="{{segments}}" wx:for-index="sidx" wx:key="sidx">
+           <view class="roulette-item" style="transform: rotate({{item.angle}}deg)">
+             <!-- 扇区内径向排版文本：从外向内排列 -->
+             <view class="label-clip">
+               <block wx:for="{{item.chars}}" wx:for-index="cidx" wx:for-item="ch" wx:key="*this">
+                 <text class="label-ch" style="transform: translate(-50%, -50%) translateY(-{{ ch.pos }}rpx);">{{ch.ch}}</text>
+               </block>
+             </view>
            </view>
-         </view>
-       </block>
-     </view>
-
-    <!-- 边缘手型装饰 -->
-    
-
-    <!-- 指针（顶部，三角形朝下指向中心） -->
-    <view class="pointer"></view>
-
-    <!-- 右上角操作按钮：配色切换 + 刷新推荐 -->
-    <view class="top-actions">
-      <view class="palette-switch" bindtap="onTogglePalette">
-        <view class="palette-wheel"></view>
+         </block>
+       </view>
+  
+      <!-- 边缘手型装饰 -->
+      
+  
+      <!-- 指针（顶部，三角形朝下指向中心） -->
+      <view class="pointer"></view>
+  
+      <!-- 右上角操作按钮：配色切换 + 刷新推荐 -->
+      <view class="top-actions">
+        <view class="palette-switch" bindtap="onTogglePalette">
+          <view class="palette-wheel"></view>
+        </view>
+        <image class="refresh-switch" src="/images/refresh_batch.png" bindtap="onRefreshWheel" />
       </view>
-      <image class="refresh-switch" src="/images/refresh_batch.png" bindtap="onRefreshWheel" />
-    </view>
-
-    <!-- 固定在中心的开始按钮与手型（手型独立覆盖，不影响按钮尺寸） -->
-    <view class="roulette-center">
-      <image class="start-hand" src="/images/hand.png" mode="widthFix" />
-      <view class="start-button" bindtap="spinRoulette">开始</view>
+  
+      <!-- 固定在中心的开始按钮与手型（手型独立覆盖，不影响按钮尺寸） -->
+      <view class="roulette-center">
+        <image class="start-hand" src="/images/hand.png" mode="widthFix" />
+        <view class="start-button" bindtap="spinRoulette">开始</view>
+      </view>
     </view>
   </view>
 
@@ -82,4 +84,8 @@
      </view>
   </view>
   <view class="page-bottom-spacer"></view>
+  <!-- 隐藏离屏画布：用于回退绘制分享图片 -->
+  <canvas class="offscreen-canvas" canvas-id="shareCanvas" type="2d"></canvas>
+  <!-- XR-FRAME 场景：隐藏，仅用于截图与分享系统 -->
+  <xr-scene id="xr-scene" class="xr-hidden" ar-system bind:ready="onXrReady"></xr-scene>
 </view>

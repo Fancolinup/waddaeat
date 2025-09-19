@@ -22,6 +22,10 @@ Page({
     showShareArea: true,
     spinClass: '',
 
+    // 手势检测
+    touchStartY: 0,
+    touchStartTime: 0,
+
     // 备选
     shortlist: [],
     placeholderSlots: [0,0,0],
@@ -61,6 +65,11 @@ Page({
       this.setData({ currentPaletteKey: 'b' });
       wx.setStorageSync('paletteKey', 'b');
     } catch(e) {}
+    
+    // 延迟验证卡片居中位置
+    setTimeout(() => {
+      this.verifyCenterPosition();
+    }, 500);
   },
 
   onShow() {
@@ -87,6 +96,106 @@ Page({
       clearInterval(this._clock);
       this._clock = null;
     }
+  },
+
+  // 精确验证卡片居中位置
+  verifyCenterPosition() {
+    console.log('=== 开始验证卡片居中位置 ===');
+    
+    const query = wx.createSelectorQuery();
+    
+    // 获取视口信息
+    query.selectViewport().boundingClientRect();
+    // 获取容器信息
+    query.select('.container').boundingClientRect();
+    // 获取hero-area信息
+    query.select('.hero-area').boundingClientRect();
+    // 获取轮盘容器信息
+    query.select('.roulette-wheel-container').boundingClientRect();
+    
+    query.exec((res) => {
+      const viewport = res[0];
+      const container = res[1];
+      const heroArea = res[2];
+      const rouletteContainer = res[3];
+      
+      console.log('📱 视口信息:', {
+        width: viewport.width,
+        height: viewport.height,
+        centerX: viewport.width / 2,
+        centerY: viewport.height / 2
+      });
+      
+      if (container) {
+        console.log('📦 容器信息:', {
+          width: container.width,
+          height: container.height,
+          left: container.left,
+          top: container.top,
+          centerX: container.left + container.width / 2,
+          centerY: container.top + container.height / 2
+        });
+      }
+      
+      if (heroArea) {
+        console.log('🎯 Hero区域信息:', {
+          width: heroArea.width,
+          height: heroArea.height,
+          left: heroArea.left,
+          top: heroArea.top,
+          centerX: heroArea.left + heroArea.width / 2,
+          centerY: heroArea.top + heroArea.height / 2
+        });
+      }
+      
+      if (rouletteContainer) {
+        const rouletteCenterX = rouletteContainer.left + rouletteContainer.width / 2;
+        const rouletteCenterY = rouletteContainer.top + rouletteContainer.height / 2;
+        const viewportCenterX = viewport.width / 2;
+        const viewportCenterY = viewport.height / 2;
+        
+        console.log('🎡 轮盘容器信息:', {
+          width: rouletteContainer.width,
+          height: rouletteContainer.height,
+          left: rouletteContainer.left,
+          top: rouletteContainer.top,
+          centerX: rouletteCenterX,
+          centerY: rouletteCenterY
+        });
+        
+        // 计算偏移量
+        const offsetX = Math.abs(rouletteCenterX - viewportCenterX);
+        const offsetY = Math.abs(rouletteCenterY - viewportCenterY);
+        
+        console.log('📏 居中偏移分析:', {
+          水平偏移: `${offsetX.toFixed(2)}px`,
+          垂直偏移: `${offsetY.toFixed(2)}px`,
+          水平居中: offsetX < 1 ? '✅ 完美居中' : offsetX < 5 ? '⚠️ 基本居中' : '❌ 偏移过大',
+          垂直居中: offsetY < 1 ? '✅ 完美居中' : offsetY < 5 ? '⚠️ 基本居中' : '❌ 偏移过大'
+        });
+        
+        // 计算相对于视口的位置百分比
+        const xPercent = (rouletteCenterX / viewport.width * 100).toFixed(1);
+        const yPercent = (rouletteCenterY / viewport.height * 100).toFixed(1);
+        
+        console.log('📊 位置百分比:', {
+          水平位置: `${xPercent}%`,
+          垂直位置: `${yPercent}%`,
+          理想位置: '50.0%',
+          水平偏差: `${Math.abs(50 - parseFloat(xPercent)).toFixed(1)}%`,
+          垂直偏差: `${Math.abs(50 - parseFloat(yPercent)).toFixed(1)}%`
+        });
+        
+        // 综合评估
+        const isWellCentered = offsetX < 5 && offsetY < 5;
+        console.log('🎯 居中评估结果:', isWellCentered ? '✅ 卡片居中良好' : '❌ 卡片居中需要调整');
+        
+      } else {
+        console.warn('⚠️ 无法获取轮盘容器信息');
+      }
+      
+      console.log('=== 卡片居中位置验证完成 ===');
+    });
   },
 
   onShareAppMessage() {
@@ -556,5 +665,331 @@ Page({
   updatePlaceholderSlots() {
     const n = Math.max(0, 3 - (this.data.shortlist ? this.data.shortlist.length : 0));
     this.setData({ placeholderSlots: Array(n).fill(0) });
+  },
+
+  // 手势检测 - 触摸开始
+  onTouchStart(e) {
+    const touch = e.touches[0];
+    console.log('🖐️ 触摸开始:', {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      pageX: touch.pageX,
+      pageY: touch.pageY,
+      timestamp: Date.now()
+    });
+    
+    this.setData({
+      touchStartY: touch.clientY,
+      touchStartX: touch.clientX,
+      touchStartTime: Date.now()
+    });
+  },
+
+  // 手势检测 - 触摸移动
+  onTouchMove(e) {
+    const touch = e.touches[0];
+    const currentY = touch.clientY;
+    const currentTime = Date.now();
+    const deltaY = this.data.touchStartY - currentY;
+    const deltaTime = currentTime - this.data.touchStartTime;
+    
+    // 实时手势反馈（每100ms输出一次）
+    if (!this._lastMoveLog || currentTime - this._lastMoveLog > 100) {
+      console.log('👆 手势移动:', {
+        deltaY: deltaY.toFixed(1),
+        deltaTime,
+        velocity: (deltaY / deltaTime).toFixed(3),
+        direction: deltaY > 0 ? '上滑' : '下滑'
+      });
+      this._lastMoveLog = currentTime;
+    }
+  },
+
+  // 手势检测 - 触摸结束
+  onTouchEnd(e) {
+    const touch = e.changedTouches[0];
+    const endY = touch.clientY;
+    const endX = touch.clientX;
+    const endTime = Date.now();
+    
+    const deltaY = this.data.touchStartY - endY; // 上滑为正值
+    const deltaX = Math.abs(this.data.touchStartX - endX); // 水平偏移
+    const deltaTime = endTime - this.data.touchStartTime;
+    const velocity = deltaY / deltaTime; // px/ms
+    
+    console.log('🏁 触摸结束 - 手势分析:', {
+      起始位置: { x: this.data.touchStartX, y: this.data.touchStartY },
+      结束位置: { x: endX, y: endY },
+      垂直位移: `${deltaY.toFixed(1)}px`,
+      水平位移: `${deltaX.toFixed(1)}px`,
+      持续时间: `${deltaTime}ms`,
+      垂直速度: `${velocity.toFixed(3)}px/ms`,
+      手势方向: deltaY > 0 ? '上滑' : '下滑'
+    });
+    
+    // 手势识别条件检查
+    const conditions = {
+      垂直距离: { value: deltaY, threshold: 30, passed: deltaY > 30 },
+      时间限制: { value: deltaTime, threshold: 800, passed: deltaTime < 800 },
+      速度要求: { value: velocity, threshold: 0.1, passed: velocity > 0.1 },
+      水平偏移: { value: deltaX, threshold: 100, passed: deltaX < 100 } // 防止斜滑
+    };
+    
+    console.log('📋 手势识别条件检查:', conditions);
+    
+    const allConditionsMet = Object.values(conditions).every(c => c.passed);
+    
+    if (allConditionsMet) {
+      console.log('✅ 上滑手势识别成功，触发分享功能');
+      this.triggerShare();
+    } else {
+      const failedConditions = Object.entries(conditions)
+        .filter(([key, condition]) => !condition.passed)
+        .map(([key]) => key);
+      console.log('❌ 上滑手势识别失败，未满足条件:', failedConditions);
+    }
+    
+    // 清理移动日志计时器
+    this._lastMoveLog = null;
+  },
+
+  // XR 场景就绪
+  onXrReady({ detail }) {
+    try {
+      this._xrScene = detail && detail.value;
+      console.log('XR scene ready:', !!this._xrScene);
+    } catch(e) { console.warn('XR scene not ready', e); }
+  },
+
+  // 触发分享功能
+  async triggerShare() {
+    console.log('🚀 === 开始分享功能检查流程 ===');
+    
+    // 1. 检查微信环境和API可用性
+    this.checkWeChatEnvironment();
+    
+    // 2. 检查分享组件状态
+    this.checkShareComponents();
+    
+    try {
+      console.log('📸 尝试XR-Frame分享系统');
+      // 优先使用 XR-Frame ShareSystem
+      const xrResult = await this.captureWithXR().catch((error) => {
+        console.error('XR分享捕获异常:', error);
+        return null;
+      });
+      
+      if (xrResult === 'success') {
+        console.log('✅ XR分享已完成，流程结束');
+        return;
+      } else if (xrResult) {
+        console.log('📤 XR返回图片路径，调用微信分享:', xrResult);
+        this.shareToWeChat(xrResult);
+        return;
+      } else {
+        console.log('⚠️ XR分享未返回有效结果，继续Canvas方案');
+      }
+    } catch(e) {
+      console.error('❌ XR分享失败:', e);
+    }
+    
+    try {
+      console.log('🖼️ 尝试Canvas截图方案');
+      // 回落到 Canvas 截图
+      const fallback = await this.captureWithCanvas();
+      if (fallback) {
+        console.log('📤 Canvas截图成功，调用微信分享:', fallback);
+        this.shareToWeChat(fallback);
+        return;
+      } else {
+        console.log('⚠️ Canvas截图未返回有效结果');
+      }
+    } catch(e) {
+      console.error('❌ Canvas截图失败:', e);
+    }
+    
+    console.log('📝 使用最终退化方案：仅文字分享');
+    // 最终退化：仅文字分享
+    this.shareToWeChat();
+    
+    console.log('🏁 === 分享功能检查流程结束 ===');
+  },
+  
+  // 检查微信环境和API可用性
+  checkWeChatEnvironment() {
+    console.log('🔍 检查微信环境:');
+    
+    const checks = {
+      微信对象: typeof wx !== 'undefined',
+      分享API: typeof wx.shareAppMessage === 'function',
+      截图API: typeof wx.canvasToTempFilePath === 'function',
+      文件系统: typeof wx.getFileSystemManager === 'function',
+      选择器查询: typeof wx.createSelectorQuery === 'function'
+    };
+    
+    console.log('📋 微信API检查结果:', checks);
+    
+    const unavailableAPIs = Object.entries(checks)
+      .filter(([key, available]) => !available)
+      .map(([key]) => key);
+      
+    if (unavailableAPIs.length > 0) {
+      console.warn('⚠️ 不可用的微信API:', unavailableAPIs);
+    } else {
+      console.log('✅ 所有微信API检查通过');
+    }
+    
+    // 检查微信版本信息
+    try {
+      const systemInfo = wx.getSystemInfoSync();
+      console.log('📱 系统信息:', {
+        platform: systemInfo.platform,
+        version: systemInfo.version,
+        SDKVersion: systemInfo.SDKVersion,
+        brand: systemInfo.brand,
+        model: systemInfo.model
+      });
+    } catch(e) {
+      console.warn('⚠️ 无法获取系统信息:', e);
+    }
+  },
+  
+  // 检查分享组件状态
+  checkShareComponents() {
+    console.log('🔍 检查分享组件状态:');
+    
+    // 检查XR场景
+    const xrStatus = {
+      场景对象: !!this._xrScene,
+      场景类型: typeof this._xrScene,
+      XR元素存在: !!wx.createSelectorQuery().select('#xr-scene')
+    };
+    
+    console.log('🎮 XR组件状态:', xrStatus);
+    
+    // 检查Canvas元素
+    const query = wx.createSelectorQuery();
+    query.select('#shareCanvas').boundingClientRect();
+    query.exec((res) => {
+      const canvasRect = res[0];
+      const canvasStatus = {
+        Canvas元素存在: !!canvasRect,
+        Canvas尺寸: canvasRect ? `${canvasRect.width}x${canvasRect.height}` : '未知',
+        Canvas位置: canvasRect ? `(${canvasRect.left}, ${canvasRect.top})` : '未知'
+      };
+      
+      console.log('🖼️ Canvas组件状态:', canvasStatus);
+    });
+    
+    // 检查数据状态
+    const dataStatus = {
+      选中餐厅: !!this.data.selected,
+      餐厅名称: this.data.selected ? this.data.selected.name : '无',
+      分享文案: this.data.shareText || '无',
+      轮盘数据: this.data.segments ? this.data.segments.length : 0
+    };
+    
+    console.log('📊 数据状态:', dataStatus);
+  },
+
+  // 使用 XR-Frame 分享系统截图（本地路径）
+  async captureWithXR() {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const scene = this._xrScene;
+        if (!scene || !scene.share || !scene.share.supported) {
+          return reject(new Error('XR ShareSystem unsupported'));
+        }
+        
+        // 优先调起官方分享弹窗
+        if (scene.share.captureToFriends) {
+          try {
+            await scene.share.captureToFriends({ type: 'jpg', quality: 0.9 });
+            // 该API调起分享，无需返回路径；直接提示后续由系统完成
+            wx.showToast({ title: '已调起分享', icon: 'success' });
+            return resolve('success'); // 返回成功标识
+          } catch(e) {
+            console.warn('captureToFriends failed, fallback to captureToLocalPath', e);
+          }
+        }
+        
+        // 退回到保存到本地路径，由我们调用 shareAppMessage 携带图片
+        if (scene.share.captureToLocalPath) {
+          scene.share.captureToLocalPath({ type: 'jpg', quality: 0.9 }, (fp) => {
+            if (fp) {
+              resolve(fp);
+            } else {
+              reject(new Error('captureToLocalPath returned empty path'));
+            }
+          });
+        } else {
+          reject(new Error('No XR capture methods available'));
+        }
+      } catch (e) { 
+        reject(e); 
+      }
+    });
+  },
+
+  // 使用 canvasToTempFilePath 截图当前轮盘区域
+  captureWithCanvas() {
+    return new Promise((resolve, reject) => {
+      try {
+        // 检查离屏Canvas是否存在
+        const query = wx.createSelectorQuery();
+        query.select('#shareCanvas').boundingClientRect();
+        query.exec((res) => {
+          const canvasRect = res && res[0];
+          if (!canvasRect) {
+            return reject(new Error('离屏Canvas未找到'));
+          }
+          
+          // 使用固定尺寸进行截图
+          wx.canvasToTempFilePath({
+            canvasId: 'shareCanvas',
+            x: 0,
+            y: 0,
+            width: 300,
+            height: 300,
+            destWidth: 600,
+            destHeight: 600,
+            fileType: 'jpg',
+            quality: 0.8,
+            success: (res2) => {
+              if (res2.tempFilePath) {
+                console.log('Canvas截图成功:', res2.tempFilePath);
+                resolve(res2.tempFilePath);
+              } else {
+                reject(new Error('Canvas截图失败：未返回文件路径'));
+              }
+            },
+            fail: (err) => {
+              console.warn('Canvas截图失败:', err);
+              reject(new Error(`Canvas截图失败: ${err.errMsg || '未知错误'}`));
+            }
+          });
+        });
+      } catch(e) {
+        reject(new Error(`Canvas截图异常: ${e.message}`));
+      }
+    });
+  },
+
+  // 分享到微信
+  shareToWeChat(imagePath) {
+    const shareContent = {
+      title: this.data.shareText || '今天吃什么？',
+      path: '/pages/index/index'
+    };
+    if (imagePath) {
+      shareContent.imageUrl = imagePath;
+    }
+    try {
+      wx.shareAppMessage(shareContent);
+      wx.showToast({ title: '已发起分享', icon: 'success' });
+    } catch(e) {
+      console.warn('shareAppMessage not available', e);
+      wx.showToast({ title: '请使用右上角菜单分享', icon: 'none' });
+    }
   }
 });

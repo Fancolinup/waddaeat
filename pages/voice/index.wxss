@@ -48,38 +48,49 @@
 .card-container {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;  /* 改为顶部对齐，允许padding-top生效 */
   justify-content: center;
-  padding: 30rpx 40rpx;
+  padding-top: 100rpx;    /* 上边距 - 现在可以正常调整卡片垂直位置 */
+  padding-bottom: 20rpx; /* 下边距 - 调整此值控制卡片垂直位置 */
+  padding-left: 40rpx;   /* 左边距 - 调整此值控制卡片水平位置 */
+  padding-right: 30rpx;  /* 右边距 - 调整此值控制卡片水平位置 */
   position: relative;
+  box-sizing: border-box;
+  /* 移除margin-top，让padding-top能够正常工作 */
 }
 
 .card-area {
   width: 100%;
   height: 700rpx;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .card-view {
-  width: 100%;
+  width: calc(100% - 10rpx);
   height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 内容卡片基础样式 */
 .content-card {
-  width: calc(100% - 60rpx);
+  width: 100%;
   height: 100%;
   background: rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(30px);
   border-radius: 32rpx;
   border: 2rpx solid rgba(255, 255, 255, 0.35);
   box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.15), 0 8rpx 25rpx rgba(0, 0, 0, 0.08);
-  padding: 60rpx 40rpx;
+  padding: 10rpx 40rpx;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  margin: 0 30rpx;
+  margin: 0;
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
   transform-origin: center center;
 }
@@ -137,7 +148,7 @@
   line-height: 1.7;
   color: rgba(255, 255, 255, 0.95);
   font-weight: 600;
-  margin: 80rpx 0;
+  margin: 1000rpx 0;
   position: relative;
   text-align: center;
   padding: 0 30rpx;

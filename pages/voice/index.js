@@ -405,7 +405,7 @@ Page({
    */
   resetCardPosition: function() {
     this.setData({
-      // movable-view 归零
+      // movable-view 归零 - 确保回到几何中心
       cardX: 0,
       cardY: 0,
       moveX: 0,
@@ -416,12 +416,16 @@ Page({
       contentAnimClass: 'animate-back',
       cardRotate: 0,
       cardScale: 1,
-      cardOpacity: 1
+      cardOpacity: 1,
+      cardAnimation: true
     });
     
-    // 短暂延时后移除动画类
+    // 短暂延时后移除动画类和动画状态
     setTimeout(() => {
-      this.setData({ contentAnimClass: '' });
+      this.setData({ 
+        contentAnimClass: '',
+        cardAnimation: false
+      });
     }, 280);
   },
 

@@ -25,6 +25,9 @@
       <movable-view 
         class="card-view"
         direction="all"
+        x="{{cardX}}"
+        y="{{cardY}}"
+        animation="{{cardAnimation}}"
         bindtouchstart="onCardTouchStart"
         catchtouchmove="onCardTouchMove"
         bindtouchend="onCardTouchEnd"
