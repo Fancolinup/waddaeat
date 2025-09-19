@@ -218,7 +218,8 @@ Page({
 
       const userData = getUserData();
       const recs = generateRecommendations(userData, 12);
-      console.log(`[${ts()}] 推荐列表(生成/刷新)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''}`));
+      const fmt = (v) => (typeof v === 'number' ? Number(v).toFixed(2) : '--');
+      console.log(`[${ts()}] 推荐列表(生成/刷新)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''} [总:${fmt(r && r.recommendationScore)} 评:${fmt(r && r.specificScore)} 偏:${fmt(r && r.preferenceScore)}]`));
       const count = 12;
       const step = 360 / count;
       const { wheelRadius, labelOuterMargin, labelInnerMargin, labelMinStep, labelMaxStep } = this.data;
@@ -249,6 +250,10 @@ Page({
           promoText: r.dynamicPromotions && r.dynamicPromotions[0] ? r.dynamicPromotions[0].promoText : '',
           angle: idx * step + step / 2, // 该段中心角（相对轮盘自身坐标系）
           slotNo: idx + 1,
+          // 分数（仅用于日志/调试）
+          specificScore: (r && typeof r.specificScore === 'number') ? r.specificScore : undefined,
+          preferenceScore: (r && typeof r.preferenceScore === 'number') ? r.preferenceScore : undefined,
+          recommendationScore: (r && typeof r.recommendationScore === 'number') ? r.recommendationScore : undefined,
           chars
         };
       });
@@ -260,7 +265,7 @@ Page({
         displayOrder[(s.slotNo || 0) - 1] = i;
       }
 
-      const listLog = segments.map(s => `${s.slotNo}.${s.name}`);
+      const listLog = segments.map(s => `${s.slotNo}.${s.name} [总:${fmt(s.recommendationScore)} 评:${fmt(s.specificScore)} 偏:${fmt(s.preferenceScore)}]`);
       console.log(`[${ts()}] 生成转盘(12)：`, listLog);
 
       // 输出变更状态日志（对比上一轮）
@@ -271,11 +276,11 @@ Page({
           if (!prevName) status = '新';
           else if (prevName === s.name) status = '未变';
           else status = `变更(原: ${prevName})`;
-          return `${s.slotNo}. ${s.name} — ${status}`;
+          return `${s.slotNo}. ${s.name} — ${status} [总:${fmt(s.recommendationScore)} 评:${fmt(s.specificScore)} 偏:${fmt(s.preferenceScore)}]`;
         });
         console.log(`[${ts()}] 换一批后推荐列表（带变更标记）：\n${diffLines.join('\n')}`);
       } else {
-        const initLines = segments.map(s => `${s.slotNo}. ${s.name}`);
+        const initLines = segments.map(s => `${s.slotNo}. ${s.name} [总:${fmt(s.recommendationScore)} 评:${fmt(s.specificScore)} 偏:${fmt(s.preferenceScore)}]`);
         console.log(`[${ts()}] 初始推荐列表：\n${initLines.join('\n')}`);
       }
 

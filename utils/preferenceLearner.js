@@ -197,40 +197,18 @@ function updateUserPreference(restaurantId, feedback) {
     // 计算学习方向 (喜欢:正向学习, 不喜欢:反向学习)
     const direction = feedback === 'like' ? 1 : -1;
     
-    // 更新口味偏好
+    // 仅更新口味偏好，不再读写 restaurantScores，避免双重计分
     Object.keys(userData.tasteProfile).forEach(taste => {
       if (featureVector.taste.hasOwnProperty(taste)) {
-        // 计算当前特征的调整值
         const adjustment = direction * LEARNING_RATE * FEATURE_WEIGHTS.taste[taste] * featureVector.taste[taste];
-        
-        // 更新用户偏好
         let newValue = userData.tasteProfile[taste] + adjustment;
-        // 确保值在0-1范围内
         newValue = Math.min(Math.max(newValue, 0), 1);
-        
-        // 保存更新后的值
         userData.tasteProfile[taste] = newValue;
       }
     });
-    
-    // 更新餐厅评分
-    if (!userData.restaurantScores) {
-      userData.restaurantScores = {};
-    }
-    
-    // 获取当前餐厅评分或使用基础评分
-    const currentScore = userData.restaurantScores[restaurantId] || restaurant.basePreferenceScore || 5;
-    
-    // 根据反馈调整评分 (喜欢:+1, 不喜欢:-1)
-    const scoreAdjustment = feedback === 'like' ? 1 : -1;
-    const newScore = Math.min(Math.max(currentScore + scoreAdjustment, 0), 10);
-    
-    // 保存更新后的评分
-    userData.restaurantScores[restaurantId] = newScore;
-    
-    // 保存更新后的用户数据
-    return dataManager.updateUserData('tasteProfile', userData.tasteProfile) && 
-           dataManager.updateUserData('restaurantScores', userData.restaurantScores);
+
+    // 仅持久化 tasteProfile
+    return dataManager.updateUserData('tasteProfile', userData.tasteProfile);
   } catch (error) {
     console.error('[PreferenceLearner] 更新用户偏好失败:', error);
     return false;

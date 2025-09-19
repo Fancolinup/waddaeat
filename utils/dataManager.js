@@ -129,12 +129,8 @@ function mergeWithDefault(existing, defaultData) {
  */
 function getUserData() {
   try {
-    const data = wx.getStorageSync(STORAGE_KEYS.USER_DATA);
-    if (data && typeof data === 'object') {
-      return data;
-    } else {
-      return initUserData();
-    }
+    // 统一通过 initUserData 获取，确保结构被修复/补齐
+    return initUserData();
   } catch (error) {
     console.error('[DataManager] 获取用户数据失败:', error);
     return initUserData();
@@ -304,33 +300,101 @@ function generateFallbackRestaurants() {
  * - 同样采用延迟 require，避免真机对 JSON 直接 require 的兼容性问题
  * @returns {Object|null} 应用内容数据对象，获取失败时返回空数据
  */
+let __contentProvider = null; // 运行时注入的内容提供器（来自 packageB）
+let __providerReady = false;
+function setContentProvider(provider) {
+  __contentProvider = provider && typeof provider.getAppContent === 'function' ? provider : null;
+  __providerReady = !!__contentProvider;
+}
+
+/**
+ * 确保内容提供器已就绪
+ * - 直接从主包的 Pilot dialogues.json 文件读取内容
+ * @returns {Promise<boolean>} 是否就绪
+ */
+function ensureContentProviderReady(callback) {
+  // 如果已经就绪，直接执行回调
+  if (__providerReady && __contentProvider) {
+    if (typeof callback === 'function') {
+      callback(true);
+    }
+    return;
+  }
+  
+  // 直接使用主包的 JS 模块作为内容提供器
+   try {
+     const pilotDialogues = require('../data/pilotDialogues.js');
+     const provider = {
+       getAppContent: () => {
+         return {
+           quotes: pilotDialogues.workQuotes || [],
+           topics: pilotDialogues.voteTopics || []
+         };
+       }
+     };
+     setContentProvider(provider);
+     console.log('[DataManager] 主包内容提供器加载成功');
+     if (typeof callback === 'function') {
+       callback(true);
+     }
+   } catch (error) {
+     console.error('[DataManager] 主包内容加载失败:', error);
+     if (typeof callback === 'function') {
+       callback(false);
+     }
+   }
+}
+
 function getAppContent() {
   try {
     if (__cachedAppContent) {
       return __cachedAppContent;
     }
-
-    let data = null;
-    try {
-      data = require('../Pilot dialogues.json');
-    } catch (e1) {
-      try {
-        // 若未来重命名为不含空格的文件名
-        data = require('../pilot_dialogues.json');
-      } catch (e2) {
-        console.warn('[DataManager] 无法直接 require JSON（语录），使用空数据兜底');
-        data = null;
-      }
+    
+    // 如果内容提供器可用，使用它
+    if (__contentProvider && typeof __contentProvider.getAppContent === 'function') {
+      const content = __contentProvider.getAppContent();
+      __cachedAppContent = content;
+      return content;
     }
-
-    if (data && typeof data === 'object') {
-      __cachedAppContent = {
-        quotes: data.workQuotes || [],
-        topics: data.voteTopics || []
+    
+    // 直接从主包JS模块读取
+     try {
+       const pilotDialogues = require('../data/pilotDialogues.js');
+       const fallbackContent = {
+         quotes: pilotDialogues.workQuotes || [],
+         topics: pilotDialogues.voteTopics || []
+       };
+       __cachedAppContent = fallbackContent;
+       return fallbackContent;
+     } catch (jsError) {
+       console.error('[DataManager] 读取主包JS模块失败:', jsError);
+      // 最终兜底数据
+      const emergencyContent = {
+        quotes: [
+          {
+            id: 1,
+            content: "工作是为了更好的生活，而不是让生活为工作服务。",
+            tags: ["工作生活平衡"]
+          },
+          {
+            id: 2,
+            content: "真正的职场智慧是知道什么时候说不。",
+            tags: ["职场智慧"]
+          }
+        ],
+        topics: [
+          {
+            id: 1,
+            topic: "你认为加班文化对职场发展有益吗？",
+            optionA: "有益，体现敬业精神",
+            optionB: "无益，影响工作效率",
+            tags: ["加班文化"]
+          }
+        ]
       };
-      return __cachedAppContent;
-    } else {
-      return { quotes: [], topics: [] };
+      __cachedAppContent = emergencyContent;
+      return emergencyContent;
     }
   } catch (error) {
     console.error('[DataManager] 获取应用内容数据失败:', error);
@@ -345,5 +409,7 @@ module.exports = {
   updateUserData,
   addDecisionRecord,
   getRestaurantData,
-  getAppContent
+  getAppContent,
+  setContentProvider,
+  ensureContentProviderReady
 };

@@ -1,4 +1,5 @@
-{
+// 职场嘴替内容数据
+const pilotDialogues = {
   "workQuotes": [
     {
       "id": 1,
@@ -49,4 +50,6 @@
       "tags": ["加班", "工作态度"]
     }
   ]
-}
+};
+
+module.exports = pilotDialogues;

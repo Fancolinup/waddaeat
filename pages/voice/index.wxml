@@ -1,21 +1,171 @@
-<!--pages/voice/index.wxml-->
-<!--职场嘴替页面模板-->
-<view class="container">
-  <loading wx:if="{{isLoading}}" />
-  
-  <view wx:else class="voice-content">
-    <view class="header">
-      <text class="title">职场嘴替</text>
-      <text class="subtitle">让AI帮你说话</text>
+<!-- pages/voice/index.wxml -->
+<!-- 职场嘴替页面 - 单卡片展示设计 -->
+<view class="voice-container">
+  <!-- 顶部导航区域 -->
+  <view class="voice-header">
+    <view class="filter-btn" bindtap="onFilterTap">
+      <text>⚙️</text>
     </view>
-    
-    <view class="dialogue-section">
-      <text class="section-title">对话示例</text>
-      <view class="dialogue-list">
-        <!-- 对话内容将在这里显示 -->
-        <view class="dialogue-item">
-          <text class="dialogue-text">功能开发中...</text>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{isLoading}}" class="loading-container">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 卡片内容区域 -->
+  <view wx:else class="card-container">
+    <!-- 可拖拽区域 -->
+    <movable-area class="card-area">
+      <!-- 滑动指示器 -->
+      <view class="swipe-indicator left {{swipeDirection === 'left' ? 'show' : ''}}">✕</view>
+      <view class="swipe-indicator right {{swipeDirection === 'right' ? 'show' : ''}}">❤️</view>
+      <view class="swipe-indicator up {{swipeDirection === 'up' ? 'show' : ''}}">↗️</view>
+      
+      <movable-view 
+        class="card-view"
+        direction="all"
+        bindtouchstart="onCardTouchStart"
+        catchtouchmove="onCardTouchMove"
+        bindtouchend="onCardTouchEnd"
+      >
+        <!-- 当前卡片 -->
+        <view class="content-card {{contentAnimClass}}" style="transform: translate3d({{cardX}}px, {{cardY}}px, 0) rotate({{cardRotate}}deg) scale({{cardScale}}); opacity: {{cardOpacity}};">
+          <!-- 卡片类型图标 -->
+          <view class="card-type-icon">
+            <text wx:if="{{currentCard.type === 'quote'}}">💬</text>
+            <text wx:else>🗳️</text>
+          </view>
+
+          <!-- 语录卡片内容 -->
+          <view wx:if="{{currentCard.type === 'quote'}}" class="quote-card">
+            <view class="quote-content">{{currentCard.content}}</view>
+          </view>
+
+          <!-- 投票卡片内容 -->
+          <view wx:else class="vote-card">
+            <view class="vote-topic">{{currentCard.topic}}</view>
+            
+            <!-- 投票选项 -->
+            <view class="vote-options">
+              <view 
+                class="vote-option {{selectedOption === 'A' ? 'selected option-a' : ''}}"
+                data-option="A"
+                bindtap="onVoteOptionTap"
+              >
+                <text class="option-text">{{currentCard.optionA}}</text>
+                <!-- 投票百分比 -->
+                <view class="vote-percentage option-a {{showVoteResult ? 'show' : ''}}">
+                  <view class="percentage-bar">
+                    <view class="percentage-progress option-a" style="width: {{voteResultA}}%"></view>
+                  </view>
+                  <view class="percentage-text option-a">{{voteResultA}}%</view>
+                </view>
+              </view>
+              
+              <view 
+                class="vote-option {{selectedOption === 'B' ? 'selected option-b' : ''}}"
+                data-option="B"
+                bindtap="onVoteOptionTap"
+              >
+                <text class="option-text">{{currentCard.optionB}}</text>
+                <!-- 投票百分比 -->
+                <view class="vote-percentage option-b {{showVoteResult ? 'show' : ''}}">
+                  <view class="percentage-bar">
+                    <view class="percentage-progress option-b" style="width: {{voteResultB}}%"></view>
+                  </view>
+                  <view class="percentage-text option-b">{{voteResultB}}%</view>
+                </view>
+              </view>
+            </view>
+
+          </view>
+
+          <!-- 点赞区域 -->
+          <view class="like-section">
+            <view class="like-count">
+              <text class="like-icon">❤️</text>
+              <text>{{currentCard.likeCount || 0}}</text>
+            </view>
+            <!-- 点赞动画 -->
+            <view wx:if="{{showLikeAnimation}}" class="like-animation">+1</view>
+          </view>
         </view>
+      </movable-view>
+    </movable-area>
+  </view>
+
+  <!-- 导航指示区域 -->
+  <view wx:if="{{!isLoading}}" class="navigation-hints">
+    <view class="hint-item">
+      <view class="hint-icon">👈</view>
+      <text>左滑跳过</text>
+    </view>
+    <view class="hint-item">
+      <view class="hint-icon">👉</view>
+      <text>右滑点赞</text>
+    </view>
+    <view class="hint-item">
+      <view class="hint-icon">👆</view>
+      <text>上滑分享</text>
+    </view>
+  </view>
+
+  <!-- 筛选弹窗 -->
+  <view wx:if="{{showFilterModal}}" class="filter-modal {{showFilterModal ? 'show' : ''}}" bindtap="onFilterModalClose">
+    <view class="filter-content" catchtap="stopPropagation">
+      <view class="filter-header">
+        <view class="filter-title">内容筛选</view>
+        <view class="filter-close" bindtap="onFilterModalClose">✕</view>
+      </view>
+      
+      <!-- 类型筛选 -->
+      <view class="filter-section">
+        <text class="section-title">内容类型</text>
+        <view class="filter-types">
+          <view 
+            class="type-btn {{filterType === 'all' ? 'active' : ''}}"
+            data-type="all"
+            bindtap="onFilterTypeChange"
+          >
+            <text>全部</text>
+          </view>
+          <view 
+            class="type-btn {{filterType === 'quote' ? 'active' : ''}}"
+            data-type="quote"
+            bindtap="onFilterTypeChange"
+          >
+            <text>语录</text>
+          </view>
+          <view 
+            class="type-btn {{filterType === 'vote' ? 'active' : ''}}"
+            data-type="vote"
+            bindtap="onFilterTypeChange"
+          >
+            <text>投票</text>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 标签筛选 -->
+      <view class="filter-section">
+        <text class="section-title">热门标签</text>
+        <view class="filter-tags">
+          <view 
+            wx:for="{{popularTags}}"
+            wx:key="*this"
+            class="tag-btn {{selectedTags.indexOf(item) !== -1 ? 'active' : ''}}"
+            data-tag="{{item}}"
+            bindtap="onTagFilterToggle"
+          >
+            <text>{{item}}</text>
+          </view>
+        </view>
+      </view>
+      
+      <view class="filter-actions">
+        <view class="action-btn reset-btn" bindtap="onFilterReset">重置</view>
+        <view class="action-btn confirm-btn" bindtap="onFilterConfirm">确定</view>
       </view>
     </view>
   </view>

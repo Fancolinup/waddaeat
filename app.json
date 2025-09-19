@@ -8,15 +8,17 @@
   "subpackages": [
     {
       "root": "packageA",
-      "name": "voice-extra",
+      "name": "onboarding-extra",
       "pages": [
         "pages/welcome/welcome"
       ]
     },
     {
       "root": "packageB",
-      "name": "profile-extra",
-      "pages": []
+      "name": "voice-content",
+      "pages": [
+        "pages/content/info"
+      ]
     }
   ],
   "window": {

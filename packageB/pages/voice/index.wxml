@@ -1,0 +1,108 @@
+<!-- packageB/pages/voice/index.wxml -->
+<view class="voice-page">
+  <view class="topbar">
+    <text class="title">职场嘴替</text>
+    <view class="actions">
+      <button class="filter-btn" bindtap="showFilter">筛选</button>
+      <button class="share-btn" open-type="share" bindtap="onShare">分享</button>
+    </view>
+  </view>
+
+  <view class="mode-tabs">
+    <view class="tab {{currentMode==='quote'?'active':''}}" data-mode="quote" bindtap="onModeChange">语录</view>
+    <view class="tab {{currentMode==='vote'?'active':''}}" data-mode="vote" bindtap="onModeChange">投票</view>
+  </view>
+
+  <view class="carousel">
+    <button class="nav left" bindtap="onPrevious">‹</button>
+
+    <!-- 语录卡片 -->
+    <block wx:if="{{currentMode==='quote'}}">
+      <block wx:if="{{currentItem}}">
+        <view class="quote-card">
+          <view class="quote-header">
+            <text class="badge">职场嘴替</text>
+            <text class="date">{{currentItem.date||'今日'}}</text>
+          </view>
+
+          <view class="quote-body">
+            <text class="quote-icon">“</text>
+            <text class="quote-text">{{currentItem.content}}</text>
+            <text class="quote-icon right">”</text>
+          </view>
+
+          <view class="quote-footer">
+            <view class="meta">
+              <text class="likes">❤️ {{currentItem.likes||'1.2k'}}</text>
+              <text class="tags">{{currentItem.tagsText}}</text>
+              <text class="read" wx:if="{{readQuotes.indexOf(currentItem.id)>=0}}">已读</text>
+            </view>
+            <view class="ops">
+              <button class="op" bindtap="onLike">点赞</button>
+              <button class="op" bindtap="onBookmark">收藏</button>
+            </view>
+          </view>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="empty">暂无内容</view>
+      </block>
+    </block>
+
+    <!-- 投票卡片 -->
+    <block wx:if="{{currentMode==='vote'}}">
+      <block wx:if="{{currentItem}}">
+        <view class="vote-card">
+          <view class="vote-header">
+            <text class="badge">职场嘴替</text>
+            <text class="date">{{currentItem.date||'今日'}}</text>
+          </view>
+          <view class="vote-body">
+            <text class="question">{{currentItem.topic}}</text>
+            <view class="option" data-option="A" bindtap="onVoteSelect">
+              <text class="label">{{currentItem.optionA}}</text>
+              <view class="bar"><view class="fill" style="width: {{currentItem.percentA||0}}%"></view></view>
+              <text class="percent">{{currentItem.percentA||0}}%</text>
+            </view>
+            <view class="option" data-option="B" bindtap="onVoteSelect">
+              <text class="label">{{currentItem.optionB}}</text>
+              <view class="bar"><view class="fill second" style="width: {{currentItem.percentB||0}}%"></view></view>
+              <text class="percent">{{currentItem.percentB||0}}%</text>
+            </view>
+          </view>
+          <view class="vote-footer">
+            <view class="meta">
+              <text class="likes">❤️ {{currentItem.likes||'1.2k'}}</text>
+              <text class="tags">{{currentItem.tagsText}}</text>
+              <text class="read" wx:if="{{readVotes.indexOf(currentItem.id)>=0}}">已读</text>
+            </view>
+            <view class="ops">
+              <button class="op" bindtap="onLike">点赞</button>
+              <button class="op" bindtap="onBookmark">收藏</button>
+            </view>
+          </view>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="empty">暂无内容</view>
+      </block>
+    </block>
+
+    <button class="nav right" bindtap="onNext">›</button>
+  </view>
+
+  <!-- 隐藏canvas用于生成分享图 -->
+  <canvas class="hidden-canvas" canvas-id="shareCanvas" style="width: 750px; height: 600px;"></canvas>
+
+  <!-- 筛选弹窗 -->
+  <view class="filter-mask" wx:if="{{showFilterModal}}" bindtap="hideFilter"></view>
+  <view class="filter-modal" wx:if="{{showFilterModal}}">
+    <view class="filter-title">按标签筛选</view>
+    <view class="tags">
+      <block wx:for="{{availableTags}}" wx:key="tag">
+        <view class="tag {{item===selectedTag?'active':''}}" data-tag="{{item}}" bindtap="onTagSelect">{{item}}</view>
+      </block>
+    </view>
+    <button class="close" bindtap="hideFilter">完成</button>
+  </view>
+</view>

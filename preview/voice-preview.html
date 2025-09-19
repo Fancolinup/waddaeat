@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>职场嘴替 - 预览页面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 50%, #6c5ce7 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* 顶部导航 */
+        .header {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 20px 30px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .filter-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.95);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
+
+        /* 卡片区域 */
+        .card-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 30px;
+            position: relative;
+        }
+
+        .card {
+            width: calc(100% - 30px);
+            max-width: 420px;
+            min-height: 320px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(25px);
+            border-radius: 24px;
+            padding: 40px 30px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin: 0 15px;
+            cursor: grab;
+        }
+
+        .card:active {
+            cursor: grabbing;
+        }
+
+        /* 语录卡片 */
+        .quote-card {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 240px;
+        }
+
+        .quote-content {
+            font-size: 28px;
+            line-height: 1.7;
+            color: #2d3436;
+            font-weight: 600;
+            margin-bottom: 40px;
+            margin-top: 15px;
+            position: relative;
+            text-align: center;
+            padding: 0 20px;
+            letter-spacing: 0.5px;
+        }
+
+        .quote-content::before {
+            content: '"';
+            font-size: 60px;
+            color: #74b9ff;
+            position: absolute;
+            left: -8px;
+            top: -15px;
+            font-family: Georgia, serif;
+            opacity: 0.7;
+        }
+
+        .quote-content::after {
+            content: '"';
+            font-size: 60px;
+            color: #74b9ff;
+            position: absolute;
+            right: -8px;
+            bottom: -30px;
+            font-family: Georgia, serif;
+            opacity: 0.7;
+        }
+
+        /* 投票卡片 */
+        .vote-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 240px;
+        }
+
+        .vote-topic {
+            font-size: 26px;
+            line-height: 1.6;
+            color: #2d3436;
+            font-weight: 700;
+            margin-bottom: 40px;
+            text-align: center;
+            padding: 0 15px;
+            letter-spacing: 0.3px;
+        }
+
+        .vote-options {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .vote-option {
+            padding: 28px 24px 20px 24px;
+            background: rgba(116, 185, 255, 0.08);
+            border: 2px solid rgba(116, 185, 255, 0.25);
+            border-radius: 18px;
+            font-size: 22px;
+            color: #2d3436;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-weight: 500;
+            line-height: 1.4;
+            min-height: 75px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .vote-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .vote-option:hover::before {
+            left: 100%;
+        }
+
+        .vote-option.selected {
+            background: rgba(116, 185, 255, 0.25);
+            border-color: #74b9ff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(116, 185, 255, 0.3);
+        }
+
+        .vote-option.selected.option-a {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: #ff6b6b;
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+        }
+
+        .vote-option.selected.option-b {
+            background: rgba(85, 239, 196, 0.2);
+            border-color: #55efc4;
+            box-shadow: 0 8px 25px rgba(85, 239, 196, 0.3);
+        }
+
+        /* 投票选项百分比 */
+        .vote-percentage {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 8px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .vote-percentage.show {
+            opacity: 1;
+        }
+
+        .percentage-bar {
+            width: 60px;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+            margin-right: 8px;
+            overflow: hidden;
+        }
+
+        .percentage-progress {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.8s ease;
+        }
+
+        .percentage-progress.option-a {
+            background: linear-gradient(90deg, #55efc4, #00b894);
+        }
+
+        .percentage-progress.option-b {
+            background: linear-gradient(90deg, #74b9ff, #0984e3);
+        }
+
+        .percentage-text {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .percentage-text.option-a {
+            color: #00b894;
+        }
+
+        .percentage-text.option-b {
+            color: #0984e3;
+        }
+
+        /* 标签 - 隐藏 */
+        .tags {
+            display: none;
+        }
+
+        .tag {
+            display: none;
+        }
+
+        /* 导航提示 */
+        .navigation-hints {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .hint-left {
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .hint-right {
+            position: absolute;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .hint-up {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .hint-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+
+        .hint-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .hint-item span {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        /* 点赞动画 */
+        .like-animation {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 60px;
+            color: #ff6b6b;
+            opacity: 0;
+            pointer-events: none;
+            animation: likeAnimation 1s ease-out;
+        }
+
+        @keyframes likeAnimation {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1) translateY(-50px);
+            }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 480px) {
+            .card {
+                width: calc(100% - 20px);
+                margin: 0 10px;
+                padding: 30px 25px;
+            }
+
+            .quote-content {
+                font-size: 24px;
+            }
+
+            .vote-topic {
+                font-size: 22px;
+            }
+
+            .vote-option {
+                font-size: 20px;
+                padding: 24px 20px;
+            }
+
+            .navigation-hints {
+                gap: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部导航 -->
+        <div class="header">
+            <div class="filter-btn" onclick="showFilterModal()">
+                ⚙️
+            </div>
+        </div>
+
+        <!-- 卡片区域 -->
+        <div class="card-area">
+            <div class="card" id="currentCard">
+                <!-- 语录卡片示例 -->
+                <div class="quote-card" id="quoteCard">
+                    <div class="quote-content">
+                        用离职的心态打工，真的一切都通了。
+                    </div>
+                    <div class="tags">
+                        <span class="tag">心态</span>
+                        <span class="tag">工作哲学</span>
+                    </div>
+                </div>
+
+                <!-- 投票卡片示例（隐藏） -->
+                <div class="vote-card" id="voteCard" style="display: none;">
+                    <div class="vote-topic">
+                        你更倾向于哪种工作方式？
+                    </div>
+                    <div class="vote-options">
+                        <div class="vote-option" onclick="selectOption(this, 'A')">
+                            <span class="option-text">准时下班，工作生活分离</span>
+                            <div class="vote-percentage option-a">
+                                <div class="percentage-bar">
+                                    <div class="percentage-progress option-a" style="width: 65%"></div>
+                                </div>
+                                <div class="percentage-text option-a">65%</div>
+                            </div>
+                        </div>
+                        <div class="vote-option" onclick="selectOption(this, 'B')">
+                            <span class="option-text">适度加班，追求事业成就</span>
+                            <div class="vote-percentage option-b">
+                                <div class="percentage-bar">
+                                    <div class="percentage-progress option-b" style="width: 35%"></div>
+                                </div>
+                                <div class="percentage-text option-b">35%</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tags">
+                        <span class="tag">工作生活平衡</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 点赞动画 -->
+            <div class="like-animation" id="likeAnimation">❤️</div>
+        </div>
+
+        <!-- 导航提示 -->
+        <div class="navigation-hints">
+            <div class="hint-item hint-left">
+                <div class="hint-icon">👈</div>
+                <span>左滑跳过</span>
+            </div>
+            <div class="hint-item hint-right">
+                <div class="hint-icon">👉</div>
+                <span>右滑点赞</span>
+            </div>
+            <div class="hint-item hint-up">
+                <div class="hint-icon">👆</div>
+                <span>上滑分享</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentCardType = 'quote';
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let currentX = 0;
+        let currentY = 0;
+
+        const card = document.getElementById('currentCard');
+        const quoteCard = document.getElementById('quoteCard');
+        const voteCard = document.getElementById('voteCard');
+        const likeAnimation = document.getElementById('likeAnimation');
+
+        // 示例数据
+        const quotes = [
+            { content: "用离职的心态打工，真的一切都通了。", tags: ["心态", "工作哲学"] },
+            { content: "我的优秀，不需要你的PPT来证明。", tags: ["自我价值", "反PUA"] },
+            { content: "只要我不在乎薪水，老板就PUA不了我。", tags: ["薪资", "反PUA"] },
+            { content: "上班尽职尽责，但不必尽心尽力。", tags: ["工作态度", "边界感"] },
+            { content: "完成，比完美更重要。", tags: ["效率", "工作方法"] }
+        ];
+
+        const votes = [
+            {
+                topic: "你更倾向于哪种工作方式？",
+                optionA: "准时下班，工作生活分离",
+                optionB: "适度加班，追求事业成就",
+                tags: ["工作生活平衡"]
+            },
+            {
+                topic: "面对职场PUA，你会选择？",
+                optionA: "直接反驳，维护自己权益",
+                optionB: "暂时忍耐，寻找合适时机",
+                tags: ["反PUA", "职场智慧"]
+            },
+            {
+                topic: "关于加班，你的态度是？",
+                optionA: "坚决拒绝无意义加班",
+                optionB: "为了团队配合偶尔加班",
+                tags: ["加班", "工作态度"]
+            }
+        ];
+
+        let currentIndex = 0;
+
+        // 触摸事件处理
+        card.addEventListener('mousedown', handleStart);
+        card.addEventListener('touchstart', handleStart);
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('touchmove', handleMove);
+        document.addEventListener('mouseup', handleEnd);
+        document.addEventListener('touchend', handleEnd);
+
+        function handleStart(e) {
+            isDragging = true;
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+            startX = clientX;
+            startY = clientY;
+            currentX = clientX;
+            currentY = clientY;
+        }
+
+        function handleMove(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+            currentX = clientX;
+            currentY = clientY;
+            
+            const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
+            
+            card.style.transform = `translate(${deltaX}px, ${deltaY}px) rotate(${deltaX * 0.1}deg)`;
+            card.style.opacity = 1 - Math.abs(deltaX) / 300;
+        }
+
+        function handleEnd(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
+            
+            if (Math.abs(deltaX) > 100) {
+                if (deltaX > 0) {
+                    // 右滑点赞
+                    showLikeAnimation();
+                    nextCard('right');
+                } else {
+                    // 左滑跳过
+                    nextCard('left');
+                }
+            } else if (deltaY < -100) {
+                // 上滑分享
+                showShareDialog();
+                resetCard();
+            } else {
+                // 回到原位
+                resetCard();
+            }
+        }
+
+        function resetCard() {
+            card.style.transform = 'translate(0, 0) rotate(0deg)';
+            card.style.opacity = '1';
+        }
+
+        function nextCard(direction = 'right') {
+            const translateX = direction === 'left' ? '-100vw' : '100vw';
+            card.style.transform = `translateX(${translateX})`;
+            card.style.opacity = '0';
+            
+            setTimeout(() => {
+                currentIndex++;
+                loadCard();
+                const enterX = direction === 'left' ? '100vw' : '-100vw';
+                card.style.transform = `translateX(${enterX})`;
+                setTimeout(() => {
+                    resetCard();
+                }, 50);
+            }, 300);
+        }
+
+        function loadCard() {
+            // 随机选择卡片类型
+            currentCardType = Math.random() > 0.5 ? 'quote' : 'vote';
+            
+            if (currentCardType === 'quote') {
+                const quote = quotes[currentIndex % quotes.length];
+                quoteCard.querySelector('.quote-content').textContent = quote.content;
+                const tagsContainer = quoteCard.querySelector('.tags');
+                tagsContainer.innerHTML = quote.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+                
+                quoteCard.style.display = 'flex';
+                voteCard.style.display = 'none';
+            } else {
+                const vote = votes[currentIndex % votes.length];
+                voteCard.querySelector('.vote-topic').textContent = vote.topic;
+                const options = voteCard.querySelectorAll('.vote-option');
+                
+                // 更新选项文本
+                options[0].querySelector('.option-text').textContent = vote.optionA;
+                options[1].querySelector('.option-text').textContent = vote.optionB;
+                
+                // 重置选项样式
+                options[0].className = 'vote-option';
+                options[1].className = 'vote-option';
+                
+                // 生成随机投票比例
+                const percentageA = Math.floor(Math.random() * 40) + 30; // 30-70%
+                const percentageB = 100 - percentageA;
+                
+                // 更新投票百分比
+                const percentageTexts = voteCard.querySelectorAll('.percentage-text');
+                const progressBars = voteCard.querySelectorAll('.percentage-progress');
+                
+                percentageTexts[0].textContent = percentageA + '%';
+                percentageTexts[1].textContent = percentageB + '%';
+                progressBars[0].style.width = percentageA + '%';
+                progressBars[1].style.width = percentageB + '%';
+                
+                // 隐藏百分比（等待用户投票后显示）
+                const percentages = voteCard.querySelectorAll('.vote-percentage');
+                percentages.forEach(p => p.classList.remove('show'));
+                
+                const tagsContainer = voteCard.querySelector('.tags');
+                tagsContainer.innerHTML = vote.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+                
+                quoteCard.style.display = 'none';
+                voteCard.style.display = 'flex';
+            }
+        }
+
+        function selectOption(element, option) {
+            const options = voteCard.querySelectorAll('.vote-option');
+            options.forEach(opt => opt.classList.remove('selected', 'option-a', 'option-b'));
+            
+            element.classList.add('selected');
+            element.classList.add(option === 'A' ? 'option-a' : 'option-b');
+            
+            // 显示投票百分比
+            setTimeout(() => {
+                showVotePercentages();
+            }, 500);
+        }
+        
+        function showVotePercentages() {
+            // 显示所有投票百分比
+            const percentages = document.querySelectorAll('.vote-percentage');
+            percentages.forEach((percentage, index) => {
+                setTimeout(() => {
+                    percentage.classList.add('show');
+                    // 动画显示进度条
+                    const progressBar = percentage.querySelector('.percentage-progress');
+                    if (progressBar) {
+                        const width = progressBar.style.width;
+                        progressBar.style.width = '0%';
+                        setTimeout(() => {
+                            progressBar.style.width = width;
+                        }, 100);
+                    }
+                }, index * 150);
+            });
+        }
+        
+        function showShareDialog() {
+            // 创建分享弹窗
+            const shareDialog = document.createElement('div');
+            shareDialog.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 300px; margin: 20px;">
+                        <h3 style="margin: 0 0 20px 0; color: #2d3436;">分享到</h3>
+                        <div style="display: flex; gap: 20px; justify-content: center; margin-bottom: 20px;">
+                            <div style="text-align: center; cursor: pointer;" onclick="shareToWeChat()">
+                                <div style="width: 50px; height: 50px; background: #07c160; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; margin-bottom: 8px;">💬</div>
+                                <span style="font-size: 14px; color: #666;">微信</span>
+                            </div>
+                            <div style="text-align: center; cursor: pointer;" onclick="shareToFriends()">
+                                <div style="width: 50px; height: 50px; background: #1890ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; margin-bottom: 8px;">👥</div>
+                                <span style="font-size: 14px; color: #666;">朋友圈</span>
+                            </div>
+                        </div>
+                        <button onclick="closeShareDialog()" style="background: #f0f0f0; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer;">取消</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(shareDialog);
+            
+            // 添加全局函数
+            window.shareToWeChat = function() {
+                alert('分享到微信');
+                closeShareDialog();
+            };
+            
+            window.shareToFriends = function() {
+                alert('分享到朋友圈');
+                closeShareDialog();
+            };
+            
+            window.closeShareDialog = function() {
+                document.body.removeChild(shareDialog);
+            };
+        }
+
+        function showLikeAnimation() {
+            likeAnimation.style.opacity = '1';
+            likeAnimation.style.animation = 'none';
+            setTimeout(() => {
+                likeAnimation.style.animation = 'likeAnimation 1s ease-out';
+            }, 10);
+            
+            setTimeout(() => {
+                likeAnimation.style.opacity = '0';
+            }, 1000);
+        }
+
+        function showFilterModal() {
+            alert('筛选功能（在实际小程序中会显示筛选弹窗）');
+        }
+
+        // 键盘控制
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowLeft':
+                    nextCard('left');
+                    break;
+                case 'ArrowRight':
+                    showLikeAnimation();
+                    nextCard('right');
+                    break;
+                case 'ArrowUp':
+                    showShareDialog();
+                    break;
+                case ' ':
+                    nextCard('right');
+                    break;
+            }
+        });
+
+        // 初始化
+        loadCard();
+    </script>
+</body>
+</html>
