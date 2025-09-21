@@ -158,8 +158,8 @@
   height: 0; 
   border-left: 12rpx solid transparent; 
   border-right: 12rpx solid transparent; 
-  border-bottom: 20rpx solid #ff4d4f; 
-  transform: translate(-50%, -50%) translateY(-320rpx); 
+  border-bottom: 20rpx solid #ff4d4f; /* 恢复原三角定义，以下用旋转实现180° */
+  transform: translate(-50%, -50%) translateY(-320rpx) rotate(180deg); /* 旋转180° 使指向下方 */
   z-index: 3; 
 }
 .pointer image { display: none; } /* 隐藏hand图片 */
@@ -277,4 +277,14 @@
   padding-bottom: 0rpx;  /* 转盘区底部内边距 */
   padding-left: 24rpx;   /* 转盘区左边距 */
   padding-right: 24rpx;  /* 转盘区右边距 */
+}
+/* 统一为金色边缘与光晕：与 palette-b 保持一致 */
+.roulette-wheel.palette-a,
+.roulette-wheel.palette-f,
+.roulette-wheel.palette-g {
+  border: 8rpx solid #ffd700; /* 金色边框 */
+  box-shadow: 
+    0 20rpx 40rpx rgba(0,0,0,0.12),
+    inset 0 0 0 4rpx rgba(255,255,255,0.3),
+    0 0 0 12rpx rgba(255,215,0,0.8); /* 外层金色光晕 */
 }

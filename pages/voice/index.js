@@ -182,14 +182,15 @@ Page({
     const scale = 1 - Math.min(Math.abs(deltaX) / 800, maxScaleDrop);
     const opacity = 1 - Math.min(Math.abs(deltaX) / 600, 0.25);
 
-    // 判断方向
+    // 判断方向（禁用上滑方向）
     let swipeDirection = '';
     const dirThreshold = 24;
     if (Math.abs(deltaX) > dirThreshold || Math.abs(deltaY) > dirThreshold) {
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
         swipeDirection = deltaX > 0 ? 'right' : 'left';
-      } else if (deltaY < 0) {
-        swipeDirection = 'up';
+      } else {
+        // 禁止设置为 'up'，避免出现上滑提示
+        swipeDirection = '';
       }
     }
 
@@ -210,26 +211,23 @@ Page({
    * 卡片移动事件（movable-view 的 bindchange，保留备用）
    */
   onCardMove: function(e) {
-    const { x, y } = e.detail; // movable-view 的当前位置（以可移动区域左上角为原点）
-    
-    // 直接使用当前位置作为位移（受控模式下更稳定）
+    const { x, y } = e.detail; 
     const deltaX = x;
     const deltaY = y;
 
-    // 旋转/缩放/透明度的视觉反馈
-    const rotate = deltaX * 0.06; // 轻微旋转
+    const rotate = deltaX * 0.06; 
     const maxScaleDrop = 0.06;
     const scale = 1 - Math.min(Math.abs(deltaX) / 800, maxScaleDrop);
     const opacity = 1 - Math.min(Math.abs(deltaX) / 600, 0.25);
 
-    // 判断滑动方向
+    // 判断滑动方向（禁用上滑方向）
     let swipeDirection = '';
-    const dirThreshold = 24; // 方向判断阈值
+    const dirThreshold = 24; 
     if (Math.abs(deltaX) > dirThreshold || Math.abs(deltaY) > dirThreshold) {
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
         swipeDirection = deltaX > 0 ? 'right' : 'left';
-      } else if (deltaY < 0) {
-        swipeDirection = 'up';
+      } else {
+        swipeDirection = '';
       }
     }
 
@@ -251,7 +249,7 @@ Page({
    */
   onCardTouchEnd: function() {
     const { cardX, cardY } = this.data;
-    const threshold = 100; // 触发阈值，接近 HTML 预览效果
+    const threshold = 100; 
 
     this.setData({ isDragging: false });
 
@@ -266,11 +264,8 @@ Page({
         return;
       }
     } else {
-      // 垂直方向
-      if (cardY <= -threshold) {
-        this.shareCard();
-        return;
-      }
+      // 垂直方向：禁用上滑分享
+      // 直接回弹
     }
 
     // 回弹
@@ -310,23 +305,12 @@ Page({
       showLikeAnimation: true
     });
 
-    // 隐藏点赞动画
+    // 隐藏点赞动画：延长显示时长 0.5s（原 800ms -> 1300ms）
     setTimeout(() => {
       this.setData({ showLikeAnimation: false });
-    }, 800);
+    }, 1300);
 
-    // 更新点赞数据
-    if (currentCard.type === 'quote') {
-      const quoteId = parseInt(currentCard.id.replace('quote_', ''));
-      const likedQuotes = this.data.likedQuotes;
-      if (likedQuotes.indexOf(quoteId) === -1) {
-        likedQuotes.push(quoteId);
-        updateUserData('contentInteractions.likedQuotes', likedQuotes);
-        this.setData({ likedQuotes: likedQuotes });
-      }
-    }
-
-    // 等动画结束后切换到下一张卡片
+    // 切换到下一张维持原时长 260ms
     setTimeout(() => {
       this.nextCard();
     }, 260);
@@ -336,19 +320,12 @@ Page({
    * 上滑分享
    */
   shareCard: function() {
-    const { currentCard } = this.data;
-    console.log('[Voice] 分享卡片:', currentCard.id);
-
-    wx.showShareMenu({
-      withShareTicket: true,
-      menus: ['shareAppMessage', 'shareTimeline']
-    });
-
-    // 上滑提示动画（不切换卡片，只回弹）
-    this.setData({ contentAnimClass: 'animate-out out-up' });
-    setTimeout(() => {
-      this.resetCardPosition();
-    }, 260);
+    // 禁用：避免通过手势触发，保留函数以兼容调用但不执行上滑动画
+    try {
+      wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
+    } catch (e) {}
+    // 不再触发 out-up 动画，直接回弹
+    this.resetCardPosition();
   },
 
   /**
@@ -426,7 +403,7 @@ Page({
         contentAnimClass: '',
         cardAnimation: false
       });
-    }, 280);
+    }, 380);
   },
 
   /**
@@ -539,10 +516,17 @@ Page({
   },
 
   onShareAppMessage: function() {
-    const { currentCard } = this.data;
+    const promise = new Promise(resolve => {
+      setTimeout(() => {
+        resolve({
+          title: '这简直是我的职场嘴替！'
+        })
+      }, 2000)
+    })
     return {
-      title: currentCard.type === 'quote' ? currentCard.content : currentCard.topic,
-      path: '/pages/voice/index'
-    };
+      title: '这简直是我的职场嘴替！',
+      path: '/pages/voice/index',
+      promise
+    }
   }
 });

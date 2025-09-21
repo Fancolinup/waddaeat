@@ -112,9 +112,10 @@
   transform: translateX(120vw) rotate(10deg) scale(0.95);
   opacity: 0;
 }
+/* 禁用上滑动画：保留类名但不产生位移变化 */
 .content-card.out-up {
-  transform: translateY(-100vh) scale(0.9);
-  opacity: 0;
+  transform: translateY(0) scale(1);
+  opacity: 1;
 }
 
 /* 卡片类型图标 */
@@ -260,42 +261,42 @@
 }
 
 .percentage-bar {
-  width: 120rpx;
-  height: 12rpx;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 6rpx;
+  width: 160rpx; /* 稍微加宽条形，提升可读性 */
+  height: 14rpx;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8rpx;
   margin-right: 16rpx;
   overflow: hidden;
+  box-shadow: inset 0 0 0 1rpx rgba(0,0,0,0.25); /* 增加内描边增强对比 */
 }
 
 .percentage-progress {
   height: 100%;
-  border-radius: 6rpx;
+  border-radius: 8rpx;
   transition: width 0.8s ease;
 }
 
+/* 高对比配色：A 使用青柠-祖母绿，B 使用琉璃蓝-钴蓝；两者均加发光效果 */
 .percentage-progress.option-a {
-  background: linear-gradient(90deg, #55efc4, #00b894);
+  background: linear-gradient(90deg, #32cd32, #0f9b0f);
+  box-shadow: 0 0 6rpx rgba(15, 155, 15, 0.8), 0 0 12rpx rgba(50, 205, 50, 0.6);
 }
 
 .percentage-progress.option-b {
-  background: linear-gradient(90deg, #74b9ff, #0984e3);
+  background: linear-gradient(90deg, #1e90ff, #005bbb);
+  box-shadow: 0 0 6rpx rgba(0, 91, 187, 0.8), 0 0 12rpx rgba(30, 144, 255, 0.6);
 }
 
 .percentage-text {
   font-size: 32rpx;
-  font-weight: 700;
+  font-weight: 800;
+  text-shadow: 0 1rpx 2rpx rgba(0,0,0,0.35);
 }
 
-.percentage-text.option-a {
-  color: #00b894;
-}
+/* 与背景形成更强对比的文字颜色 */
+.percentage-text.option-a { color: #9bffb7; }
+.percentage-text.option-b { color: #a8d4ff; }
 
-.percentage-text.option-b {
-  color: #0984e3;
-}
-
-/* 点赞区域 */
 .like-section {
   display: flex;
   align-items: center;
@@ -308,28 +309,20 @@
 .like-count {
   display: flex;
   align-items: center;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 32rpx; /* 原 28rpx -> 增大收藏数字 */
 }
 
 .like-icon {
-  width: 32rpx;
-  height: 32rpx;
+  width: 40rpx;  /* 原 32rpx -> 放大爱心尺寸 */
+  height: 40rpx;
   margin-right: 12rpx;
   color: #ff6b6b;
 }
 
-/* 点赞动画 */
-.like-animation {
-  position: absolute;
-  top: -40rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  color: #ff6b6b;
-  font-size: 32rpx;
-  font-weight: bold;
-  opacity: 0;
-  animation: likeFloat 1s ease-out;
+/* 可选：滑动指示器显隐更从容，增加过渡时间 */
+.swipe-indicator.show {
+  transition: opacity 0.35s ease, transform 0.35s ease;
 }
 
 /* 滑动指示器 */
@@ -717,3 +710,16 @@
     color: rgba(255, 255, 255, 0.7);
   }
 }
+
+/* 导航指示区域：share-hint-btn 兼容按钮重置 */
+.share-hint-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  color: rgba(255,255,255,0.85);
+}
+.share-hint-btn::after { display: none; }

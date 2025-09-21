@@ -6,6 +6,7 @@
     <view class="filter-btn" bindtap="onFilterTap">
       <text>⚙️</text>
     </view>
+    <!-- 移除顶部分享按钮，避免与底部引导重复 -->
   </view>
 
   <!-- 加载状态 -->
@@ -20,6 +21,7 @@
       <!-- 滑动指示器 -->
       <view class="swipe-indicator left {{swipeDirection === 'left' ? 'show' : ''}}">✕</view>
       <view class="swipe-indicator right {{swipeDirection === 'right' ? 'show' : ''}}">❤️</view>
+      <!-- 移除上滑指示器，禁用上滑手势相关的视觉引导 -->
       <view class="swipe-indicator up {{swipeDirection === 'up' ? 'show' : ''}}">↗️</view>
       
       <movable-view 
@@ -108,10 +110,11 @@
       <view class="hint-icon">👉</view>
       <text>右滑点赞</text>
     </view>
-    <view class="hint-item">
-      <view class="hint-icon">👆</view>
-      <text>上滑分享</text>
-    </view>
+    <!-- 将“上滑分享”替换为“点击分享”，并使用 open-type="share" 的按钮 -->
+    <button class="hint-item share-hint-btn" open-type="share">
+      <view class="hint-icon">🗨️</view>
+      <text>点击分享</text>
+    </button>
   </view>
 
   <!-- 筛选弹窗 -->
