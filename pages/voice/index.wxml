@@ -176,3 +176,7 @@
     </view>
   </view>
 </view>
+<view class="disabled-banner banner-mbti">
+  <text class="icon">🧠</text>
+  <text class="msg">职场MBTI功能开发中，请期待</text>
+</view>

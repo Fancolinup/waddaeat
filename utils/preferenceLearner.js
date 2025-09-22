@@ -7,6 +7,7 @@
 
 // 导入数据管理模块
 const dataManager = require('./dataManager');
+const { isUserAddedRestaurant } = require('./scoringManager');
 
 // 特征权重配置
 const FEATURE_WEIGHTS = {
@@ -173,8 +174,24 @@ function updateUserPreference(restaurantId, feedback) {
       return false;
     }
     
-    // 查找目标餐厅
-    const restaurant = restaurantData.restaurants.find(r => r.id === restaurantId);
+    // 查找目标餐厅（兼容字符串/数值ID）
+    let restaurant = restaurantData.restaurants.find(r => String(r.id) === String(restaurantId));
+    
+    // 兜底：如果是用户手动添加的餐厅ID（user_added_*），构造合成餐厅对象
+    if (!restaurant && isUserAddedRestaurant(String(restaurantId))) {
+      const brandName = String(restaurantId).replace(/^user_added_/i, '').trim();
+      restaurant = {
+        id: String(restaurantId),
+        name: brandName || '自定义餐厅',
+        // 提供必要字段，extractFeatureVector会在缺省情况下给到0值
+        tags: [],
+        priceLevel: 2,
+        popularityScore: 0.5,
+        healthScore: 0.5,
+        spicyScore: 0
+      };
+    }
+
     if (!restaurant) {
       console.error(`[PreferenceLearner] 更新偏好失败：找不到ID为${restaurantId}的餐厅`);
       return false;

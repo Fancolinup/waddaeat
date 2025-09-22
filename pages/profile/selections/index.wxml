@@ -1,0 +1,41 @@
+<view class="selections-page">
+  <view class="header">
+    <text class="title">我的偏爱</text>
+  </view>
+
+  <view class="tip">点击气泡可切换选中，右上角可删除。可添加自定义品牌。</view>
+
+  <view class="bubble-list">
+    <block wx:for="{{brands}}" wx:key="name">
+      <view class="bubble {{item.selected?'selected':''}}" data-name="{{item.name}}" bindtap="toggleSelect">
+        <image class="logo" src="{{item.logoPath}}" mode="aspectFill" data-name="{{item.name}}" binderror="onLogoError" />
+        <text class="name">{{item.name}}</text>
+        <view class="close" catchtap="deleteBrand" data-name="{{item.name}}">×</view>
+      </view>
+    </block>
+  </view>
+
+  <view class="actions">
+    <button class="add-btn" bindtap="addBrand">+ 添加品牌</button>
+  </view>
+
+  <view class="history-section">
+    <view class="section-title">最近吃过</view>
+    <view class="history-list">
+      <block wx:for="{{recentAccepts}}" wx:key="idx">
+        <view class="history-item">
+          <image class="h-logo" src="{{item.logoPath}}" mode="aspectFill" binderror="onHistoryLogoError" data-name="{{item.name}}" />
+          <view class="h-info">
+            <text class="h-name">{{item.name}}</text>
+            <text class="h-time">{{item.timeText}}</text>
+          </view>
+        </view>
+      </block>
+      <view class="empty" wx:if="{{!recentAccepts || recentAccepts.length===0}}">暂无记录</view>
+    </view>
+  </view>
+
+  <view class="bottom-bar" style="padding-bottom: env(safe-area-inset-bottom);">
+    <button class="finish-fixed" bindtap="onConfirm" disabled="{{!dirty}}">完成</button>
+  </view>
+</view>

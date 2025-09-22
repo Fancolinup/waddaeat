@@ -476,11 +476,53 @@ Page({
       wx.setStorageSync('welcomeSelectionsByBrand', selectedBrandNames);
       wx.setStorageSync('hasShownWelcome', true);
 
-      // 写入用户数据仓库，以配合评分模块
-      const userData = wx.getStorageSync('user_data') || {};
-      userData.welcomeSelections = this.data.selectedRestaurants.slice();
-      userData.welcomeSelectionsByBrand = selectedBrandNames;
-      wx.setStorageSync('user_data', userData);
+      // 统一写入数据管理器
+      let dm = null;
+      try { dm = require('../../../utils/dataManager.js'); } catch(e) { dm = null; }
+      if (dm && typeof dm.getUserData === 'function' && typeof dm.updateUserData === 'function') {
+        const userData = dm.getUserData();
+        const newUserData = Object.assign({}, userData, {
+          welcomeSelections: this.data.selectedRestaurants.slice(),
+          welcomeSelectionsByBrand: selectedBrandNames
+        });
+        // 批量更新
+        dm.updateUserData('welcomeSelections', newUserData.welcomeSelections);
+        dm.updateUserData('welcomeSelectionsByBrand', newUserData.welcomeSelectionsByBrand);
+
+        // 决策历史：为每个选择记录一次“accept”
+        if (typeof dm.addDecisionRecord === 'function') {
+          this.data.selectedRestaurants.forEach(sid => {
+            const found = this.data.restaurants.find(r => r.sid === sid);
+            dm.addDecisionRecord({
+              action: 'accept',
+              type: 'welcome',
+              restaurantId: (found && found.id != null) ? String(found.id) : String(sid),
+              brand: found ? found.name : ''
+            });
+          });
+        }
+
+        // 评分写回：对每个选择执行一次“accept”，提升初始偏好分
+        try {
+          const scoring = require('../../../utils/scoringManager.js');
+          if (scoring && typeof scoring.updateRestaurantScore === 'function') {
+            this.data.selectedRestaurants.forEach(sid => {
+              const found = this.data.restaurants.find(r => r.sid === sid) || {};
+              const restaurantId = (found && found.id != null) ? String(found.id) : String(sid);
+              const restaurantData = { name: found.name || '' };
+              scoring.updateRestaurantScore(userData, restaurantId, 'accept', restaurantData);
+            });
+          }
+        } catch (e) {
+          console.warn('[Welcome] 初始评分写回失败，继续流程', e);
+        }
+      } else {
+        // 兜底：直接写 user_data（旧逻辑）
+        const userData = wx.getStorageSync('user_data') || {};
+        userData.welcomeSelections = this.data.selectedRestaurants.slice();
+        userData.welcomeSelectionsByBrand = selectedBrandNames;
+        wx.setStorageSync('user_data', userData);
+      }
 
       wx.reLaunch({ url: '/pages/index/index' });
     } catch (error) {

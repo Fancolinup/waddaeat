@@ -1,0 +1,32 @@
+<view class="favorites-page">
+  <view class="section">
+    <view class="card list">
+      <view class="title">我的收藏</view>
+      <view class="desc">共 {{favoritesCount}} 项</view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="grid">
+      <block wx:for="{{favoritesList}}" wx:key="id">
+        <view class="grid-item">
+          <view class="fav-card">
+            <view wx:if="{{item.type === 'vote'}}">
+              <view class="fav-type">【话题】</view>
+              <view class="fav-title">{{item.topic}}</view>
+              <view class="vote-row">
+                <text class="opt">A. {{item.optionA}}</text>
+                <text class="opt">B. {{item.optionB}}</text>
+              </view>
+              <view class="my-choice">{{ item.myOption ? ('我的选择：' + item.myOption) : '未选择' }}</view>
+            </view>
+            <view wx:if="{{item.type === 'quote'}}">
+              <view class="fav-type">【语录】</view>
+              <view class="fav-title">{{item.content}}</view>
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>

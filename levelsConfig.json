@@ -1,0 +1,16 @@
+{
+  "actions": {
+    "spin": 2,
+    "vote": 1,
+    "bookmark": 1,
+    "share": 3
+  },
+  "levels": [
+    { "name": "P5-应届牛马", "min": 0 },
+    { "name": "P6-PPT大师", "min": 30 },
+    { "name": "P7-吵架王中王", "min": 60 },
+    { "name": "P8-精致指挥家", "min": 100 },
+    { "name": "P9-演讲大师", "min": 150 },
+    { "name": "P10-金色传说", "min": 300 }
+  ]
+}

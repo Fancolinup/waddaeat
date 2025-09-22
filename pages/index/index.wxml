@@ -1,5 +1,9 @@
 <view class="container" bindtouchstart="onTouchStart" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd">
-  <view class="title">What to Eat?</view>
+  <view class="disabled-banner banner-location">
+    <text class="icon">🗺️</text>
+    <text class="msg">定位功能开发中，请期待</text>
+  </view>
+  <view class="title">What to eat today?</view>
 
   <!-- 轮盘容器：指针向下，轮盘本身旋转，按钮保持固定 -->
   <view class="hero-area">
@@ -17,9 +21,6 @@
          </block>
        </view>
   
-      <!-- 边缘手型装饰 -->
-      
-  
       <!-- 指针（顶部，三角形朝下指向中心） -->
       <view class="pointer"></view>
   
@@ -34,7 +35,7 @@
       <!-- 固定在中心的开始按钮与手型（手型独立覆盖，不影响按钮尺寸） -->
       <view class="roulette-center">
         <image class="start-hand" src="/images/hand.png" mode="widthFix" />
-        <view class="start-button" bindtap="spinRoulette">开始</view>
+        <view class="start-button" bindtap="spinRoulette"><text class="art-text">开始</text></view>
       </view>
     </view>
   </view>
@@ -81,6 +82,7 @@
     <view class="share-actions">
        <image class="icon-btn" src="/images/copy.svg" catchtap="onCopyShare" />
        <image class="icon-btn" src="/images/refresh.svg" catchtap="onRefreshShare" />
+       <!-- 移除：旧的定位开发中提示 -->
      </view>
   </view>
   <view class="page-bottom-spacer"></view>

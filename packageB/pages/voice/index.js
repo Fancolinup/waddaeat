@@ -391,8 +391,68 @@ Page({
   },
 
   /** 点赞/收藏（示意） */
-  onLike: function () { if (this.data.currentItem) wx.showToast({ title: '已点赞', icon: 'success' }); },
-  onBookmark: function () { if (this.data.currentItem) wx.showToast({ title: '已收藏', icon: 'success' }); },
+  onLike: function () {
+    const item = this.data.currentItem;
+    if (!item) return;
+    try {
+      const userData = dataManager.getUserData();
+      const favorites = userData.contentInteractions?.favorites || { quotes: [], votes: [] };
+      let added = false;
+      if (this.data.currentMode === 'quote') {
+        const qid = 'quote_' + String(item.id);
+        if (!favorites.quotes.includes(qid)) {
+          favorites.quotes.push(qid);
+          dataManager.addPoints('bookmark', qid);
+          added = true;
+        }
+      } else {
+        const vid = parseInt(item.id);
+        if (!favorites.votes.some(v => v.id === vid)) {
+          favorites.votes.push({ id: vid, myOption: '' });
+          dataManager.addPoints('bookmark', 'vote_' + String(vid));
+          added = true;
+        }
+      }
+      if (added) {
+        dataManager.updateUserData('contentInteractions.favorites', favorites);
+      }
+      wx.showToast({ title: '已点赞', icon: 'success' });
+    } catch (e) {
+      console.warn('点赞同步收藏失败:', e);
+      wx.showToast({ title: '操作失败', icon: 'none' });
+    }
+  },
+  onBookmark: function () {
+    const item = this.data.currentItem;
+    if (!item) return;
+    try {
+      const userData = dataManager.getUserData();
+      const favorites = userData.contentInteractions?.favorites || { quotes: [], votes: [] };
+      let added = false;
+      if (this.data.currentMode === 'quote') {
+        const qid = 'quote_' + String(item.id);
+        if (!favorites.quotes.includes(qid)) {
+          favorites.quotes.push(qid);
+          dataManager.addPoints('bookmark', qid);
+          added = true;
+        }
+      } else {
+        const vid = parseInt(item.id);
+        if (!favorites.votes.some(v => v.id === vid)) {
+          favorites.votes.push({ id: vid, myOption: '' });
+          dataManager.addPoints('bookmark', 'vote_' + String(vid));
+          added = true;
+        }
+      }
+      if (added) {
+        dataManager.updateUserData('contentInteractions.favorites', favorites);
+      }
+      wx.showToast({ title: '已收藏', icon: 'success' });
+    } catch (e) {
+      console.warn('收藏更新失败:', e);
+      wx.showToast({ title: '操作失败', icon: 'none' });
+    }
+  },
 
   /**
    * 标记为已读

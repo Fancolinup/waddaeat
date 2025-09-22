@@ -1,2 +1,105 @@
-<!--pages/profile/profile.wxml-->
-<text>pages/profile/profile.wxml</text>
+<view class="profile-page glass-bg">
+  <!-- 用户信息区（顶部） -->
+  <view class="section">
+    <view class="card glass user-card">
+      <!-- 抽象人形头像（SVG/CSS形状占位） -->
+      <view class="avatar" aria-label="用户头像">
+        <view class="avatar-head"></view>
+        <view class="avatar-body"></view>
+      </view>
+      <view class="user-info">
+        <view class="row name-line">
+          <view class="name-badge">
+            <text class="nickname">神秘用户</text>
+            <text class="level-badge">{{level || '庶民'}} </text>
+          </view>
+        </view>
+        <view class="row sub-line score-line">
+          <view class="points-row">
+            <text class="meta">积分</text>
+            <text class="points-val">{{points || 0}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 决策统计数据区（列表，两张卡片） 保持与收藏分区一致的间距与列表项结构 -->
+  <view class="section">
+    <view class="card glass list-item" hover-class="pressed" bindtap="noop">
+      <view class="icon like-icon" aria-hidden="true"></view>
+      <view class="content">
+        <view class="title">我的喜好</view>
+        <!-- 口味Top3改为彩色Tag列表 -->
+        <view class="tag-row">
+          <block wx:for="{{topTastes}}" wx:key="*this">
+            <text class="tag taste">{{item}}</text>
+          </block>
+        </view>
+      </view>
+    </view>
+
+    <view class="card glass list-item" hover-class="pressed" bindtap="goMySelections">
+      <view class="icon check-icon" aria-hidden="true"></view>
+      <view class="content">
+        <view class="title">我的选择</view>
+        <view class="desc">共 {{decisionsCount}} 次 · 我最喜欢Top3</view>
+        <view class="tag-row">
+          <block wx:for="{{topRestaurants}}" wx:key="*this">
+            <text class="tag rest">{{item}}</text>
+          </block>
+        </view>
+      </view>
+      <view class="chevron">›</view>
+    </view>
+  </view>
+
+  <!-- 内容互动区（收藏卡片） -->
+  <view class="section">
+    <view class="card glass list-item" hover-class="pressed" bindtap="openFavorites">
+      <view class="icon fav-icon" aria-hidden="true"></view>
+      <view class="content">
+        <view class="title">我的收藏</view>
+        <view class="desc">已收藏 {{favoritesCount}} 项（语录/投票）</view>
+      </view>
+      <view class="chevron">›</view>
+    </view>
+  </view>
+
+  <!-- 分享功能区：文案放入按钮内部主行合适位置 -->
+  <view class="section">
+    <button class="share-btn metal" open-type="share">
+      <view class="share-main">
+        <view class="share-icon-css" aria-hidden="true"></view>
+        <text class="share-text">分享赚积分</text>
+      </view>
+    </button>
+  </view>
+
+  <!-- 收藏浮层 -->
+  <view class="favorites-mask" wx:if="{{showFavorites}}" catchtouchmove="true" bindtap="closeFavorites">
+    <view class="favorites-panel" catchtap="noop">
+      <view class="panel-header">
+        <text>我的收藏</text>
+        <text class="close" bindtap="closeFavorites">×</text>
+      </view>
+      <view class="grid">
+        <block wx:for="{{favoritesList}}" wx:key="id">
+          <view class="grid-item">
+            <view class="fav-card">
+              <view class="fav-type">{{item.type === 'quote' ? '语录' : '投票'}} </view>
+              <view class="fav-title">{{item.title}}</view>
+              <view class="fav-sub" wx:if="{{item.sub}}">{{item.sub}}</view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </view>
+</view>
+<view class="section">
+  <view class="card glass disabled-card">
+    <view class="card-title">我的职场MBTI</view>
+    <view class="card-desc">开发中，请期待</view>
+  </view>
+</view>

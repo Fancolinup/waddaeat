@@ -43,14 +43,24 @@ const DEFAULT_USER_DATA = {
   welcomeSelections: [],
   // 欢迎页品牌选择（新逻辑，按品牌名称）
   welcomeSelectionsByBrand: [],
+
+  // 积分与等级（新增）
+  points: 0,
+  userLevel: '庶民',
+  // 行为去重容器（用于防止对同一对象重复加分）
+  pointsDedup: {},
   
   // 决策历史记录
   decisionHistory: [],
   
   // 内容互动记录
   contentInteractions: {
-    likedQuotes: [],     // 点赞的语录ID列表
-    votedTopics: {}      // 投票的话题记录 {topicId: voteOption}
+    likedQuotes: [],     // 历史数据兼容：点赞语录ID
+    votedTopics: {},     // 话题投票记录 {topicId: option}
+    favorites: {         // 收藏等同于点赞
+      quotes: [],        // 语录ID集合（如 'quote_12'）
+      votes: []          // 投票收藏集合：{ id: topicId, myOption: 'A'|'B'|'' }
+    }
   }
 };
 
@@ -68,6 +78,30 @@ function initUserData() {
       // 检查数据结构完整性，补充缺失的字段
       const mergedData = mergeWithDefault(existingData, DEFAULT_USER_DATA);
       
+      // 迁移历史错误的点路径键到嵌套结构
+      const migrateDotPathKeys = (obj) => {
+        if (!obj || typeof obj !== 'object') return;
+        Object.keys(obj).forEach((k) => {
+          if (k.includes('.')) {
+            const val = obj[k];
+            const parts = k.split('.');
+            let cursor = obj;
+            for (let i = 0; i < parts.length - 1; i++) {
+              const p = parts[i];
+              if (typeof cursor[p] !== 'object' || cursor[p] === null) cursor[p] = {};
+              cursor = cursor[p];
+            }
+            cursor[parts[parts.length - 1]] = val;
+            delete obj[k];
+          }
+        });
+        // 递归处理子对象
+        Object.keys(obj).forEach((key) => {
+          if (obj[key] && typeof obj[key] === 'object') migrateDotPathKeys(obj[key]);
+        });
+      };
+      migrateDotPathKeys(mergedData);
+
       // 如果数据结构有更新，重新保存
       if (JSON.stringify(mergedData) !== JSON.stringify(existingData)) {
         wx.setStorageSync(STORAGE_KEYS.USER_DATA, mergedData);
@@ -145,7 +179,20 @@ function getUserData() {
 function updateUserData(key, value) {
   try {
     const data = getUserData();
-    data[key] = value;
+    if (typeof key === 'string' && key.includes('.')) {
+      const parts = key.split('.');
+      let obj = data;
+      for (let i = 0; i < parts.length - 1; i++) {
+        const p = parts[i];
+        if (obj[p] == null || typeof obj[p] !== 'object') {
+          obj[p] = {};
+        }
+        obj = obj[p];
+      }
+      obj[parts[parts.length - 1]] = value;
+    } else {
+      data[key] = value;
+    }
     wx.setStorageSync(STORAGE_KEYS.USER_DATA, data);
     console.log(`[DataManager] 已更新用户数据字段: ${key}`);
     return true;
@@ -412,4 +459,102 @@ module.exports = {
   getAppContent,
   setContentProvider,
   ensureContentProviderReady
+};
+
+// 在默认用户数据结构中加入积分与等级，以及收藏容器
+const defaultUserData = {
+  // 口味偏好权重 (0-1之间的数值)
+  tasteProfile: {
+    spicy: 0.5,      // 辣味偏好
+    sweet: 0.5,      // 甜味偏好
+    sour: 0.5,       // 酸味偏好
+    salty: 0.5,      // 咸味偏好
+    bitter: 0.5,     // 苦味偏好
+    umami: 0.5,      // 鲜味偏好
+    oily: 0.5,       // 油腻偏好
+    light: 0.5       // 清淡偏好
+  },
+  
+  // 协同过滤模型 - 餐厅评分
+  restaurantScores: {
+    // 格式: "餐厅ID": 当前偏好分 (基于初始分和用户互动计算得出)
+    // 示例:
+    // "bj_guomao_001": 6.5,
+    // "user_added_1": 9.0
+  },
+
+  // 欢迎页选择（兼容旧逻辑，按餐厅ID）
+  welcomeSelections: [],
+  // 欢迎页品牌选择（新逻辑，按品牌名称）
+  welcomeSelectionsByBrand: [],
+  
+  // 决策历史记录
+  decisionHistory: [],
+  
+  // 内容互动记录
+  contentInteractions: {
+    likedQuotes: [],     // 历史数据兼容：点赞语录ID
+    votedTopics: {},     // 话题投票记录 {topicId: option}
+    favorites: {         // 收藏等同于点赞
+      quotes: [],        // 语录ID集合
+      votes: []          // 投票收藏集合：{ id: topicId, myOption: 'A'|'B' }
+    }
+  }
+};
+
+// 引入可配置的积分与等级规则（优先 JSON，可回退 JS）
+let pointsCfg = null;
+try {
+  pointsCfg = require('../levelsConfig.json');
+} catch (eJson) {
+  try { pointsCfg = require('./pointsConfig'); } catch (eJs) { pointsCfg = { actions: {}, levels: [] }; }
+}
+
+/**
+ * 按动作加分（带去重能力）
+ * @param {string} actionKey - pointsConfig.actions 的键（spin/vote/bookmark/share）
+ * @param {string} [uniqueId] - 可选去重ID（同个对象首次加分，如某条内容或某次事件）
+ * @returns {number} 增加的分值（0 表示未加分）
+ */
+function addPoints(actionKey, uniqueId) {
+  try {
+    const userData = getUserData();
+    const delta = (pointsCfg.actions && pointsCfg.actions[actionKey]) || 0;
+    if (!delta) return 0;
+    userData.pointsDedup = userData.pointsDedup || {};
+    userData.pointsDedup[actionKey] = userData.pointsDedup[actionKey] || [];
+    if (uniqueId) {
+      if (userData.pointsDedup[actionKey].includes(uniqueId)) { return 0; }
+      userData.pointsDedup[actionKey].push(uniqueId);
+    }
+    userData.points = (userData.points || 0) + delta;
+    userData.userLevel = recalculateUserLevel(userData.points);
+    wx.setStorageSync(STORAGE_KEYS.USER_DATA, userData);
+    return delta;
+  } catch (e) { console.error('[dataManager.addPoints] error', e); return 0; }
+}
+
+function recalculateUserLevel(points) {
+  try {
+    const levels = (pointsCfg && pointsCfg.levels) || [];
+    let current = levels[0] ? levels[0].name : '庶民';
+    for (let i = 0; i < levels.length; i++) {
+      if (points >= levels[i].min) current = levels[i].name; else break;
+    }
+    return current;
+  } catch (e) { console.error('[dataManager.recalculateUserLevel] error', e); return '庶民'; }
+}
+
+// 导出新增方法
+module.exports = {
+  initUserData,
+  getUserData,
+  updateUserData,
+  addDecisionRecord,
+  getRestaurantData,
+  getAppContent,
+  setContentProvider,
+  ensureContentProviderReady,
+  addPoints,
+  recalculateUserLevel
 };

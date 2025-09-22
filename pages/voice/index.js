@@ -1,6 +1,6 @@
 // pages/voice/index.js
 // 职场嘴替页面 - 单卡片展示设计
-const { ensureContentProviderReady, getAppContent, updateUserData, getUserData } = require('../../utils/dataManager');
+const { ensureContentProviderReady, getAppContent, updateUserData, getUserData, addPoints } = require('../../utils/dataManager');
 
 Page({
   data: {
@@ -296,7 +296,42 @@ Page({
    */
   likeCard: function() {
     const { currentCard } = this.data;
-    console.log('[Voice] 点赞卡片:', currentCard.id);
+    if (!currentCard || !currentCard.id) return;
+
+    console.log('[Voice] 点赞/收藏卡片:', currentCard.id);
+
+    try {
+      // 收藏逻辑：检查是否已收藏，避免重复
+      const userData = getUserData();
+      const favorites = userData.contentInteractions?.favorites || { quotes: [], votes: [] };
+      let alreadyFavorited = false;
+
+      if (currentCard.type === 'quote') {
+        alreadyFavorited = favorites.quotes.includes(currentCard.id);
+        if (!alreadyFavorited) {
+          favorites.quotes.push(currentCard.id);
+          // 积分：收藏，使用卡片ID作为去重标识
+          addPoints('bookmark', currentCard.id);
+        }
+      } else if (currentCard.type === 'vote') {
+        const topicId = parseInt(currentCard.id.replace('vote_', ''));
+        const myOption = this.data.selectedOption || '';
+        alreadyFavorited = favorites.votes.some(v => v.id === topicId);
+        if (!alreadyFavorited) {
+          favorites.votes.push({ id: topicId, myOption });
+          // 积分：收藏，使用卡片ID作为去重标识
+          addPoints('bookmark', currentCard.id);
+        }
+      }
+
+      // 更新收藏数据
+      if (!alreadyFavorited) {
+        updateUserData('contentInteractions.favorites', favorites);
+        console.log('[Voice] 已收藏卡片:', currentCard.id);
+      }
+    } catch (e) {
+      console.warn('[Voice] 点赞/收藏处理异常:', e);
+    }
 
     // 内部内容滑出动画（向右）
     this.setData({
@@ -423,6 +458,9 @@ Page({
       return;
     }
     
+    // 积分：投票，使用话题ID作为去重标识
+    try { addPoints('vote', `topic_${topicId}`); } catch (e) { console.warn('addPoints vote error', e); }
+
     // 记录选项并显示结果
     this.setData({
       selectedOption: option,
@@ -517,16 +555,17 @@ Page({
 
   onShareAppMessage: function() {
     const promise = new Promise(resolve => {
+      try { addPoints && addPoints('share'); } catch (e) { console.warn('addPoints share error', e); }
       setTimeout(() => {
         resolve({
           title: '这简直是我的职场嘴替！'
-        })
-      }, 2000)
-    })
+        });
+      }, 10);
+    });
     return {
       title: '这简直是我的职场嘴替！',
       path: '/pages/voice/index',
       promise
-    }
+    };
   }
 });
