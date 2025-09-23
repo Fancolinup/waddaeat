@@ -46,6 +46,22 @@ API 调用
 wx.request({ url: '...' }).then(res => {}).catch(err => {});
 // 也可用 (Callback)
 wx.request({ url: '...', success() {}, fail() {} });
+数据加载与文件引用
+● JSON 文件限制: 微信小程序无法直接读取 .json 数据文件（如通过 require('./data.json') 或文件系统 API）。
+● 正确做法: 将数据定义在 .js 文件中，使用 module.exports 导出，然后通过 require() 引入。
+● 示例:
+  ```javascript
+  // data/config.js
+  module.exports = {
+    items: [{ id: 1, name: 'item1' }],
+    settings: { theme: 'light' }
+  };
+  
+  // pages/index/index.js
+  const config = require('../../data/config.js');
+  ```
+● 动态数据: 如需动态加载数据，使用 wx.request() 从服务器获取，或使用 wx.getStorage() 读取本地存储。
+
 数据与事件
 ● 数据绑定: WXML 中使用 {{ }} 语法绑定数据。
 ● 事件绑定: 使用 bind: 或 catch: 前缀（如 bindtap, catchtouchstart）。
