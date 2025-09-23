@@ -5,10 +5,12 @@
 .grid{display:grid;grid-template-columns:repeat(2,1fr);grid-gap:14rpx}
 .grid-item{min-height:160rpx}
 .fav-card{background:rgba(255,255,255,.65);border:1rpx solid rgba(255,255,255,.7);border-radius:14rpx;padding:16rpx;box-shadow:0 6rpx 16rpx rgba(17,63,95,.08)}
+.fav-head{display:flex;align-items:center;justify-content:flex-start;gap:10rpx}
 .vote-row{display:flex;flex-direction:column;gap:8rpx}
 .opt{font-size:26rpx;color:#0f2a3a}
-.my-choice{margin-top:8rpx;font-size:22rpx;color:#156f5e;background:rgba(26,188,156,.12);padding:6rpx 10rpx;border-radius:10rpx;width:max-content}
+.my-choice{display:none}
 .quote-placeholder{font-size:24rpx;color:#7c8e9f}
 .fav-type{font-size:20rpx;color:#7c8e9f}
 .fav-title{margin-top:6rpx;font-size:26rpx;color:#0f2a3a}
 .fav-sub{margin-top:4rpx;color:#6b7b8a;font-size:22rpx}
+.fav-choice-tag{font-size:20rpx;color:#156f5e;background:rgba(26,188,156,.12);padding:4rpx 10rpx;border-radius:10rpx}

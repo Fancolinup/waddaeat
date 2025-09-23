@@ -1,26 +1,10 @@
 // packageB/content/index.js
-// 内容提供器：对外暴露 getAppContent()，仅负责读取预设内容（只读）
-let __cached = null;
+// 为兼容历史引用，保留该模块，但改为读取主包内容
+const dataManager = require('../../utils/dataManager');
 
 function getAppContent() {
-  if (__cached) return __cached;
-  let data = null;
-  try {
-    data = require('./presets/Pilot dialogues.json');
-  } catch (e1) {
-    try {
-      data = require('./presets/pilot_dialogues.json');
-    } catch (e2) {
-      console.warn('[voice-content] 无法加载预设内容文件 (Pilot dialogues.json)');
-      data = null;
-    }
-  }
-  const result = {
-    quotes: (data && data.workQuotes) || [],
-    topics: (data && data.voteTopics) || []
-  };
-  __cached = result;
-  return result;
+  // 直接复用 dataManager 的实现（它已优先读取主包 JSON/JS）
+  return dataManager.getAppContent();
 }
 
 module.exports = { getAppContent };

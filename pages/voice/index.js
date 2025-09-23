@@ -51,6 +51,7 @@ Page({
 
   onLoad: function(options) {
     console.log('[Voice] 页面加载');
+    // 移除分包内容提供器注入，统一从主包 JSON/JS 读取
     this.initContent();
   },
 
@@ -98,11 +99,11 @@ Page({
           allCards.push({
             id: 'quote_' + quote.id,
             type: 'quote',
-            content: quote.content,
+            content: this.normalizeQuoteContent(quote.content),
             tags: quote.tags || [],
             likeCount: Math.floor(Math.random() * 1000) + 100 // 伪数据
           });
-        });
+        }.bind(this));
       }
       
       // 添加投票卡片
@@ -522,19 +523,34 @@ Page({
     if (filterType === 'all' || filterType === 'quote') {
       (content.quotes || []).forEach((q) => {
         if (selectedTags.length === 0 || (q.tags || []).some(t => selectedTags.includes(t))) {
-          filtered.push({ id: 'quote_' + q.id, type: 'quote', content: q.content, tags: q.tags || [], likeCount: Math.floor(Math.random() * 1000) + 100 });
+          filtered.push({
+            id: 'quote_' + q.id,
+            type: 'quote',
+            content: this.normalizeQuoteContent(q.content),
+            tags: q.tags || [],
+            likeCount: Math.floor(Math.random() * 1000) + 100
+          });
         }
       });
     }
     if (filterType === 'all' || filterType === 'vote') {
       (content.topics || []).forEach((t) => {
         if (selectedTags.length === 0 || (t.tags || []).some(tag => selectedTags.includes(tag))) {
-          filtered.push({ id: 'vote_' + t.id, type: 'vote', topic: t.topic, optionA: t.optionA, optionB: t.optionB, tags: t.tags || [], likeCount: Math.floor(Math.random() * 800) + 50 });
+          filtered.push({
+            id: 'vote_' + t.id,
+            type: 'vote',
+            topic: t.topic,
+            optionA: t.optionA,
+            optionB: t.optionB,
+            tags: t.tags || [],
+            likeCount: Math.floor(Math.random() * 800) + 50
+          });
         }
       });
     }
 
     this.shuffleArray(filtered);
+
     this.setData({
       allCards: filtered,
       currentIndex: 0,
@@ -551,6 +567,19 @@ Page({
       cardOpacity: 1,
       contentAnimClass: ''
     });
+  },
+
+  // 归一化语录内容为 { zh, en }
+  normalizeQuoteContent: function(raw) {
+    if (raw && typeof raw === 'object') {
+      const zh = typeof raw.zh === 'string' ? raw.zh : '';
+      const en = typeof raw.en === 'string' ? raw.en : '';
+      return { zh, en };
+    }
+    if (typeof raw === 'string') {
+      return { zh: raw, en: '' };
+    }
+    return { zh: '', en: '' };
   },
 
   onShareAppMessage: function() {

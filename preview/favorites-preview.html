@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>收藏页 · 话题与选择 Tag 排列预览</title>
+  <style>
+    :root { --bg: #f6fbff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif; color: #0f2a3a; }
+    .page { max-width: 800px; margin: 20px auto 60px; padding: 0 16px; }
+    .card { background: rgba(255,255,255,.65); border: 1px solid rgba(255,255,255,.7); border-radius: 14px; padding: 16px; box-shadow: 0 6px 16px rgba(17,63,95,.08); }
+    .row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+
+    /* 取自 pages/profile/favorites/index.wxss 的相关样式（或等效值） */
+    .fav-head { display:flex; align-items:center; justify-content:flex-start; gap:10rpx; gap:10px; }
+    .fav-type { font-size: 20px; color: #7c8e9f; }
+    .fav-choice-tag { font-size: 20px; color: #156f5e; background: rgba(26,188,156,.12); padding: 4px 10px; border-radius: 10px; }
+    .fav-title { margin-top: 6px; font-size: 22px; color: #0f2a3a; }
+
+    .demo-note { margin: 12px 0 18px; color: #6b7b8a; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>收藏页布局预览：话题 + 我的选择 Tag</h1>
+    <p class="demo-note">用于校验“我的选择”标签是否紧邻【话题】左侧标题，且在同一行显示。</p>
+
+    <div class="row">
+      <div class="card">
+        <div class="fav-head">
+          <div class="fav-type">【话题】</div>
+          <div class="fav-choice-tag">我的选择：A 选项较长一些示例</div>
+        </div>
+        <div class="fav-title">今天午饭吃什么？</div>
+      </div>
+
+      <div class="card">
+        <div class="fav-head">
+          <div class="fav-type">【话题】</div>
+          <div class="fav-choice-tag">未选择</div>
+        </div>
+        <div class="fav-title">晚饭要不要吃火锅？</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

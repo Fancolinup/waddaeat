@@ -407,7 +407,8 @@
                 <!-- 语录卡片示例 -->
                 <div class="quote-card" id="quoteCard">
                     <div class="quote-content">
-                        用离职的心态打工，真的一切都通了。
+                        <span class="quote-zh">用离职的心态打工，真的一切都通了。</span>
+                        <span class="quote-en">Work with the mindset of being ready to leave — everything suddenly makes sense.</span>
                     </div>
                     <div class="tags">
                         <span class="tag">心态</span>
@@ -467,6 +468,7 @@
         </div>
     </div>
 
+    <script src="data-loader.js"></script>
     <script>
         let currentCardType = 'quote';
         let isDragging = false;
@@ -480,35 +482,109 @@
         const voteCard = document.getElementById('voteCard');
         const likeAnimation = document.getElementById('likeAnimation');
 
-        // 示例数据
-        const quotes = [
-            { content: "用离职的心态打工，真的一切都通了。", tags: ["心态", "工作哲学"] },
-            { content: "我的优秀，不需要你的PPT来证明。", tags: ["自我价值", "反PUA"] },
-            { content: "只要我不在乎薪水，老板就PUA不了我。", tags: ["薪资", "反PUA"] },
-            { content: "上班尽职尽责，但不必尽心尽力。", tags: ["工作态度", "边界感"] },
-            { content: "完成，比完美更重要。", tags: ["效率", "工作方法"] }
-        ];
-
-        const votes = [
-            {
-                topic: "你更倾向于哪种工作方式？",
-                optionA: "准时下班，工作生活分离",
-                optionB: "适度加班，追求事业成就",
-                tags: ["工作生活平衡"]
-            },
-            {
-                topic: "面对职场PUA，你会选择？",
-                optionA: "直接反驳，维护自己权益",
-                optionB: "暂时忍耐，寻找合适时机",
-                tags: ["反PUA", "职场智慧"]
-            },
-            {
-                topic: "关于加班，你的态度是？",
-                optionA: "坚决拒绝无意义加班",
-                optionB: "为了团队配合偶尔加班",
-                tags: ["加班", "工作态度"]
+        // 数据变量
+        let quotes = [];
+        let votes = [];
+        let dataLoader = null;
+        
+        // 初始化数据
+        async function initializeData() {
+            try {
+                console.log('[Preview] 开始加载数据...');
+                
+                dataLoader = new DataLoader();
+                const success = await dataLoader.loadData();
+                
+                if (success) {
+                    console.log('[Preview] 主包JSON数据加载成功');
+                } else {
+                    console.warn('[Preview] 主包JSON加载失败，使用兜底数据');
+                }
+                
+                quotes = dataLoader.getQuotes();
+                votes = dataLoader.getVotes();
+                
+                console.log('[Preview] 最终语录数量:', quotes.length);
+                console.log('[Preview] 最终投票数量:', votes.length);
+                
+                if (quotes.length > 0) {
+                    console.log('[Preview] 第一条语录:', quotes[0]);
+                }
+                
+                // 数据加载完成后，加载第一张卡片
+                loadCard();
+            } catch (error) {
+                console.error('[Preview] 数据初始化异常:', error);
+                quotes = getFallbackQuotes();
+                votes = getFallbackVotes();
+                loadCard();
             }
-        ];
+        }
+        
+        // 兜底语录数据
+        function getFallbackQuotes() {
+            return [
+                { 
+                    content: { 
+                        zh: "用离职的心态打工，真的一切都通了。", 
+                        en: "Work with the mindset of being ready to leave — everything suddenly makes sense." 
+                    }, 
+                    tags: ["心态", "工作哲学"] 
+                },
+                { 
+                    content: { 
+                        zh: "我的优秀，不需要你的PPT来证明。", 
+                        en: "My excellence doesn't need your PPT to prove it." 
+                    }, 
+                    tags: ["自我价值", "反PUA"] 
+                },
+                { 
+                    content: { 
+                        zh: "只要我不在乎薪水，老板就PUA不了我。", 
+                        en: "As long as I don't care about salary, the boss can't manipulate me." 
+                    }, 
+                    tags: ["薪资", "反PUA"] 
+                },
+                { 
+                    content: { 
+                        zh: "上班尽职尽责，但不必尽心尽力。", 
+                        en: "Be responsible at work, but don't need to give your all." 
+                    }, 
+                    tags: ["工作态度", "边界感"] 
+                },
+                { 
+                    content: { 
+                        zh: "完成，比完美更重要。", 
+                        en: "Done is better than perfect." 
+                    }, 
+                    tags: ["效率", "工作方法"] 
+                }
+            ];
+        }
+        
+        // 兜底投票数据
+        function getFallbackVotes() {
+            return [
+                {
+                    topic: "你更倾向于哪种工作方式？",
+                    optionA: "准时下班，工作生活分离",
+                    optionB: "适度加班，追求事业成就",
+                    tags: ["工作生活平衡"]
+                },
+                {
+                    topic: "面对职场PUA，你会选择？",
+                    optionA: "直接反驳，维护自己权益",
+                    optionB: "暂时忍耐，寻找合适时机",
+                    tags: ["反PUA", "职场智慧"]
+                },
+                {
+                    topic: "关于加班，你的态度是？",
+                    optionA: "坚决拒绝无意义加班",
+                    optionB: "为了团队配合偶尔加班",
+                    tags: ["加班", "工作态度"]
+                }
+            ];
+        }
 
         let currentIndex = 0;
 
@@ -594,14 +670,37 @@
         }
 
         function loadCard() {
-            // 随机选择卡片类型
-            currentCardType = Math.random() > 0.5 ? 'quote' : 'vote';
+            // 确保有数据可用
+            if (quotes.length === 0 && votes.length === 0) {
+                console.warn('[Preview] 没有可用数据');
+                return;
+            }
+            
+            // 随机选择卡片类型，但优先显示语录
+            currentCardType = quotes.length > 0 ? 'quote' : 'vote';
+            if (quotes.length > 0 && votes.length > 0) {
+                currentCardType = Math.random() > 0.3 ? 'quote' : 'vote'; // 70% 概率显示语录
+            }
             
             if (currentCardType === 'quote') {
                 const quote = quotes[currentIndex % quotes.length];
-                quoteCard.querySelector('.quote-content').textContent = quote.content;
+                console.log('[Preview] 当前显示语录:', quote);
+                
+                const zhEl = quoteCard.querySelector('.quote-zh');
+                const enEl = quoteCard.querySelector('.quote-en');
+                if (zhEl && enEl) {
+                    zhEl.textContent = quote.content.zh;
+                    enEl.textContent = quote.content.en;
+                    console.log('[Preview] 更新语录内容 - 中文:', quote.content.zh);
+                    console.log('[Preview] 更新语录内容 - 英文:', quote.content.en);
+                }
+                
+                // 更新标签
                 const tagsContainer = quoteCard.querySelector('.tags');
-                tagsContainer.innerHTML = quote.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+                if (tagsContainer && quote.tags) {
+                    tagsContainer.innerHTML = quote.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+                    console.log('[Preview] 更新标签:', quote.tags);
+                }
                 
                 quoteCard.style.display = 'flex';
                 voteCard.style.display = 'none';
@@ -750,7 +849,7 @@
         });
 
         // 初始化
-        loadCard();
+        initializeData();
     </script>
 </body>
 </html>

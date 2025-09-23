@@ -1,7 +1,8 @@
 <view class="container" bindtouchstart="onTouchStart" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd">
   <view class="disabled-banner banner-location">
-    <text class="icon">🗺️</text>
-    <text class="msg">定位功能开发中，请期待</text>
+    <image class="icon" src="/images/map.svg" mode="widthFix" />
+    <text class="msg">定位功能</text>
+    <text class="dev-tag">开发中</text>
   </view>
   <view class="title">What to eat today?</view>
 
@@ -24,7 +25,7 @@
       <!-- 指针（顶部，三角形朝下指向中心） -->
       <view class="pointer"></view>
   
-      <!-- 右上角操作按钮：配色切换 + 刷新推荐 -->
+      <!-- 右下角操作按钮：配色切换 + 刷新推荐（仅改变纵坐标） -->
       <view class="top-actions">
         <view class="palette-switch" bindtap="onTogglePalette">
           <view class="palette-wheel"></view>

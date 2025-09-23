@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据加载测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .quote-item {
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .quote-zh {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .quote-en {
+            font-size: 14px;
+            color: #666;
+            font-style: italic;
+        }
+        .quote-tags {
+            margin-top: 10px;
+        }
+        .tag {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>语录数据加载测试</h1>
+        <div id="status">正在加载数据...</div>
+        <div id="quotes-container"></div>
+    </div>
+
+    <script src="data-loader.js"></script>
+    <script>
+        async function testDataLoading() {
+            const statusEl = document.getElementById('status');
+            const quotesContainer = document.getElementById('quotes-container');
+            
+            try {
+                console.log('=== 开始测试数据加载 ===');
+                console.log('DataLoader类是否存在:', typeof DataLoader);
+                console.log('window.DataLoader:', window.DataLoader);
+                
+                if (typeof DataLoader === 'undefined') {
+                    throw new Error('DataLoader类未定义');
+                }
+                
+                const dataLoader = new DataLoader();
+                console.log('DataLoader实例创建成功:', dataLoader);
+                
+                const success = await dataLoader.loadData();
+                console.log('loadData执行完成，结果:', success);
+                
+                if (success) {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = '✅ 主包JSON数据加载成功！';
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = '⚠️ 主包JSON加载失败，使用兜底数据';
+                }
+                
+                const quotes = dataLoader.getQuotes();
+                console.log('获取到的语录数据:', quotes);
+                
+                if (quotes && quotes.length > 0) {
+                    quotesContainer.innerHTML = '<h2>语录内容预览（前5条）：</h2>';
+                    
+                    quotes.slice(0, 5).forEach((quote, index) => {
+                        const quoteEl = document.createElement('div');
+                        quoteEl.className = 'quote-item';
+                        quoteEl.innerHTML = `
+                            <div class="quote-zh">${quote.content.zh || '无中文内容'}</div>
+                            <div class="quote-en">${quote.content.en || '无英文内容'}</div>
+                            <div class="quote-tags">
+                                ${(quote.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                            </div>
+                        `;
+                        quotesContainer.appendChild(quoteEl);
+                    });
+                    
+                    const summaryEl = document.createElement('div');
+                    summaryEl.innerHTML = `<p><strong>总计：${quotes.length} 条语录</strong></p>`;
+                    quotesContainer.appendChild(summaryEl);
+                } else {
+                    quotesContainer.innerHTML = '<p style="color: red;">❌ 未获取到任何语录数据</p>';
+                }
+                
+            } catch (error) {
+                console.error('数据加载测试失败:', error);
+                statusEl.className = 'status error';
+                statusEl.textContent = '❌ 数据加载测试失败: ' + error.message;
+            }
+        }
+        
+        // 页面加载完成后开始测试
+        window.addEventListener('load', testDataLoading);
+    </script>
+</body>
+</html>

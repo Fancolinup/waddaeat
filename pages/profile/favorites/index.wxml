@@ -12,13 +12,15 @@
         <view class="grid-item">
           <view class="fav-card">
             <view wx:if="{{item.type === 'vote'}}">
-              <view class="fav-type">【话题】</view>
+              <view class="fav-head">
+                <view class="fav-type">【话题】</view>
+                <view class="fav-choice-tag">{{ item.myOption ? ('我的选择：' + item.myOption) : '未选择' }}</view>
+              </view>
               <view class="fav-title">{{item.topic}}</view>
               <view class="vote-row">
                 <text class="opt">A. {{item.optionA}}</text>
                 <text class="opt">B. {{item.optionB}}</text>
               </view>
-              <view class="my-choice">{{ item.myOption ? ('我的选择：' + item.myOption) : '未选择' }}</view>
             </view>
             <view wx:if="{{item.type === 'quote'}}">
               <view class="fav-type">【语录】</view>

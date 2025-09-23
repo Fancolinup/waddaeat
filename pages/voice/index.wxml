@@ -3,9 +3,7 @@
 <view class="voice-container">
   <!-- 顶部导航区域 -->
   <view class="voice-header">
-    <view class="filter-btn" bindtap="onFilterTap">
-      <text>⚙️</text>
-    </view>
+    <!-- 筛选按钮已移除 -->
     <!-- 移除顶部分享按钮，避免与底部引导重复 -->
   </view>
 
@@ -44,7 +42,11 @@
 
           <!-- 语录卡片内容 -->
           <view wx:if="{{currentCard.type === 'quote'}}" class="quote-card">
-            <view class="quote-content">{{currentCard.content}}</view>
+            <view class="quote-content">
+              <text class="quote-zh">{{currentCard.content.zh}}</text>
+              <view class="quote-separator"></view>
+              <text class="quote-en">{{currentCard.content.en}}</text>
+            </view>
           </view>
 
           <!-- 投票卡片内容 -->
@@ -178,5 +180,6 @@
 </view>
 <view class="disabled-banner banner-mbti">
   <text class="icon">🧠</text>
-  <text class="msg">职场MBTI功能开发中，请期待</text>
+  <text class="msg">职场MBTI</text>
+  <text class="dev-tag">开发中</text>
 </view>

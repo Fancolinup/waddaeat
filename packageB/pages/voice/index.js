@@ -36,6 +36,9 @@ Page({
     const mode = options && options.mode ? options.mode : 'quote';
     const id = options && options.id ? options.id : null;
     this.setData({ currentMode: mode });
+
+    // 移除分包内容提供器注入，改为统一由 dataManager 读取主包 JSON/JS
+
     this.loadData(id);
 
     // 显示分享菜单（含朋友圈）
@@ -64,8 +67,15 @@ Page({
       const quotes = voiceData.quotes || [];
       const voteTopics = voiceData.topics || [];
       
+      // 规范化语录内容（兼容 {zh,en} 与字符串）
+      const normalizedQuotes = quotes.map(q => ({
+        ...q,
+        content: this.normalizeQuoteContentToString(q.content),
+        contentZhEn: this.normalizeQuoteContent(q.content)
+      }));
+      
       // 提取所有标签
-      const quoteTags = [...new Set(quotes.flatMap(q => q.tags || []))];
+      const quoteTags = [...new Set(normalizedQuotes.flatMap(q => q.tags || []))];
       const voteTags = [...new Set(voteTopics.flatMap(v => v.tags || []))];
       const allTags = [...new Set(['all', ...quoteTags, ...voteTags])];
       
@@ -74,7 +84,7 @@ Page({
       const readVotes = wx.getStorageSync('voice_read_votes') || [];
       
       this.setData({
-        quotes,
+        quotes: normalizedQuotes,
         voteTopics,
         availableTags: allTags,
         readQuotes,
@@ -86,7 +96,7 @@ Page({
       });
       
       console.log('职场嘴替数据加载完成:', {
-        quotes: quotes.length,
+        quotes: normalizedQuotes.length,
         voteTopics: voteTopics.length,
         tags: allTags.length
       });
@@ -469,5 +479,27 @@ Page({
       try { wx.setStorageSync(storageKey, list); } catch (e) { console.error('保存已读记录失败:', e); }
       this.setData({ [readKey]: list });
     }
+  },
+
+  // 归一化语录内容为 { zh, en }
+  normalizeQuoteContent: function(raw) {
+    if (raw && typeof raw === 'object') {
+      const zh = typeof raw.zh === 'string' ? raw.zh : '';
+      const en = typeof raw.en === 'string' ? raw.en : '';
+      return { zh, en };
+    }
+    if (typeof raw === 'string') {
+      return { zh: raw, en: '' };
+    }
+    return { zh: '', en: '' };
+  },
+
+  // 将语录内容归一化为字符串（优先中文）
+  normalizeQuoteContentToString: function(raw) {
+    if (raw && typeof raw === 'object') {
+      return typeof raw.zh === 'string' ? raw.zh : (typeof raw.en === 'string' ? raw.en : '');
+    }
+    if (typeof raw === 'string') return raw;
+    return '';
   }
 });

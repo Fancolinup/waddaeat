@@ -350,16 +350,35 @@ function generateFallbackRestaurants() {
 let __contentProvider = null; // 运行时注入的内容提供器（来自 packageB）
 let __providerReady = false;
 function setContentProvider(provider) {
-  __contentProvider = provider && typeof provider.getAppContent === 'function' ? provider : null;
+  const valid = provider && typeof provider.getAppContent === 'function' ? provider : null;
+  const changed = valid !== __contentProvider;
+  __contentProvider = valid;
   __providerReady = !!__contentProvider;
+  // 当提供器发生变化时，清空已缓存的应用内容，确保后续读取最新内容
+  if (changed) {
+    __cachedAppContent = null;
+  }
 }
 
-/**
- * 确保内容提供器已就绪
- * - 直接从主包的 Pilot dialogues.json 文件读取内容
- * @returns {Promise<boolean>} 是否就绪
- */
+// 优先尝试加载分包B的内容提供器（若存在）
+function tryLoadPackageBProvider() {
+  try {
+    // utils/dataManager.js 相对 packageB/content/index.js 的路径
+    const pkgBProvider = require('../packageB/content/index.js');
+    if (pkgBProvider && typeof pkgBProvider.getAppContent === 'function') {
+      setContentProvider(pkgBProvider);
+      console.log('[DataManager] 分包B内容提供器加载成功');
+      return true;
+    }
+  } catch (e) {
+    // 分包可能未被构建或路径不可达，忽略错误，走主包兜底
+  }
+  return false;
+}
 function ensureContentProviderReady(callback) {
+  // 强制清空缓存，确保重新加载
+  __cachedAppContent = null;
+  
   // 如果已经就绪，直接执行回调
   if (__providerReady && __contentProvider) {
     if (typeof callback === 'function') {
@@ -367,84 +386,92 @@ function ensureContentProviderReady(callback) {
     }
     return;
   }
-  
-  // 直接使用主包的 JS 模块作为内容提供器
-   try {
-     const pilotDialogues = require('../data/pilotDialogues.js');
-     const provider = {
-       getAppContent: () => {
-         return {
-           quotes: pilotDialogues.workQuotes || [],
-           topics: pilotDialogues.voteTopics || []
-         };
-       }
-     };
-     setContentProvider(provider);
-     console.log('[DataManager] 主包内容提供器加载成功');
-     if (typeof callback === 'function') {
-       callback(true);
-     }
-   } catch (error) {
-     console.error('[DataManager] 主包内容加载失败:', error);
-     if (typeof callback === 'function') {
-       callback(false);
-     }
-   }
+
+  // 使用主包 JS 包装模块优先读取 JSON（避免直接 require JSON 的兼容性问题）
+  try {
+    let content = null;
+    try {
+      const wrapped = require('../data/pilotDialoguesJson.js');
+      content = wrapped || null;
+      console.log('[DataManager] 包装模块加载结果:', content ? '成功' : '失败');
+      if (content && content.workQuotes) {
+        console.log('[DataManager] 语录数量:', content.workQuotes.length);
+        console.log('[DataManager] 第一条语录:', content.workQuotes[0] ? content.workQuotes[0].content : '无');
+      }
+    } catch (eWrapped) {
+      console.error('[DataManager] 包装模块加载异常:', eWrapped.message);
+      content = null;
+    }
+
+    if (!content || !content.workQuotes || content.workQuotes.length === 0) {
+      // 再次回退：使用主包 JS 模块作为兜底
+      console.log('[DataManager] 包装模块无效，回退到JS兜底');
+      const pilotDialogues = require('../data/pilotDialogues.js');
+      content = pilotDialogues || {};
+    }
+
+    const provider = {
+      getAppContent: () => ({
+        quotes: (content.workQuotes || []),
+        topics: (content.voteTopics || [])
+      })
+    };
+    setContentProvider(provider);
+    console.log('[DataManager] 主包内容提供器（通过 JS 包装 JSON）加载成功');
+    if (typeof callback === 'function') callback(true);
+  } catch (error) {
+    console.error('[DataManager] 主包内容加载失败:', error);
+    if (typeof callback === 'function') callback(false);
+  }
 }
 
 function getAppContent() {
   try {
+    // 强制清空缓存，确保获取最新内容
     if (__cachedAppContent) {
+      console.log('[DataManager] 使用缓存内容');
       return __cachedAppContent;
     }
-    
+
     // 如果内容提供器可用，使用它
     if (__contentProvider && typeof __contentProvider.getAppContent === 'function') {
       const content = __contentProvider.getAppContent();
       __cachedAppContent = content;
+      console.log('[DataManager] 通过内容提供器获取数据，语录数量:', (content.quotes || []).length);
       return content;
     }
-    
-    // 直接从主包JS模块读取
-     try {
-       const pilotDialogues = require('../data/pilotDialogues.js');
-       const fallbackContent = {
-         quotes: pilotDialogues.workQuotes || [],
-         topics: pilotDialogues.voteTopics || []
-       };
-       __cachedAppContent = fallbackContent;
-       return fallbackContent;
-     } catch (jsError) {
-       console.error('[DataManager] 读取主包JS模块失败:', jsError);
-      // 最终兜底数据
-      const emergencyContent = {
-        quotes: [
-          {
-            id: 1,
-            content: "工作是为了更好的生活，而不是让生活为工作服务。",
-            tags: ["工作生活平衡"]
-          },
-          {
-            id: 2,
-            content: "真正的职场智慧是知道什么时候说不。",
-            tags: ["职场智慧"]
-          }
-        ],
-        topics: [
-          {
-            id: 1,
-            topic: "你认为加班文化对职场发展有益吗？",
-            optionA: "有益，体现敬业精神",
-            optionB: "无益，影响工作效率",
-            tags: ["加班文化"]
-          }
-        ]
+
+    // 优先使用 JS 包装模块读取主包根目录 JSON
+    try {
+      const wrapped = require('../data/pilotDialoguesJson.js');
+      const content = {
+        quotes: (wrapped.workQuotes || []),
+        topics: (wrapped.voteTopics || [])
       };
-      __cachedAppContent = emergencyContent;
-      return emergencyContent;
+      __cachedAppContent = content;
+      console.log('[DataManager] 直接通过包装模块获取数据，语录数量:', content.quotes.length);
+      return content;
+    } catch (jsonErr) {
+      console.error('[DataManager] 包装模块获取失败:', jsonErr.message);
+      // 回退到主包 JS 模块
+      try {
+        const pilotDialogues = require('../data/pilotDialogues.js');
+        const fallbackContent = {
+          quotes: pilotDialogues.workQuotes || [],
+          topics: pilotDialogues.voteTopics || []
+        };
+        __cachedAppContent = fallbackContent;
+        console.log('[DataManager] 使用JS兜底数据，语录数量:', fallbackContent.quotes.length);
+        return fallbackContent;
+      } catch (jsError) {
+        console.error('[DataManager] 读取主包内容失败:', jsError);
+        const emergencyContent = { quotes: [], topics: [] };
+        __cachedAppContent = emergencyContent;
+        return emergencyContent;
+      }
     }
   } catch (error) {
-    console.error('[DataManager] 获取应用内容数据失败:', error);
+    console.error('[DataManager] 获取应用内容失败:', error);
     return { quotes: [], topics: [] };
   }
 }

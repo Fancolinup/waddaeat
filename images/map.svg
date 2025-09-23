@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="Map icon">
+  <g fill="#667788">
+    <!-- Map marker pin -->
+    <path d="M12 2c-3.31 0-6 2.69-6 6 0 4.97 6 12 6 12s6-7.03 6-12c0-3.31-2.69-6-6-6zm0 8.2c-1.22 0-2.2-.98-2.2-2.2S10.78 5.8 12 5.8s2.2.98 2.2 2.2-0.98 2.2-2.2 2.2z"/>
+    <!-- Small map tile under pin -->
+    <path d="M4 18.5l4-1.5 4 1.5 4-1.5 4 1.5v2L16 19l-4 1.5-4-1.5-4 1.5v-2z" opacity="0.7"/>
+  </g>
+</svg>

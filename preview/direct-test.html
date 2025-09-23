@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>直接JSON测试</title>
+</head>
+<body>
+    <h1>直接JSON访问测试</h1>
+    <div id="result">测试中...</div>
+    
+    <script>
+        console.log('=== 页面加载开始 ===');
+        
+        window.addEventListener('load', async function() {
+            console.log('=== 页面加载完成，开始测试 ===');
+            const resultEl = document.getElementById('result');
+            
+            try {
+                console.log('开始fetch请求...');
+                const response = await fetch('/Pilot%20dialogues.json');
+                console.log('fetch响应:', response.status, response.statusText);
+                
+                if (response.ok) {
+                    console.log('开始解析JSON...');
+                    const data = await response.json();
+                    console.log('JSON解析成功:', data);
+                    
+                    const quotesCount = data.workQuotes ? data.workQuotes.length : 0;
+                    resultEl.innerHTML = `✅ 成功！语录数量: ${quotesCount}`;
+                    
+                    if (quotesCount > 0) {
+                        console.log('第一条语录:', data.workQuotes[0]);
+                    }
+                } else {
+                    resultEl.innerHTML = `❌ HTTP错误: ${response.status}`;
+                }
+            } catch (error) {
+                console.error('测试失败:', error);
+                resultEl.innerHTML = `❌ 错误: ${error.message}`;
+            }
+        });
+        
+        console.log('=== 脚本加载完成 ===');
+    </script>
+</body>
+</html>

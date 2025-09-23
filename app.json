@@ -3,6 +3,7 @@
     "pages/loading/loading",
     "pages/index/index",
     "pages/voice/index",
+    "pages/test-voice/index",
     "pages/profile/profile",
     "pages/profile/selections/index",
     "pages/profile/favorites/index"

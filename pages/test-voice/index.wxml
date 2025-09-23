@@ -1,0 +1,35 @@
+<!-- 测试语录显示页面 -->
+<view class="test-container">
+  <view class="test-header">
+    <text class="test-title">语录数据测试</text>
+  </view>
+  
+  <view wx:if="{{isLoading}}" class="loading">
+    <text>加载中...</text>
+  </view>
+  
+  <view wx:else class="content">
+    <view class="stats">
+      <text>语录总数: {{quotesCount}}</text>
+      <text>话题总数: {{topicsCount}}</text>
+    </view>
+    
+    <view wx:if="{{currentQuote}}" class="quote-test">
+      <view class="quote-card-test">
+        <text class="quote-zh-test">{{currentQuote.content.zh}}</text>
+        <view class="separator-test"></view>
+        <text class="quote-en-test">{{currentQuote.content.en}}</text>
+      </view>
+      <button bindtap="nextQuote" class="next-btn">下一条语录</button>
+    </view>
+    
+    <view wx:if="{{currentTopic}}" class="topic-test">
+      <view class="topic-card-test">
+        <text class="topic-title">{{currentTopic.topic}}</text>
+        <text class="option-a">A: {{currentTopic.optionA}}</text>
+        <text class="option-b">B: {{currentTopic.optionB}}</text>
+      </view>
+      <button bindtap="nextTopic" class="next-btn">下一个话题</button>
+    </view>
+  </view>
+</view>

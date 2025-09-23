@@ -50,7 +50,7 @@
   display: flex;
   align-items: flex-start;  /* 改为顶部对齐，允许padding-top生效 */
   justify-content: center;
-  padding-top: 100rpx;    /* 上边距 - 现在可以正常调整卡片垂直位置 */
+  padding-top: 130rpx;    /* 上边距增加30rpx - 向下移动卡片位置 */
   padding-bottom: 20rpx; /* 下边距 - 调整此值控制卡片垂直位置 */
   padding-left: 40rpx;   /* 左边距 - 调整此值控制卡片水平位置 */
   padding-right: 30rpx;  /* 右边距 - 调整此值控制卡片水平位置 */
@@ -61,7 +61,7 @@
 
 .card-area {
   width: 100%;
-  height: 700rpx;
+  height: 840rpx;
   position: relative;
   display: flex;
   align-items: center;
@@ -149,11 +149,39 @@
   line-height: 1.7;
   color: rgba(255, 255, 255, 0.95);
   font-weight: 600;
-  margin: 1000rpx 0;
+  margin: 60rpx 0; /* 收敛文本上下间距，避免过大 */
   position: relative;
   text-align: center;
   padding: 0 30rpx;
   letter-spacing: 1rpx;
+}
+
+/* 中英文分行展示 */
+.quote-zh {
+  font-size: 42rpx; /* 中文字号 */
+  line-height: 1.8;
+  display: block;
+  font-weight: 600;
+}
+
+.quote-separator {
+  height: 30rpx; /* 中英文之间的空行间距 */
+  width: 100%;
+}
+
+.quote-en {
+  font-size: 32rpx; /* 英文字号比中文小 */
+  line-height: 1.6;
+  opacity: 0.88;
+  display: block;
+  font-weight: 400;
+  font-style: italic; /* 英文斜体显示 */
+}
+
+/* 去掉自动加的引号，以免影响两行布局 */
+.quote-content::before,
+.quote-content::after {
+  display: none;
 }
 
 .quote-content::before,
@@ -675,8 +703,10 @@
   }
   
   .quote-content {
-    font-size: 42rpx;
+    font-size: 40rpx;
   }
+  .quote-zh { font-size: 40rpx; }
+  .quote-en { font-size: 32rpx; }
   
   .vote-topic {
     font-size: 36rpx;
@@ -723,6 +753,8 @@
   color: rgba(255,255,255,0.85);
 }
 .share-hint-btn::after { display: none; }
-.disabled-banner{position:absolute;top:16rpx;left:16rpx;display:flex;align-items:center;background:#f0f3f6;color:#9aa8b5;border:1rpx dashed #c5d0da;border-radius:12rpx;padding:8rpx 12rpx;opacity:.9;z-index:40}
+.disabled-banner{position:absolute;top:16rpx;left:16rpx;display:flex;align-items:center;gap:8rpx;background:#f0f3f6;color:#9aa8b5;border:1rpx solid #c5d0da;border-radius:12rpx;padding:8rpx 12rpx;opacity:.9;z-index:40}
 .disabled-banner .icon{margin-right:8rpx}
+.disabled-banner .msg{font-size:22rpx}
+.disabled-banner .dev-tag{font-size:20rpx;color:#9aa8b5;background:rgba(154,168,181,.18);padding:4rpx 8rpx;border-radius:10rpx}
 .banner-mbti{z-index:40}

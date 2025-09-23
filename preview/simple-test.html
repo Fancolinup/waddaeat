@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>简单JSON测试</title>
+</head>
+<body>
+    <h1>JSON文件访问测试</h1>
+    <div id="result">测试中...</div>
+    
+    <script>
+        async function testJsonAccess() {
+            const resultEl = document.getElementById('result');
+            
+            try {
+                console.log('开始测试JSON文件访问...');
+                
+                // 测试不同的路径
+                const paths = [
+                    '/Pilot%20dialogues.json',
+                    '../Pilot%20dialogues.json',
+                    '/Pilot dialogues.json',
+                    'Pilot%20dialogues.json'
+                ];
+                
+                for (const path of paths) {
+                    try {
+                        console.log(`测试路径: ${path}`);
+                        const response = await fetch(path);
+                        console.log(`路径 ${path} 响应状态:`, response.status, response.statusText);
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            console.log(`成功加载 ${path}:`, data);
+                            resultEl.innerHTML = `✅ 成功！路径: ${path}<br>语录数量: ${data.workQuotes?.length || 0}`;
+                            return;
+                        }
+                    } catch (pathError) {
+                        console.error(`路径 ${path} 失败:`, pathError);
+                    }
+                }
+                
+                resultEl.innerHTML = '❌ 所有路径都失败了';
+                
+            } catch (error) {
+                console.error('测试失败:', error);
+                resultEl.innerHTML = '❌ 测试出错: ' + error.message;
+            }
+        }
+        
+        window.addEventListener('load', testJsonAccess);
+    </script>
+</body>
+</html>

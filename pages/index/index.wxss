@@ -4,7 +4,7 @@
   text-align: center; 
   font-size: 36rpx; 
   font-weight: 600; 
-  margin-top: 34rpx;    /* 顶部边距 - 下移 10rpx */
+  margin-top: 49rpx;    /* 顶部边距 - 下移 15rpx（由34rpx调整为49rpx） */
   margin-bottom: -100rpx;  /* 底部边距 - 可调整与转盘距离 */
   margin-left: 24rpx;   /* 左边距 */
   margin-right: 24rpx;  /* 右边距 */
@@ -35,7 +35,7 @@
   border: 8rpx solid #ffd700; /* 金色边框 */
   box-shadow: 
     0 20rpx 40rpx rgba(0,0,0,0.12),
-    inset 0 0 0 4rpx rgba(255,255,255,0.3),
+    inset 0 0 0 4rpx rgba(255,255,255,0.12),
     0 0 0 12rpx rgba(255,215,0,0.8); /* 外层金色光晕 */
 }
 
@@ -139,10 +139,10 @@
 /* 已移除 palette-c 与 palette-d （不再使用） */
 
 /* 右上角操作容器：配色 + 刷新 */
-.top-actions { position: absolute; right: -28rpx; top: -18rpx; /* 向上移动30rpx */ z-index: 5; display: flex; align-items: center; gap: 12rpx; }
-.top-actions .palette-switch { position: static; width: 56rpx; height: 56rpx; border-radius: 50%; background: rgba(255,255,255,0.85); box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; }
-.top-actions .palette-wheel { width: 32rpx; height: 32rpx; border-radius: 50%; background: conic-gradient(#ff4d4f, #ff7a45, #ffa940, #fadb14, #52c41a, #13c2c2, #1890ff, #2f54eb, #722ed1, #eb2f96, #ff4d4f); box-shadow: inset 0 0 0 4rpx rgba(255,255,255,0.85); }
-.refresh-switch { width: 44rpx; height: 44rpx; padding: 6rpx; border-radius: 50%; background: rgba(255,255,255,0.9); box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.12); }
+.top-actions { position: absolute; right: -28rpx; bottom: -18rpx; z-index: 5; display: flex; align-items: center; gap: 16rpx; }
+.top-actions .palette-switch { position: static; width: 64rpx; height: 64rpx; border-radius: 50%; background: rgba(255,255,255,0.9); box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; }
+.top-actions .palette-wheel { width: 40rpx; height: 40rpx; border-radius: 50%; background: conic-gradient(#ff4d4f, #ff7a45, #ffa940, #fadb14, #52c41a, #13c2c2, #1890ff, #2f54eb, #722ed1, #eb2f96, #ff4d4f); box-shadow: inset 0 0 0 4rpx rgba(255,255,255,0.85); }
+.refresh-switch { width: 52rpx; height: 52rpx; padding: 6rpx; border-radius: 50%; background: rgba(255,255,255,0.95); box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.12); }
 .refresh-switch:active { transform: scale(0.96) rotate(8deg); transition: transform .15s ease; }
 .palette-switch .icon { width: 40rpx; height: 40rpx; }
 .palette-wheel { width: 40rpx; height: 40rpx; border-radius: 50%; background: conic-gradient(#ff4d4f, #ff7a45, #ffa940, #fadb14, #52c41a, #13c2c2, #1890ff, #2f54eb, #722ed1, #eb2f96, #ff4d4f); box-shadow: inset 0 0 0 4rpx rgba(255,255,255,0.85); }
@@ -288,28 +288,11 @@
     inset 0 0 0 4rpx rgba(255,255,255,0.3),
     0 0 0 12rpx rgba(255,215,0,0.8); /* 外层金色光晕 */
 }
-.disabled-banner{position:absolute;left:12rpx;top:10rpx;z-index:6;display:flex;align-items:center;gap:8rpx;padding:8rpx 10rpx;border-radius:12rpx;background:rgba(255,255,255,.7);border:1rpx solid rgba(200,208,216,.7);box-shadow:0 6rpx 16rpx rgba(17,63,95,.08)}
- .disabled-banner .icon{font-size:24rpx;color:#777}
-  .banner-location{z-index:30}
-/* 标题艺术字支持（用于开始按钮文案） */
-.art-text{font-family:"SF Pro Display","Nunito","Lobster","PingFang SC",system-ui;letter-spacing:2rpx;font-weight:900;font-size:34rpx;color:#111;text-shadow:0 2rpx 6rpx rgba(0,0,0,.25),0 1rpx 0 rgba(255,255,255,.6)}
-
-/* 不同配色下的中心与边缘优化：跟随当前paletteKey */
-/* 默认A：深灰系使用金色中心，已定义，无需覆写 */
-/* 暖色B：中心偏暖金，边缘金色光晕已在样式中，保持 */
-.roulette-wheel.palette-b{border-color:#ffd36a;box-shadow:0 20rpx 40rpx rgba(0,0,0,0.12),inset 0 0 0 4rpx rgba(255,255,255,0.28),0 0 0 12rpx rgba(255,211,106,0.8)}
-/* 柔和F：中心用奶油黄，指针改为莓粉，边缘柔白 */
-.roulette-wheel.palette-f{border:8rpx solid #fff7d6;box-shadow:0 20rpx 40rpx rgba(0,0,0,0.08),inset 0 0 0 4rpx rgba(255,255,255,0.5)}
-.palette-f ~ .pointer{border-bottom-color:#ec4899}
-/* 高对比G：中心用亮银白，边缘电光蓝描边 */
-.roulette-wheel.palette-g{border:8rpx solid #e5e7eb;box-shadow:0 20rpx 40rpx rgba(0,0,0,0.2),inset 0 0 0 4rpx rgba(255,255,255,0.35),0 0 0 10rpx rgba(59,130,246,0.6)}
-.palette-g ~ .pointer{border-bottom-color:#f59e0b}
-
-/* 左上角定位开发中 Banner（参考职场嘴替MBTI） */
-.disabled-banner{position:absolute;left:12rpx;top:10rpx;z-index:6;display:flex;align-items:center;gap:8rpx;padding:8rpx 10rpx;border-radius:12rpx;background:rgba(255,255,255,.7);border:1rpx solid rgba(200,208,216,.7);box-shadow:0 6rpx 16rpx rgba(17,63,95,.08)}
-.disabled-banner .icon{font-size:24rpx;color:#777}
+.disabled-banner{position:absolute;left:12rpx;top:10rpx;z-index:6;display:flex;align-items:center;gap:8rpx;padding:8rpx 10rpx;border-radius:12rpx;background:rgba(240,243,246,.9);border:1rpx solid rgba(200,208,216,.7);box-shadow:0 6rpx 16rpx rgba(17,63,95,.08)}
+.disabled-banner .icon{width:24rpx;height:24rpx;margin-right:8rpx}
 .disabled-banner .msg{font-size:22rpx;color:#667788}
-.banner-location{position:absolute}
+.disabled-banner .dev-tag{font-size:20rpx;color:#9aa8b5;background:rgba(154,168,181,.18);padding:4rpx 8rpx;border-radius:10rpx}
+.banner-location{position:absolute;z-index:30}
 /* 移除虚线边框并缩小字体，统一美化 */
 
 /* 顶部分享区内部的旧位置删除，保留样式兼容 */
