@@ -198,8 +198,8 @@ Page({
     this.setData({
       cardX: deltaX,
       cardY: deltaY,
-      moveX: deltaX,
-      moveY: deltaY,
+      moveX: x || 0, // 记录实际触摸位置
+      moveY: y || 0, // 记录实际触摸位置
       isDragging: true,
       swipeDirection,
       cardRotate: rotate,
@@ -249,19 +249,23 @@ Page({
    * 卡片触摸结束事件
    */
   onCardTouchEnd: function() {
-    const { cardX, cardY } = this.data;
-    const threshold = 100; 
-
+    const { cardX, cardY, startX, startY, moveX, moveY } = this.data;
+    const threshold = 80; // 降低阈值，让卡片更容易触发滑出
+    
     this.setData({ isDragging: false });
-
+    
+    // 计算滑动速度（简单的速度估算）
+    const velocityX = (moveX - startX) * 0.1;
+    const velocityY = (moveY - startY) * 0.1;
+    
     if (Math.abs(cardX) > Math.abs(cardY)) {
       // 水平滑动优先
-      if (cardX <= -threshold) {
-        this.slideOutLeft();
+      if (cardX <= -threshold || velocityX < -5) {
+        this.slideOutWithMomentum('left', velocityX);
         return;
       }
-      if (cardX >= threshold) {
-        this.likeCard();
+      if (cardX >= threshold || velocityX > 5) {
+        this.slideOutWithMomentum('right', velocityX);
         return;
       }
     } else {
@@ -271,6 +275,105 @@ Page({
 
     // 回弹
     this.resetCardPosition();
+  },
+
+  /**
+   * 带惯性的卡片滑出动画
+   */
+  slideOutWithMomentum: function(direction, velocity) {
+    const { cardX, cardY, cardRotate } = this.data;
+    
+    // 计算最终位置（基于当前位置和速度）
+    const finalX = direction === 'left' ? 
+      Math.min(cardX - Math.abs(velocity) * 20 - 400, -600) : 
+      Math.max(cardX + Math.abs(velocity) * 20 + 400, 600);
+    
+    const finalRotate = direction === 'left' ? 
+      Math.min(cardRotate - 15, -25) : 
+      Math.max(cardRotate + 15, 25);
+    
+    console.log(`[Voice] 卡片向${direction === 'left' ? '左' : '右'}滑出，惯性速度:`, velocity);
+    
+    // 启用动画并设置最终位置
+    this.setData({
+      cardAnimation: true,
+      cardX: finalX,
+      cardY: cardY - 50, // 稍微向上移动
+      cardRotate: finalRotate,
+      cardScale: 0.8,
+      cardOpacity: 0
+    });
+    
+    // 等待动画完成后处理卡片切换
+    setTimeout(() => {
+      if (direction === 'left') {
+        this.handleCardSkip();
+      } else {
+        this.handleCardLike();
+      }
+    }, 400); // 增加动画时间
+  },
+
+  /**
+   * 处理卡片跳过（左滑）
+   */
+  handleCardSkip: function() {
+    console.log('[Voice] 处理卡片跳过');
+    this.nextCard();
+  },
+
+  /**
+   * 处理卡片点赞（右滑）
+   */
+  handleCardLike: function() {
+    const { currentCard } = this.data;
+    if (!currentCard || !currentCard.id) {
+      this.nextCard();
+      return;
+    }
+
+    console.log('[Voice] 处理卡片点赞:', currentCard.id);
+
+    try {
+      // 收藏逻辑：检查是否已收藏，避免重复
+      const userData = getUserData();
+      const favorites = userData.contentInteractions?.favorites || { quotes: [], votes: [] };
+      let alreadyFavorited = false;
+
+      if (currentCard.type === 'quote') {
+        alreadyFavorited = favorites.quotes.includes(currentCard.id);
+        if (!alreadyFavorited) {
+          favorites.quotes.push(currentCard.id);
+          addPoints('bookmark', currentCard.id);
+        }
+      } else if (currentCard.type === 'vote') {
+        const topicId = parseInt(currentCard.id.replace('vote_', ''));
+        const myOption = this.data.selectedOption || '';
+        alreadyFavorited = favorites.votes.some(v => v.id === topicId);
+        if (!alreadyFavorited) {
+          favorites.votes.push({ id: topicId, myOption });
+          addPoints('bookmark', currentCard.id);
+        }
+      }
+
+      // 更新收藏数据
+      if (!alreadyFavorited) {
+        updateUserData('contentInteractions.favorites', favorites);
+        console.log('[Voice] 已收藏卡片:', currentCard.id);
+      }
+    } catch (e) {
+      console.warn('[Voice] 点赞/收藏处理异常:', e);
+    }
+
+    // 显示点赞动画
+    this.setData({ showLikeAnimation: true });
+    
+    // 隐藏点赞动画
+    setTimeout(() => {
+      this.setData({ showLikeAnimation: false });
+    }, 1000);
+    
+    this.nextCard();
   },
 
   /**
@@ -582,14 +685,128 @@ Page({
     return { zh: '', en: '' };
   },
 
+  // 生成当前卡片的分享图片
+  generateCardShareImage: function(callback) {
+    const canvasId = 'shareCanvas';
+    const ctx = wx.createCanvasContext(canvasId, this);
+    const width = 750;
+    const height = 600;
+    
+    // 页面背景渐变（模拟职场嘴替页面背景）
+     const gradient = ctx.createLinearGradient(0, 0, width, height);
+     gradient.addColorStop(0, '#74b9ff');
+     gradient.addColorStop(0.5, '#0984e3');
+     gradient.addColorStop(1, '#6c5ce7');
+     ctx.setFillStyle(gradient);
+     ctx.fillRect(0, 0, width, height);
+     
+     // 卡片背景（使用与页面一致的玻璃效果背景色）
+     const cardPadding = 32;
+     ctx.setFillStyle('rgba(255, 255, 255, 0.18)');
+     ctx.fillRect(cardPadding, cardPadding + 40, width - cardPadding * 2, height - cardPadding * 2 - 40);
+     
+     // 卡片边框
+     ctx.setStrokeStyle('rgba(255, 255, 255, 0.35)');
+     ctx.setLineWidth(2);
+     ctx.strokeRect(cardPadding, cardPadding + 40, width - cardPadding * 2, height - cardPadding * 2 - 40);
+    
+    // 标题
+     ctx.setFillStyle('rgba(255, 255, 255, 0.95)');
+     ctx.setFontSize(28);
+     ctx.setTextAlign('left');
+     ctx.fillText('职场嘴替', cardPadding, 40);
+     
+     // 内容区域
+     const contentAreaX = cardPadding + 24;
+     const contentAreaY = cardPadding + 40 + 40;
+     const contentAreaW = width - (cardPadding + 24) * 2;
+     
+     const currentCard = this.data.currentCard;
+     
+     if (currentCard.type === 'quote') {
+       // 语录内容
+       ctx.setFillStyle('rgba(255, 255, 255, 0.95)');
+       ctx.setFontSize(36);
+       const quoteText = `"${currentCard.content.zh}"`;
+       this.drawWrappedText(ctx, quoteText, contentAreaX, contentAreaY, contentAreaW, 54, 4);
+       
+       // 英文内容
+       ctx.setFillStyle('rgba(255, 255, 255, 0.7)');
+       ctx.setFontSize(24);
+       this.drawWrappedText(ctx, currentCard.content.en, contentAreaX, contentAreaY + 4 * 54 + 20, contentAreaW, 36, 3);
+     } else {
+       // 投票话题
+       ctx.setFillStyle('rgba(255, 255, 255, 0.95)');
+       ctx.setFontSize(32);
+       this.drawWrappedText(ctx, currentCard.topic, contentAreaX, contentAreaY, contentAreaW, 48, 3);
+       
+       // 投票选项
+       ctx.setFontSize(24);
+       ctx.setFillStyle('rgba(255, 255, 255, 0.85)');
+       const optionY = contentAreaY + 3 * 48 + 30;
+       ctx.fillText(`A. ${currentCard.optionA}`, contentAreaX, optionY);
+       ctx.fillText(`B. ${currentCard.optionB}`, contentAreaX, optionY + 40);
+     }
+     
+     // 底部署名
+     ctx.setFillStyle('rgba(255, 255, 255, 0.6)');
+     ctx.setFontSize(22);
+     ctx.fillText('来自 Eatigo · 职场嘴替', width - cardPadding - 260, height - 16);
+    
+    ctx.draw(false, () => {
+      wx.canvasToTempFilePath({
+        canvasId,
+        quality: 1,
+        fileType: 'jpg',
+        success: (res) => {
+          callback && callback(null, res.tempFilePath);
+        },
+        fail: (err) => {
+          callback && callback(err);
+        }
+      }, this);
+    });
+  },
+
+  // 文本换行绘制辅助函数
+  drawWrappedText: function(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+    const words = text.split('');
+    let line = '';
+    let lineCount = 0;
+    
+    for (let i = 0; i < words.length && lineCount < maxLines; i++) {
+      const testLine = line + words[i];
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width > maxWidth && line !== '') {
+        ctx.fillText(line, x, y + lineCount * lineHeight);
+        line = words[i];
+        lineCount++;
+      } else {
+        line = testLine;
+      }
+    }
+    
+    if (lineCount < maxLines && line !== '') {
+      ctx.fillText(line, x, y + lineCount * lineHeight);
+    }
+  },
+
   onShareAppMessage: function() {
     const promise = new Promise(resolve => {
       try { addPoints && addPoints('share'); } catch (e) { console.warn('addPoints share error', e); }
-      setTimeout(() => {
-        resolve({
-          title: '这简直是我的职场嘴替！'
-        });
-      }, 10);
+      // 尝试生成当前卡片的完整截图
+      this.generateCardShareImage((err, path) => {
+        if (err) {
+          // 截图失败时仅返回文案
+          resolve({ title: '这简直是我的职场嘴替！' });
+        } else {
+          resolve({ 
+            title: '这简直是我的职场嘴替！',
+            imageUrl: path 
+          });
+        }
+      });
     });
     return {
       title: '这简直是我的职场嘴替！',

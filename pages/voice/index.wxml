@@ -178,6 +178,10 @@
     </view>
   </view>
 </view>
+
+<!-- 隐藏的Canvas用于生成分享图片 -->
+<canvas canvas-id="shareCanvas" style="position: fixed; top: -9999px; left: -9999px; width: 750px; height: 600px;"></canvas>
+
 <view class="disabled-banner banner-mbti">
   <text class="icon">🧠</text>
   <text class="msg">职场MBTI</text>

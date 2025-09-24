@@ -66,9 +66,9 @@
 .share-icon{display:none}
 .share-icon-css{width:36rpx;height:36rpx;margin-right:12rpx;position:relative}
 .share-icon-css::before, .share-icon-css::after{content:"";position:absolute;left:0;top:0;right:0;bottom:0;margin:auto}
-/* 气泡对话框式分享icon：圆+箭头 */
-.share-icon-css::before{width:30rpx;height:30rpx;border-radius:50%;background:linear-gradient(135deg,#4f9ef8,#86b6ff);box-shadow:inset 0 0 0 3rpx rgba(255,255,255,.6)}
-.share-icon-css::after{width:0;height:0;border-left:8rpx solid #86b6ff;border-top:8rpx solid transparent;border-bottom:8rpx solid transparent;transform:translate(18rpx,2rpx) rotate(20deg)}
+/* 链接符号icon：两个相连的圆环 */
+.share-icon-css::before{width:16rpx;height:16rpx;border:4rpx solid #86b6ff;border-radius:50%;transform:translate(-4rpx,6rpx)}
+.share-icon-css::after{width:16rpx;height:16rpx;border:4rpx solid #86b6ff;border-radius:50%;transform:translate(8rpx,-10rpx)}
 .share-text{font-size:30rpx;font-weight:700}
 
 /* 收藏浮层 */
@@ -82,6 +82,6 @@
 .fav-type{font-size:20rpx;color:#7c8e9f}
 .fav-title{margin-top:6rpx;font-size:26rpx;color:#0f2a3a}
 .fav-sub{margin-top:4rpx;color:#6b7b8a;font-size:22rpx}
-.disabled-card{background:#f0f3f6;color:#9aa8b5;border:1rpx dashed #c5d0da}
+.disabled-card{background:#f0f3f6;color:#9aa8b5;border:1rpx solid #c5d0da}
 .disabled-card .card-title{color:#8a9aa8}
 .disabled-card .card-desc{color:#9aa8b5}

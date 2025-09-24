@@ -44,7 +44,7 @@
   <!-- 决策浮层 -->
   <view class="decision-layer" wx:if="{{showDecisionLayer}}">
     <view class="dl-body">
-      <image class="dl-logo" src="{{selected ? selected.icon : '/packageA/images/FullRest/placeholder.png'}}" mode="aspectFill" />
+      <image class="dl-logo" src="{{selected ? selected.icon : placeholderImageUrl}}" mode="aspectFill" binderror="onSelectedLogoError" />
       <view class="dl-info">
         <view class="dl-name">{{selected && selected.name}}</view>
         <view class="dl-type">{{selected && (selected.type || '餐厅')}}</view>
@@ -63,7 +63,7 @@
     <view class="short-title">备选清单</view>
     <view class="short-grid short-grid-3">
       <block wx:for="{{shortlist}}" wx:key="id">
-        <view class="short-slot filled" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onTapShortlistCard">
+        <view class="short-slot filled {{activeShortlistId === item.id ? 'selected' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onTapShortlistCard">
           <image class="short-img" src="{{item.icon}}" mode="scaleToFill" />
           <text class="short-remove" data-id="{{item.id}}" catchtap="onRemoveShort">×</text>
         </view>
@@ -78,7 +78,7 @@
   <view class="share-bar">
     <view class="share-content">
       <text class="share-title">转发好友，一起决策</text>
-      <text class="share-text" wx:if="{{showShareArea}}">{{shareText}}</text>
+      <text class="share-text">{{shareText}}</text>
     </view>
     <view class="share-actions">
        <image class="icon-btn" src="/images/copy.svg" catchtap="onCopyShare" />

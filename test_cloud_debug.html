@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>云存储调试页面</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .test-image { margin: 10px; padding: 10px; border: 1px solid #ccc; }
+        .test-image img { width: 60px; height: 60px; margin-right: 10px; }
+        .error { color: red; }
+        .success { color: green; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>云存储图片调试</h1>
+    
+    <div class="debug-section">
+        <h2>云存储配置信息</h2>
+        <div id="config-info"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>图片加载测试</h2>
+        <div id="image-tests"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>控制台日志</h2>
+        <div id="console-logs"></div>
+    </div>
+    
+    <script>
+        // 模拟小程序环境的cloudImageManager
+        class CloudImageManager {
+            constructor() {
+                this.cloudBase = 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/';
+                this.log('CloudImageManager初始化，云存储基础路径:', this.cloudBase);
+            }
+            
+            getCloudImageUrl(imageName, extension = 'png') {
+                if (!imageName || imageName === 'placeholder') {
+                    const url = `${this.cloudBase}placeholder.${extension}`;
+                    this.log('获取placeholder图片URL:', url);
+                    return url;
+                }
+                
+                const url = `${this.cloudBase}${imageName}.${extension}`;
+                this.log('获取图片URL:', imageName, '->', url);
+                return url;
+            }
+            
+            log(...args) {
+                console.log('[CloudImageManager]', ...args);
+                this.addToConsoleLog('[CloudImageManager] ' + args.join(' '));
+            }
+            
+            addToConsoleLog(message) {
+                const logsDiv = document.getElementById('console-logs');
+                const logEntry = document.createElement('div');
+                logEntry.innerHTML = `<span class="info">${new Date().toLocaleTimeString()}</span> ${message}`;
+                logsDiv.appendChild(logEntry);
+            }
+        }
+        
+        const cloudImageManager = new CloudImageManager();
+        
+        // 显示配置信息
+        function showConfigInfo() {
+            const configDiv = document.getElementById('config-info');
+            configDiv.innerHTML = `
+                <p><strong>云环境ID:</strong> cloud1-4gw154ajfc4d5163</p>
+                <p><strong>云存储基础路径:</strong> ${cloudImageManager.cloudBase}</p>
+                <p><strong>当前时间:</strong> ${new Date().toLocaleString()}</p>
+            `;
+        }
+        
+        // 测试图片加载
+        function testImages() {
+            const testData = {
+                '肯德基': 'kendeji',
+                '海底捞': 'haidilao', 
+                '星巴克': 'xingbake',
+                '麦当劳': 'maidanglao',
+                '占位图': 'placeholder'
+            };
+            
+            const testsDiv = document.getElementById('image-tests');
+            
+            Object.entries(testData).forEach(([name, pinyin]) => {
+                const testDiv = document.createElement('div');
+                testDiv.className = 'test-image';
+                testDiv.innerHTML = `
+                    <strong>${name} (${pinyin})</strong><br>
+                    <span id="status-${pinyin}">测试中...</span><br>
+                    <span id="url-${pinyin}"></span>
+                `;
+                testsDiv.appendChild(testDiv);
+                
+                const url = cloudImageManager.getCloudImageUrl(pinyin);
+                document.getElementById(`url-${pinyin}`).innerHTML = `URL: <code>${url}</code>`;
+                
+                const img = new Image();
+                img.onload = function() {
+                    document.getElementById(`status-${pinyin}`).innerHTML = '<span class="success">✓ 加载成功</span>';
+                    testDiv.insertBefore(img, testDiv.firstChild);
+                    img.style.width = '60px';
+                    img.style.height = '60px';
+                    img.style.marginRight = '10px';
+                    cloudImageManager.log(`图片加载成功: ${name} (${pinyin})`);
+                };
+                
+                img.onerror = function(e) {
+                    document.getElementById(`status-${pinyin}`).innerHTML = '<span class="error">✗ 加载失败</span>';
+                    cloudImageManager.log(`图片加载失败: ${name} (${pinyin})`, e);
+                };
+                
+                img.src = url;
+            });
+        }
+        
+        // 页面加载完成后执行测试
+        window.onload = function() {
+            showConfigInfo();
+            testImages();
+        };
+    </script>
+</body>
+</html>

@@ -1927,11 +1927,14 @@ const pinyinMap = {
     "蜀大侠": "shudaxia",
     "麦当劳": "maidanglao"
 };
-const __logoBase = '/packageA/images/FullRest/';
+// 引入云图片管理器
+const { cloudImageManager } = require('./utils/cloudImageManager.js');
+
 if (typeof data !== 'undefined' && data && Array.isArray(data.restaurants)) {
   data.restaurants = data.restaurants.map(item => {
     const slug = (typeof pinyinMap === 'object' && pinyinMap) ? pinyinMap[item.name] : null;
-    item.logoUrl = `${__logoBase}${slug || 'placeholder'}.png`;
+    // 使用云图片管理器获取图片URL
+    item.logoUrl = cloudImageManager.getCloudImageUrl(slug || 'placeholder');
     return item;
   });
 }

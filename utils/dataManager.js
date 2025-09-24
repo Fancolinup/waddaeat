@@ -317,6 +317,67 @@ function getRestaurantData() {
 }
 
 /**
+ * 获取包含用户手动添加餐厅的完整餐厅数据
+ * - 合并静态餐厅数据和用户手动添加的餐厅
+ * - 用于推荐算法，确保用户添加的餐厅能参与推荐
+ * @returns {Object} 包含所有餐厅的数据对象
+ */
+function getCompleteRestaurantData() {
+  try {
+    // 获取静态餐厅数据
+    const staticData = getRestaurantData();
+    const staticRestaurants = staticData && Array.isArray(staticData.restaurants) 
+      ? staticData.restaurants 
+      : [];
+    
+    // 获取用户数据，查找手动添加的餐厅
+    const userData = getUserData();
+    const userAddedRestaurants = [];
+    
+    // 从welcomeSelections中提取用户添加的餐厅
+    if (Array.isArray(userData.welcomeSelections)) {
+      userData.welcomeSelections.forEach(restaurantId => {
+        if (typeof restaurantId === 'string' && restaurantId.startsWith('user_added_')) {
+          // 提取餐厅名称（去掉user_added_前缀）
+          const restaurantName = restaurantId.replace('user_added_', '');
+          
+          // 检查是否已存在同名餐厅
+          const existingRestaurant = staticRestaurants.find(r => 
+            (r.name || r.brand || r.title) === restaurantName
+          );
+          
+          if (!existingRestaurant) {
+            // 创建用户添加的餐厅对象
+            userAddedRestaurants.push({
+              id: restaurantId,
+              name: restaurantName,
+              category: '用户添加',
+              rating: 0,
+              basePreferenceScore: 9, // 用户添加的餐厅默认高分
+              userAdded: true
+            });
+            console.log(`[DataManager] 添加用户餐厅到推荐列表: ${restaurantName} (ID: ${restaurantId})`);
+          }
+        }
+      });
+    }
+    
+    // 合并静态餐厅和用户添加的餐厅
+    const allRestaurants = [...staticRestaurants, ...userAddedRestaurants];
+    
+    console.log(`[DataManager] 完整餐厅数据: 静态餐厅${staticRestaurants.length}个, 用户添加${userAddedRestaurants.length}个, 总计${allRestaurants.length}个`);
+    
+    return {
+      ...staticData,
+      restaurants: allRestaurants
+    };
+  } catch (error) {
+    console.error('[DataManager] 获取完整餐厅数据失败:', error);
+    return getRestaurantData(); // 降级到静态数据
+  }
+}
+
+/**
  * 兜底餐厅数据（最小可用，避免页面崩溃）
  */
 function generateFallbackRestaurants() {
@@ -579,6 +640,7 @@ module.exports = {
   updateUserData,
   addDecisionRecord,
   getRestaurantData,
+  getCompleteRestaurantData,
   getAppContent,
   setContentProvider,
   ensureContentProviderReady,

@@ -1,5 +1,7 @@
 // pages/welcome/welcome.js
 // 新用户欢迎页面 - 品牌选择
+const { cloudImageManager } = require('../../../utils/cloudImageManager');
+
 Page({
   data: {
     restaurants: [], // 餐厅数据
@@ -293,17 +295,17 @@ Page({
   getRestaurantLogo: function (restaurantName) {
     const pinyin = this.data.pinyinMap[restaurantName];
     if (!pinyin || pinyin === 'placeholder') {
-      return '/packageA/images/FullRest/placeholder.png';
+      return cloudImageManager.getCloudImageUrl('placeholder');
     }
     const aIcons = this.getPackageAFullIcons();
     if (aIcons.includes(pinyin)) {
-      return `/packageA/images/FullRest/${pinyin}.png`;
+      return cloudImageManager.getCloudImageUrl(pinyin);
     }
     const bIcons = this.getPackageBFullIcons();
     if (bIcons.includes(pinyin)) {
-      return `/packageA/images/FullRest/${pinyin}.png`;
+      return cloudImageManager.getCloudImageUrl(pinyin);
     }
-    return '/packageA/images/FullRest/placeholder.png';
+    return cloudImageManager.getCloudImageUrl('placeholder');
   },
 
   // 获取分包高清品牌图路径（与 getRestaurantLogo 一致）
@@ -381,24 +383,24 @@ Page({
 
   // 实际添加自定义餐厅逻辑
   addCustomRestaurant: function (restaurantName) {
-    const newId = this.data.restaurants.length > 0 ? (Number(this.data.restaurants[this.data.restaurants.length - 1].id) || this.data.restaurants.length + 1) : 1;
-    const sid = String(newId);
+    // 使用user_added_前缀确保能被正确识别为用户添加的餐厅
+    const userAddedId = `user_added_${restaurantName}`;
     const newRestaurant = {
-      id: newId,
-      sid,
+      id: userAddedId,
+      sid: userAddedId,
       name: restaurantName,
       category: '自定义',
       rating: 0,
-      logoPath: '/packageA/images/FullRest/placeholder.png',
-      hdLogoPath: '/packageA/images/FullRest/placeholder.png',
+      logoPath: cloudImageManager.getCloudImageUrl('placeholder'),
+      hdLogoPath: cloudImageManager.getCloudImageUrl('placeholder'),
       selected: true
     };
     const updatedRestaurants = [...this.data.restaurants, newRestaurant];
 
     // 新增项目默认选中，同时同步 selectedRestaurants
     const updatedSelectedRestaurants = this.data.selectedRestaurants.slice();
-    if (!updatedSelectedRestaurants.includes(sid)) {
-      updatedSelectedRestaurants.push(sid);
+    if (!updatedSelectedRestaurants.includes(userAddedId)) {
+      updatedSelectedRestaurants.push(userAddedId);
     }
 
     this.setData({
@@ -430,18 +432,18 @@ Page({
 
     if (pinyin) {
       if (item.logoPath.indexOf('/packageA/') === 0 && bIcons.includes(pinyin)) {
-        item.logoPath = `/packageA/images/FullRest/${pinyin}.png`;
+        item.logoPath = cloudImageManager.getCloudImageUrl(pinyin);
       } else if (item.logoPath.indexOf('/packageB/') === 0 && aIcons.includes(pinyin)) {
-        item.logoPath = `/packageA/images/FullRest/${pinyin}.png`;
+        item.logoPath = cloudImageManager.getCloudImageUrl(pinyin);
       } else if (aIcons.includes(pinyin)) {
-        item.logoPath = `/packageA/images/FullRest/${pinyin}.png`;
+        item.logoPath = cloudImageManager.getCloudImageUrl(pinyin);
       } else if (bIcons.includes(pinyin)) {
-        item.logoPath = `/packageA/images/FullRest/${pinyin}.png`;
+        item.logoPath = cloudImageManager.getCloudImageUrl(pinyin);
       } else {
-        item.logoPath = '/packageA/images/FullRest/placeholder.png';
+        item.logoPath = cloudImageManager.getCloudImageUrl('placeholder');
       }
     } else {
-      item.logoPath = '/packageA/images/FullRest/placeholder.png';
+      item.logoPath = cloudImageManager.getCloudImageUrl('placeholder');
     }
 
     restaurants[idx] = item;

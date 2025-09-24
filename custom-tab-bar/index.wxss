@@ -1,6 +1,13 @@
 .tabbar { position: fixed; left: 0; right: 0; bottom: 0; height: 120rpx; background: #ffffff; box-shadow: 0 -8rpx 20rpx rgba(0,0,0,0.06); display: flex; z-index: 99; padding: 0 16rpx; }
 .tab-item { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 6rpx; }
-.icon { width: 56rpx; height: 56rpx; }
+.icon { 
+  width: 56rpx; 
+  height: 56rpx; 
+  transition: none;
+  opacity: 1;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
 .text { font-size: 22rpx; }
 .divider { width: 1rpx; height: 60rpx; align-self: center; background: rgba(0,0,0,0.08); border-radius: 1rpx; }
 

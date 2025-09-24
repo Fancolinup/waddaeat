@@ -116,11 +116,44 @@ Page({
 
   // 分享
   onShareAppMessage() {
+    const promise = new Promise(resolve => {
+      try { addPoints('share', 'profile_share'); this.refreshStats(); } catch (e) {}
+      
+      // 个人页面分享时，先跳转到今日选择页，然后截取转盘
+      wx.switchTab({
+        url: '/pages/index/index',
+        success: () => {
+          // 延迟一下确保页面加载完成
+          setTimeout(() => {
+            const pages = getCurrentPages();
+            const indexPage = pages.find(page => page.route === 'pages/index/index');
+            
+            if (indexPage && indexPage.captureRouletteArea) {
+              indexPage.captureRouletteArea().then(imagePath => {
+                resolve({ 
+                  title: '让它来决定吧！',
+                  imageUrl: imagePath 
+                });
+              }).catch(() => {
+                resolve({ title: '让它来决定吧！' });
+              });
+            } else {
+              resolve({ title: '让它来决定吧！' });
+            }
+          }, 500);
+        },
+        fail: () => {
+          // 跳转失败时仅返回文案
+          resolve({ title: '让它来决定吧！' });
+        }
+      });
+    });
+    
     return {
-      title: '我的个人中心',
-      path: '/pages/profile/profile',
-      success: () => { try { addPoints('share', 'profile_share'); this.refreshStats(); } catch (e) {} }
-    }
+      title: '让它来决定吧！',
+      path: '/pages/index/index',
+      promise
+    };
   },
 
   onShareTimeline() {

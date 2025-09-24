@@ -15,13 +15,13 @@
 
 .actions{margin-top:24rpx;}
 /* 添加品牌按钮：虚线+圆角 */
-.add-btn{background:#fff;border:2rpx dashed #bbb;color:#555;border-radius:16rpx;padding:18rpx 20rpx;font-size:26rpx;}
+.add-btn{background:#fff;border:2rpx solid #bbb;color:#555;border-radius:16rpx;padding:18rpx 20rpx;font-size:26rpx;}
 .add-btn:active{opacity:.85}
 
 /* 历史区块 */
 .history-section{margin-top:28rpx}
 .section-title{font-size:34rpx;font-weight:600;color:#333;margin-bottom:12rpx}
-.history-list{display:flex;flex-direction:column;gap:12rpx}
+.history-list{display:flex;flex-direction:column;gap:12rpx;max-height:600rpx;overflow-y:auto}
 .history-item{display:flex;align-items:center;background:#fff;border-radius:14rpx;padding:14rpx 16rpx;box-shadow:0 6rpx 16rpx rgba(0,0,0,.04)}
 .h-logo{width:56rpx;height:56rpx;border-radius:12rpx;background:#f2f2f2;margin-right:12rpx}
 .h-info{display:flex;flex-direction:column}

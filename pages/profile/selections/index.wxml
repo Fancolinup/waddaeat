@@ -1,7 +1,8 @@
 <view class="selections-page">
   <view class="header">
-    <text class="title">我的偏爱</text>
+    <text class="title">我的选择</text>
   </view>
+
 
   <view class="tip">点击气泡可切换选中，右上角可删除。可添加自定义品牌。</view>
 

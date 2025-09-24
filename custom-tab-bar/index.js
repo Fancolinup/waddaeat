@@ -23,9 +23,49 @@ Component({
         text: '个人'
       }
     ],
-    switching: false // 防止重复点击
+    switching: false, // 防止重复点击
+    imagesLoaded: false // 图片预加载状态
+  },
+  
+  lifetimes: {
+    attached() {
+      // 预加载所有图片资源，防止切换时闪烁
+      this.preloadImages();
+    }
   },
   methods: {
+    // 预加载所有tabBar图片资源
+    preloadImages() {
+      const allImages = [];
+      this.data.list.forEach(item => {
+        allImages.push(item.iconPath, item.selectedIconPath);
+      });
+      
+      let loadedCount = 0;
+      const totalCount = allImages.length;
+      
+      allImages.forEach(src => {
+        // 使用小程序的图片预加载API
+        wx.getImageInfo({
+          src: src,
+          success: () => {
+            loadedCount++;
+            if (loadedCount === totalCount) {
+              this.setData({ imagesLoaded: true });
+              console.log('[TabBar] 所有图片预加载完成');
+            }
+          },
+          fail: () => {
+            loadedCount++;
+            if (loadedCount === totalCount) {
+              this.setData({ imagesLoaded: true });
+              console.log('[TabBar] 图片预加载完成（部分失败）');
+            }
+          }
+        });
+      });
+    },
+    
     switchTab(e) {
       const { index, path } = e.currentTarget.dataset;
       
@@ -36,7 +76,7 @@ Component({
       
       this.setData({ switching: true });
       
-      // 立即设置选中状态
+      // 立即更新选中状态，避免延迟导致的闪烁
       this.setData({ selected: index });
       
       wx.switchTab({ 
@@ -45,7 +85,7 @@ Component({
           // 延迟重置switching状态，确保页面切换完成
           setTimeout(() => {
             this.setData({ switching: false });
-          }, 300);
+          }, 100);
         },
         fail: () => {
           // 切换失败时恢复状态

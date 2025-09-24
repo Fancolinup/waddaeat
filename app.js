@@ -1,6 +1,15 @@
 // app.js
 App({
   onLaunch() {
+    //初始云开发环境
+    if (wx.cloud) {
+      wx.cloud.init({
+        // 替换为你的云环境 ID，可以在云控制台查看
+        env: 'cloud1-4gw154ajfc4d5163',
+        traceUser: true, // 可选，是否记录用户访问
+      });
+    }
+    
     // 展示本地存储能力
     const logs = wx.getStorageSync('logs') || []
     logs.unshift(Date.now())

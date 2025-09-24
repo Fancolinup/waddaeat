@@ -7,7 +7,7 @@
 
 const { getCurrentRestaurantScore } = require('./scoringManager');
 const { calculatePreferenceScore } = require('./preferenceLearner');
-const { getRestaurantData } = require('./dataManager');
+const { getCompleteRestaurantData } = require('./dataManager');
 
 /**
  * 生成个性化餐厅推荐
@@ -23,8 +23,8 @@ function generateRecommendations(userData, count = 5) {
       return [];
     }
 
-    // 获取餐厅数据（注意：getRestaurantData 返回的是对象，包含 restaurants 数组）
-    const data = getRestaurantData();
+    // 获取完整餐厅数据（包含静态餐厅和用户手动添加的餐厅）
+    const data = getCompleteRestaurantData();
     const restaurants = data && Array.isArray(data.restaurants)
       ? data.restaurants
       : (Array.isArray(data) ? data : []);
@@ -54,6 +54,19 @@ function generateRecommendations(userData, count = 5) {
         const normalizedPreferenceScore = preferenceScore / 10;
         const normalizedFinalScore = finalScore / 10;
 
+        // 详细调试日志：餐厅类型识别和分数计算详情
+        const isUserAdded = String(restaurant.id).startsWith('user_added_');
+        const isWelcomeSelection = userData.welcomeSelections && userData.welcomeSelections.includes(String(restaurant.id));
+        const hasUserScore = userData.restaurantScores && userData.restaurantScores[restaurant.id] !== undefined;
+        
+        console.log(`[推荐算法] 餐厅: ${restaurant.name} (ID: ${restaurant.id})`);
+        console.log(`  - 用户添加: ${isUserAdded}`);
+        console.log(`  - 欢迎页选择: ${isWelcomeSelection}`);
+        console.log(`  - 用户已评分: ${hasUserScore} ${hasUserScore ? `(${userData.restaurantScores[restaurant.id]})` : ''}`);
+        console.log(`  - 特定评分: ${specificScore.toFixed(2)} (权重: ${W1.toFixed(2)})`);
+        console.log(`  - 偏好匹配: ${preferenceScore.toFixed(2)} (权重: ${W2.toFixed(2)})`);
+        console.log(`  - 最终分数: ${finalScore.toFixed(2)} = ${specificScore.toFixed(2)} × ${W1.toFixed(2)} + ${preferenceScore.toFixed(2)} × ${W2.toFixed(2)}`);
+
         return {
           ...restaurant,
           recommendationScore: finalScore,
@@ -61,7 +74,14 @@ function generateRecommendations(userData, count = 5) {
           preferenceScore,
           normalizedSpecificScore,
           normalizedPreferenceScore,
-          normalizedFinalScore
+          normalizedFinalScore,
+          // 调试信息
+          debugInfo: {
+            isUserAdded,
+            isWelcomeSelection,
+            hasUserScore,
+            userScore: hasUserScore ? userData.restaurantScores[restaurant.id] : null
+          }
         };
       } catch (error) {
         console.error(`计算餐厅 ${restaurant.id} 推荐分数时出错:`, error);
@@ -72,7 +92,14 @@ function generateRecommendations(userData, count = 5) {
           preferenceScore: 5,
           normalizedSpecificScore: 0.5,
           normalizedPreferenceScore: 0.5,
-          normalizedFinalScore: 0.5
+          normalizedFinalScore: 0.5,
+          debugInfo: {
+            isUserAdded: false,
+            isWelcomeSelection: false,
+            hasUserScore: false,
+            userScore: null,
+            error: error.message
+          }
         };
       }
     });
@@ -83,10 +110,19 @@ function generateRecommendations(userData, count = 5) {
     // 返回指定数量的推荐结果
     const recommendations = scoredRestaurants.slice(0, count);
     
-    console.log(`生成 ${recommendations.length} 个推荐餐厅`);
+    console.log(`\n[推荐算法] 生成 ${recommendations.length} 个推荐餐厅 (按分数排序):`);
     recommendations.forEach((restaurant, index) => {
-      console.log(`推荐 ${index + 1}: ${restaurant.name} - 总分: ${restaurant.recommendationScore.toFixed(2)} (评分: ${restaurant.specificScore.toFixed(2)}, 偏好: ${restaurant.preferenceScore.toFixed(2)})`);
+      const debug = restaurant.debugInfo;
+      const typeInfo = [];
+      if (debug.isUserAdded) typeInfo.push('用户添加');
+      if (debug.isWelcomeSelection) typeInfo.push('欢迎页选择');
+      if (debug.hasUserScore) typeInfo.push(`已评分(${debug.userScore})`);
+      const typeStr = typeInfo.length > 0 ? ` [${typeInfo.join(', ')}]` : '';
+      
+      console.log(`推荐 ${index + 1}: ${restaurant.name}${typeStr}`);
+      console.log(`  总分: ${restaurant.recommendationScore.toFixed(2)} = 评分(${restaurant.specificScore.toFixed(2)}) × ${W1.toFixed(2)} + 偏好(${restaurant.preferenceScore.toFixed(2)}) × ${W2.toFixed(2)}`);
     });
+    console.log(''); // 空行分隔
 
     return recommendations;
   } catch (error) {

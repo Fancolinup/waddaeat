@@ -74,6 +74,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 /* 内容卡片基础样式 */
@@ -176,6 +177,7 @@
   display: block;
   font-weight: 400;
   font-style: italic; /* 英文斜体显示 */
+  font-family: 'Brush Script MT', 'Lucida Handwriting', 'Apple Chancery', cursive; /* 美观的书写型字体 */
 }
 
 /* 去掉自动加的引号，以免影响两行布局 */
@@ -706,7 +708,10 @@
     font-size: 40rpx;
   }
   .quote-zh { font-size: 40rpx; }
-  .quote-en { font-size: 32rpx; }
+  .quote-en { 
+    font-size: 32rpx; 
+    font-family: 'Brush Script MT', 'Lucida Handwriting', 'Apple Chancery', cursive;
+  }
   
   .vote-topic {
     font-size: 36rpx;

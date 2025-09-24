@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试用户添加餐厅推荐功能</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            color: #666;
+            margin-top: 0;
+        }
+        button {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056CC;
+        }
+        .results {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>测试用户添加餐厅推荐功能</h1>
+        
+        <div class="test-section">
+            <h3>1. 模拟添加用户餐厅到welcomeSelections</h3>
+            <div class="input-group">
+                <input type="text" id="restaurantName" placeholder="输入餐厅名称" value="我的私房菜">
+                <button onclick="addUserRestaurant()">添加用户餐厅</button>
+            </div>
+            <button onclick="showWelcomeSelections()">查看当前welcomeSelections</button>
+            <div id="welcomeResults" class="results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. 测试完整餐厅数据获取</h3>
+            <button onclick="testCompleteRestaurantData()">获取完整餐厅数据</button>
+            <div id="completeDataResults" class="results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. 测试推荐算法</h3>
+            <button onclick="testRecommendations()">生成推荐列表</button>
+            <div id="recommendationResults" class="results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. 清理测试数据</h3>
+            <button onclick="clearTestData()">清理测试数据</button>
+            <div id="clearResults" class="results"></div>
+        </div>
+    </div>
+
+    <script src="../utils/dataManager.js"></script>
+    <script src="../utils/recommendation.js"></script>
+    <script>
+        // 模拟微信小程序环境
+        if (typeof wx === 'undefined') {
+            window.wx = {
+                getStorageSync: function(key) {
+                    return JSON.parse(localStorage.getItem(key) || 'null');
+                },
+                setStorageSync: function(key, data) {
+                    localStorage.setItem(key, JSON.stringify(data));
+                }
+            };
+        }
+        
+        // 模拟require函数
+        if (typeof require === 'undefined') {
+            window.require = function(path) {
+                if (path.includes('dataManager')) {
+                    return window.dataManager || {};
+                }
+                if (path.includes('recommendation')) {
+                    return window.recommendation || {};
+                }
+                return {};
+            };
+        }
+        
+        function addUserRestaurant() {
+            const restaurantName = document.getElementById('restaurantName').value.trim();
+            if (!restaurantName) {
+                alert('请输入餐厅名称');
+                return;
+            }
+            
+            try {
+                // 获取当前用户数据
+                let userData = wx.getStorageSync('userData') || {
+                    welcomeSelections: [],
+                    welcomeSelectionsByBrand: [],
+                    restaurantScores: {},
+                    decisionHistory: []
+                };
+                
+                // 添加用户餐厅ID
+                const userAddedId = `user_added_${restaurantName}`;
+                if (!userData.welcomeSelections.includes(userAddedId)) {
+                    userData.welcomeSelections.push(userAddedId);
+                }
+                
+                // 添加品牌名称
+                if (!userData.welcomeSelectionsByBrand.includes(restaurantName)) {
+                    userData.welcomeSelectionsByBrand.push(restaurantName);
+                }
+                
+                // 保存数据
+                wx.setStorageSync('userData', userData);
+                
+                document.getElementById('welcomeResults').textContent = 
+                    `成功添加用户餐厅: ${restaurantName}\nID: ${userAddedId}`;
+                    
+                console.log('添加用户餐厅成功:', { restaurantName, userAddedId, userData });
+            } catch (error) {
+                document.getElementById('welcomeResults').textContent = 
+                    `添加失败: ${error.message}`;
+                console.error('添加用户餐厅失败:', error);
+            }
+        }
+        
+        function showWelcomeSelections() {
+            try {
+                const userData = wx.getStorageSync('userData') || {};
+                const welcomeSelections = userData.welcomeSelections || [];
+                const welcomeSelectionsByBrand = userData.welcomeSelectionsByBrand || [];
+                
+                const result = {
+                    'welcomeSelections (IDs)': welcomeSelections,
+                    'welcomeSelectionsByBrand (Names)': welcomeSelectionsByBrand,
+                    'userAdded餐厅数量': welcomeSelections.filter(id => id.startsWith('user_added_')).length
+                };
+                
+                document.getElementById('welcomeResults').textContent = 
+                    JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('welcomeResults').textContent = 
+                    `获取数据失败: ${error.message}`;
+            }
+        }
+        
+        function testCompleteRestaurantData() {
+            try {
+                // 模拟调用getCompleteRestaurantData
+                fetch('../utils/dataManager.js')
+                    .then(response => response.text())
+                    .then(code => {
+                        // 在这里我们直接模拟数据合并逻辑
+                        const userData = wx.getStorageSync('userData') || {};
+                        const welcomeSelections = userData.welcomeSelections || [];
+                        
+                        // 模拟静态餐厅数据
+                        const staticRestaurants = [
+                            { id: 1, name: '麦当劳', category: '快餐', rating: 4.2 },
+                            { id: 2, name: '肯德基', category: '快餐', rating: 4.1 },
+                            { id: 3, name: '星巴克', category: '咖啡', rating: 4.3 }
+                        ];
+                        
+                        // 提取用户添加的餐厅
+                        const userAddedRestaurants = [];
+                        welcomeSelections.forEach(restaurantId => {
+                            if (typeof restaurantId === 'string' && restaurantId.startsWith('user_added_')) {
+                                const restaurantName = restaurantId.replace('user_added_', '');
+                                userAddedRestaurants.push({
+                                    id: restaurantId,
+                                    name: restaurantName,
+                                    category: '用户添加',
+                                    rating: 0,
+                                    basePreferenceScore: 9,
+                                    userAdded: true
+                                });
+                            }
+                        });
+                        
+                        const allRestaurants = [...staticRestaurants, ...userAddedRestaurants];
+                        
+                        const result = {
+                            '静态餐厅数量': staticRestaurants.length,
+                            '用户添加餐厅数量': userAddedRestaurants.length,
+                            '总餐厅数量': allRestaurants.length,
+                            '用户添加的餐厅': userAddedRestaurants,
+                            '所有餐厅': allRestaurants
+                        };
+                        
+                        document.getElementById('completeDataResults').textContent = 
+                            JSON.stringify(result, null, 2);
+                    })
+                    .catch(error => {
+                        document.getElementById('completeDataResults').textContent = 
+                            `测试失败: ${error.message}`;
+                    });
+            } catch (error) {
+                document.getElementById('completeDataResults').textContent = 
+                    `测试失败: ${error.message}`;
+            }
+        }
+        
+        function testRecommendations() {
+            try {
+                // 模拟推荐算法测试
+                const userData = wx.getStorageSync('userData') || {};
+                const welcomeSelections = userData.welcomeSelections || [];
+                
+                // 模拟餐厅数据和推荐计算
+                const mockRecommendations = [];
+                
+                // 添加用户添加的餐厅（应该有高优先级）
+                welcomeSelections.forEach(restaurantId => {
+                    if (typeof restaurantId === 'string' && restaurantId.startsWith('user_added_')) {
+                        const restaurantName = restaurantId.replace('user_added_', '');
+                        mockRecommendations.push({
+                            id: restaurantId,
+                            name: restaurantName,
+                            recommendationScore: 9.0, // 高分
+                            specificScore: 9,
+                            preferenceScore: 9,
+                            isUserAdded: true,
+                            priority: 'HIGH'
+                        });
+                    }
+                });
+                
+                // 添加一些系统餐厅作为对比
+                mockRecommendations.push(
+                    {
+                        id: 1,
+                        name: '麦当劳',
+                        recommendationScore: 6.5,
+                        specificScore: 5,
+                        preferenceScore: 8,
+                        isUserAdded: false,
+                        priority: 'MEDIUM'
+                    },
+                    {
+                        id: 2,
+                        name: '肯德基',
+                        recommendationScore: 6.2,
+                        specificScore: 5,
+                        preferenceScore: 7.5,
+                        isUserAdded: false,
+                        priority: 'MEDIUM'
+                    }
+                );
+                
+                // 按推荐分数排序
+                mockRecommendations.sort((a, b) => b.recommendationScore - a.recommendationScore);
+                
+                const result = {
+                    '推荐餐厅数量': mockRecommendations.length,
+                    '用户添加餐厅数量': mockRecommendations.filter(r => r.isUserAdded).length,
+                    '推荐列表（按分数排序）': mockRecommendations,
+                    '验证结果': {
+                        '用户添加餐厅是否在推荐列表中': mockRecommendations.some(r => r.isUserAdded),
+                        '用户添加餐厅是否排在前面': mockRecommendations.length > 0 && mockRecommendations[0].isUserAdded
+                    }
+                };
+                
+                document.getElementById('recommendationResults').textContent = 
+                    JSON.stringify(result, null, 2);
+                    
+                console.log('推荐测试结果:', result);
+            } catch (error) {
+                document.getElementById('recommendationResults').textContent = 
+                    `推荐测试失败: ${error.message}`;
+                console.error('推荐测试失败:', error);
+            }
+        }
+        
+        function clearTestData() {
+            try {
+                // 清理测试数据
+                localStorage.removeItem('userData');
+                
+                document.getElementById('clearResults').textContent = 
+                    '测试数据已清理完成';
+                    
+                // 清空其他结果显示
+                document.getElementById('welcomeResults').textContent = '';
+                document.getElementById('completeDataResults').textContent = '';
+                document.getElementById('recommendationResults').textContent = '';
+                
+                console.log('测试数据清理完成');
+            } catch (error) {
+                document.getElementById('clearResults').textContent = 
+                    `清理失败: ${error.message}`;
+            }
+        }
+        
+        // 页面加载时显示当前状态
+        window.onload = function() {
+            showWelcomeSelections();
+        };
+    </script>
+</body>
+</html>

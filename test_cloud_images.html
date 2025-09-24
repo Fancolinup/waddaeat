@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>云存储图片测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .test-item img { width: 50px; height: 50px; margin-right: 10px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>云存储图片测试</h1>
+    <div id="results"></div>
+    
+    <script>
+        // 测试的餐厅名称和对应的拼音
+        const testRestaurants = {
+            '肯德基': 'kendeji',
+            '海底捞': 'haidilao',
+            '星巴克': 'xingbake',
+            '麦当劳': 'maidanglao',
+            '汉堡王': 'hanbaowang',
+            'placeholder': 'placeholder'
+        };
+        
+        const cloudBase = 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/';
+        
+        function testImage(name, pinyin) {
+            const url = cloudBase + pinyin + '.png';
+            const img = new Image();
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'test-item';
+            resultDiv.innerHTML = `<strong>${name} (${pinyin})</strong><br>URL: ${url}<br><span id="status-${pinyin}">测试中...</span>`;
+            document.getElementById('results').appendChild(resultDiv);
+            
+            img.onload = function() {
+                const statusEl = document.getElementById(`status-${pinyin}`);
+                statusEl.innerHTML = '<span class="success">✓ 加载成功</span>';
+                resultDiv.insertBefore(img, statusEl);
+                img.style.width = '50px';
+                img.style.height = '50px';
+                img.style.marginRight = '10px';
+            };
+            
+            img.onerror = function() {
+                const statusEl = document.getElementById(`status-${pinyin}`);
+                statusEl.innerHTML = '<span class="error">✗ 加载失败</span>';
+            };
+            
+            img.src = url;
+        }
+        
+        // 测试所有餐厅图片
+        Object.entries(testRestaurants).forEach(([name, pinyin]) => {
+            testImage(name, pinyin);
+        });
+    </script>
+</body>
+</html>

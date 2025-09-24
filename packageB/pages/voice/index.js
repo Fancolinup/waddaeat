@@ -209,18 +209,26 @@ Page({
     const canvasId = 'shareCanvas';
     const ctx = wx.createCanvasContext(canvasId, this);
 
-    // 背景
-    ctx.setFillStyle('#F3F4F6');
+    // 页面背景渐变（模拟职场嘴替页面背景）
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, '#74b9ff');
+    gradient.addColorStop(0.5, '#0984e3');
+    gradient.addColorStop(1, '#6c5ce7');
+    ctx.setFillStyle(gradient);
     ctx.fillRect(0, 0, width, height);
 
-    // 卡片
+    // 卡片背景（使用与页面一致的玻璃效果背景色）
     const cardPadding = 32;
-    const cardRadius = 24; // 仅装饰，旧API无圆角矩形，简单用纯色块
-    ctx.setFillStyle('#FFFFFF');
+    ctx.setFillStyle('rgba(255, 255, 255, 0.18)');
     ctx.fillRect(cardPadding, cardPadding + 40, width - cardPadding * 2, height - cardPadding * 2 - 40);
+    
+    // 卡片边框
+    ctx.setStrokeStyle('rgba(255, 255, 255, 0.35)');
+    ctx.setLineWidth(2);
+    ctx.strokeRect(cardPadding, cardPadding + 40, width - cardPadding * 2, height - cardPadding * 2 - 40);
 
     // 标题
-    ctx.setFillStyle('#111827');
+    ctx.setFillStyle('rgba(255, 255, 255, 0.95)');
     ctx.setFontSize(28);
     ctx.setTextAlign('left');
     ctx.fillText('职场嘴替', cardPadding, 40);
@@ -231,7 +239,7 @@ Page({
     const contentAreaY = cardPadding + 40 + 40;
     const contentAreaW = width - (cardPadding + 24) * 2;
 
-    ctx.setFillStyle('#111827');
+    ctx.setFillStyle('rgba(255, 255, 255, 0.95)');
     ctx.setFontSize(36);
 
     if (currentMode === 'quote') {
@@ -239,12 +247,12 @@ Page({
       this.drawWrappedText(ctx, text, contentAreaX, contentAreaY, contentAreaW, 54, 6);
     } else {
       const title = currentItem ? currentItem.topic : '';
-      ctx.setFillStyle('#7C2D12');
+      ctx.setFillStyle('rgba(255, 255, 255, 0.95)');
       this.drawWrappedText(ctx, title, contentAreaX, contentAreaY, contentAreaW, 54, 3);
 
       // 选项
       ctx.setFontSize(28);
-      ctx.setFillStyle('#7C2D12');
+      ctx.setFillStyle('rgba(255, 255, 255, 0.85)');
       const top2 = contentAreaY + 3 * 54 + 20;
       const aText = `A. ${currentItem ? currentItem.optionA : ''}  ${currentItem ? (currentItem.percentA || 0) : 0}%`;
       const bText = `B. ${currentItem ? currentItem.optionB : ''}  ${currentItem ? (currentItem.percentB || 0) : 0}%`;
@@ -255,14 +263,14 @@ Page({
     // 标签
     const tags = (currentItem && currentItem.tags) || [];
     if (tags.length) {
-      ctx.setFillStyle('#6B7280');
+      ctx.setFillStyle('rgba(255, 255, 255, 0.7)');
       ctx.setFontSize(22);
       const tagLine = `#${tags.join('  #')}`;
       this.drawWrappedText(ctx, tagLine, contentAreaX, height - cardPadding - 30, contentAreaW, 30, 2);
     }
 
     // 底部署名
-    ctx.setFillStyle('#9CA3AF');
+    ctx.setFillStyle('rgba(255, 255, 255, 0.6)');
     ctx.setFontSize(22);
     ctx.fillText('来自 Eatigo · 职场嘴替', width - cardPadding - 260, height - 16);
 
@@ -376,17 +384,35 @@ Page({
    * 微信分享配置
    */
   onShareAppMessage: function () {
+    const promise = new Promise(resolve => {
+      try { dataManager.addPoints && dataManager.addPoints('share'); } catch (e) { console.warn('addPoints share error', e); }
+      // 尝试生成当前卡片的完整截图
+      this.generateShareImage((err, path) => {
+        if (err) {
+          // 截图失败时仅返回文案
+          resolve({ title: '这简直是我的职场嘴替！' });
+        } else {
+          resolve({ 
+            title: '这简直是我的职场嘴替！',
+            imageUrl: path 
+          });
+        }
+      });
+    });
+    
     const item = this.data.currentItem;
     const mode = this.data.currentMode;
-    const imageUrl = this.data.shareImageUrl || '';
     if (!item) {
-      return { title: '职场嘴替 - 让AI帮你说话', path: '/packageB/pages/voice/index', imageUrl };
+      return { 
+        title: '这简直是我的职场嘴替！', 
+        path: '/packageB/pages/voice/index',
+        promise
+      };
     }
-    const title = mode === 'quote' ? '职场嘴替 - 语录分享' : '职场嘴替 - 投票话题';
     return {
-      title: title,
+      title: '这简直是我的职场嘴替！',
       path: `/packageB/pages/voice/index?mode=${mode}&id=${item.id}`,
-      imageUrl
+      promise
     };
   },
 
