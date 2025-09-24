@@ -272,7 +272,7 @@ Page({
     // 底部署名
     ctx.setFillStyle('rgba(255, 255, 255, 0.6)');
     ctx.setFontSize(22);
-    ctx.fillText('来自 Eatigo · 职场嘴替', width - cardPadding - 260, height - 16);
+    ctx.fillText('来自 就决定吃你了 · 职场嘴替', width - cardPadding - 260, height - 16);
 
     ctx.draw(false, () => {
       wx.canvasToTempFilePath({

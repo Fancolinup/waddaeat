@@ -1,5 +1,13 @@
 /* 基础布局 */
-.container { min-height: 100vh; display: flex; flex-direction: column; }
+.container { 
+  min-height: 100vh; 
+  display: flex; 
+  flex-direction: column; 
+  background: linear-gradient(135deg, rgba(240, 248, 255, 0.6), rgba(230, 255, 250, 0.6)); /* 浅色小清新渐变背景 */
+  backdrop-filter: blur(15rpx); /* 毛玻璃效果 */
+  position: relative;
+  z-index: 0; /* 确保背景在最底层 */
+}
 .title { 
   text-align: center; 
   font-size: 36rpx; 
@@ -199,7 +207,7 @@
 
 /* 备选区（三列，透明背景虚线占位；填充为图片卡片） */
 .shortlist { 
-  margin-top: 10rpx;      /* 备选区顶部边距 - 可调整与转盘距离 */
+  margin-top: 15rpx;      /* 备选区顶部边距 - 可调整与转盘距离 */
   margin-bottom: 20rpx;   /* 备选区底部边距 - 可调整与分享区距离 */
   padding-left: 24rpx;    /* 备选区左边距 */
   padding-right: 24rpx;   /* 备选区右边距 */
@@ -278,8 +286,37 @@
   justify-content: center; 
   padding-top: -20rpx;     /* 转盘区顶部内边距 - 可调整转盘垂直位置 */
   padding-bottom: 0rpx;  /* 转盘区底部内边距 */
-  padding-left: 24rpx;   /* 转盘区左边距 */
-  padding-right: 24rpx;  /* 转盘区右边距 */
+}
+
+/* 添加更多餐厅按钮样式 */
+.add-restaurant-section {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 5rpx 0;
+  position: relative;
+  z-index: 10;
+  transform: translateY(-90rpx);
+}
+
+.add-restaurant-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 50rpx;
+  padding: 24rpx 48rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  box-shadow: 0 8rpx 24rpx rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.add-restaurant-btn::after {
+  border: none;
+}
+
+.add-restaurant-btn:active {
+  transform: translateY(2rpx);
+  box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.4);
 }
 /* 轮盘主题边框与光晕 */
 .roulette-wheel.palette-a {

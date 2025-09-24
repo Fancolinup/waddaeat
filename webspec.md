@@ -115,3 +115,41 @@ setData 优化
 ● ✔️ 使用 wx.navigateTo 等进行路由跳转。
 ● ✔️ 使用 rpx 作为样式单位。
 ● ✔️ 在 app.json 中提前规划 pages 和 subpackages。
+
+9. CSS 布局与位置调整最佳实践
+
+元素位置调整策略
+● **优先使用 transform**: 对于需要精确位置调整的元素，优先使用 `transform: translateX()` 和 `translateY()` 而非 margin 或 padding。
+● **transform 的优势**:
+  ○ 不受其他布局元素影响，独立于文档流
+  ○ 不会触发重排（reflow），性能更好
+  ○ 可以精确控制元素位置，避免布局冲突
+● **margin 调整的局限性**:
+  ○ 容易被其他CSS规则覆盖或影响
+  ○ 在复杂布局中可能产生意外的布局偏移
+  ○ 负margin可能与相邻元素的transform产生冲突
+
+布局层级管理
+● **z-index 配合使用**: 位置调整时注意设置合适的 `z-index` 确保元素层级正确。
+● **相对定位**: 使用 `position: relative` 配合 `transform` 进行微调，避免影响其他元素布局。
+● **检查布局依赖**: 调整元素位置前，检查是否有其他元素使用了 `transform` 或特殊定位，避免相互干扰。
+
+调试技巧
+● **逐步调试**: 位置调整不生效时，先检查CSS优先级和布局流，再考虑使用不同的定位方式。
+● **浏览器开发工具**: 使用开发者工具检查元素的实际计算样式，确认CSS规则是否生效。
+● **分离测试**: 将位置调整的CSS规则单独测试，排除其他样式的干扰。
+
+示例对比
+```css
+/* ❌ 不推荐：使用负margin调整位置 */
+.element {
+  margin-top: -50rpx; /* 可能被其他布局影响 */
+}
+
+/* ✅ 推荐：使用transform调整位置 */
+.element {
+  position: relative;
+  transform: translateY(-50rpx); /* 独立于布局流，更可靠 */
+  z-index: 10; /* 确保层级正确 */
+}
+```

@@ -21,7 +21,7 @@ Page({
 
   onShareAppMessage: function () {
     return {
-      title: '职场嘴替 - Eatigo',
+      title: '职场嘴替 - 就决定吃你了',
       path: '/packageA/pages/voice/index'
     };
   }

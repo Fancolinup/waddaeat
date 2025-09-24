@@ -46,7 +46,7 @@ const DEFAULT_USER_DATA = {
 
   // 积分与等级（新增）
   points: 0,
-  userLevel: '庶民',
+  userLevel: 'P5-应届牛马',
   // 行为去重容器（用于防止对同一对象重复加分）
   pointsDedup: {},
   
@@ -625,12 +625,12 @@ function addPoints(actionKey, uniqueId) {
 function recalculateUserLevel(points) {
   try {
     const levels = (pointsCfg && pointsCfg.levels) || [];
-    let current = levels[0] ? levels[0].name : '庶民';
+    let current = levels[0] ? levels[0].name : 'P5-应届牛马';
     for (let i = 0; i < levels.length; i++) {
       if (points >= levels[i].min) current = levels[i].name; else break;
     }
     return current;
-  } catch (e) { console.error('[dataManager.recalculateUserLevel] error', e); return '庶民'; }
+  } catch (e) { console.error('[dataManager.recalculateUserLevel] error', e); return 'P5-应届牛马'; }
 }
 
 // 导出新增方法

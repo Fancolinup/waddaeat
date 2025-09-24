@@ -3,7 +3,7 @@
 <view class="loading-container">
   <view class="loading-content">
     <view class="logo">
-      <text class="logo-text">Eatigo</text>
+      <text class="logo-text">就决定吃你了</text>
     </view>
     
     <view class="loading-section">
@@ -15,7 +15,7 @@
     </view>
     
     <view class="welcome-text">
-      <text>欢迎使用 Eatigo</text>
+      <text>欢迎使用 就决定吃你了</text>
       <text>您的智能餐饮助手</text>
     </view>
   </view>

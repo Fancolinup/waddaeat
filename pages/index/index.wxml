@@ -4,7 +4,7 @@
     <text class="msg">定位功能</text>
     <text class="dev-tag">开发中</text>
   </view>
-  <view class="title">What to eat today?</view>
+  <view class="title">What's today's feast?</view>
 
   <!-- 轮盘容器：指针向下，轮盘本身旋转，按钮保持固定 -->
   <view class="hero-area">
@@ -56,6 +56,11 @@
       <button class="dl-btn dl-secondary" bindtap="onReroll">再转一次</button>
       <button class="dl-btn dl-secondary" bindtap="onAddShortlist">加入备选</button>
     </view>
+  </view>
+
+  <!-- 添加更多餐厅按钮 -->
+  <view class="add-restaurant-section">
+    <button class="add-restaurant-btn" bindtap="onAddMoreRestaurants">添加更多餐厅</button>
   </view>
 
   <!-- 备选区（3个透明背景虚线占位，填充后显示logo卡片+删除按钮） -->

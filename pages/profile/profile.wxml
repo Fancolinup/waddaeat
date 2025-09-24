@@ -11,13 +11,13 @@
         <view class="row name-line">
           <view class="name-badge">
             <text class="nickname">神秘用户</text>
-            <text class="level-badge">{{level || '庶民'}} </text>
           </view>
         </view>
         <view class="row sub-line score-line">
           <view class="points-row">
             <text class="meta">积分</text>
             <text class="points-val">{{points || 0}}</text>
+            <text class="level-badge">{{level || 'P5-应届牛马'}} </text>
           </view>
         </view>
       </view>

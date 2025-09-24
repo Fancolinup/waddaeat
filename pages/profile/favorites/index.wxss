@@ -12,5 +12,6 @@
 .quote-placeholder{font-size:24rpx;color:#7c8e9f}
 .fav-type{font-size:20rpx;color:#7c8e9f}
 .fav-title{margin-top:6rpx;font-size:26rpx;color:#0f2a3a}
+.fav-subtitle{margin-top:4rpx;color:#6b7b8a;font-size:22rpx;font-style:italic}
 .fav-sub{margin-top:4rpx;color:#6b7b8a;font-size:22rpx}
 .fav-choice-tag{font-size:20rpx;color:#156f5e;background:rgba(26,188,156,.12);padding:4rpx 10rpx;border-radius:10rpx}

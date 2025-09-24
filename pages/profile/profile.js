@@ -33,7 +33,7 @@ Page({
       // 积分与等级
       const points = userData.points || 0;
       // 基于最新配置实时计算等级名称（避免老版本缓存）
-      const level = recalculateUserLevel ? recalculateUserLevel(points) : (userData.userLevel || '庶民');
+      const level = recalculateUserLevel ? recalculateUserLevel(points) : (userData.userLevel || 'P5-应届牛马');
 
       // 已决策数量（包含欢迎页 accept）
       const history = Array.isArray(userData.decisionHistory) ? userData.decisionHistory : [];

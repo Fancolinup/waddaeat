@@ -578,9 +578,10 @@ Page({
       console.warn('onAddShortlist temp url convert failed', err);
     }
     list.push(item);
-    // 不隐藏结果浮层，保持 showDecisionLayer 状态不变
-    this.setData({ shortlist: list });
+    // 成功加入备选后隐藏结果浮层
+    this.setData({ shortlist: list, showDecisionLayer: false });
     this.updatePlaceholderSlots();
+    wx.showToast({ title: '已加入备选', icon: 'success' });
   },
 
   onRemoveShort(e) {
@@ -1002,9 +1003,10 @@ Page({
       console.warn('onAddShortlist temp url convert failed', err);
     }
     list.push(item);
-    // 不隐藏结果浮层，保持 showDecisionLayer 状态不变
-    this.setData({ shortlist: list });
+    // 成功加入备选后隐藏结果浮层
+    this.setData({ shortlist: list, showDecisionLayer: false });
     this.updatePlaceholderSlots();
+    wx.showToast({ title: '已加入备选', icon: 'success' });
   },
 
   onRemoveShort(e) {
@@ -1149,7 +1151,8 @@ Page({
   // 维护备选占位数量（容量=3）
   updatePlaceholderSlots() {
     const n = Math.max(0, 3 - (this.data.shortlist ? this.data.shortlist.length : 0));
-    this.setData({ placeholderSlots: Array(n).fill(0) });
+    // 使用索引作为唯一标识，避免wx:key重复
+    this.setData({ placeholderSlots: Array(n).fill(0).map((_, index) => index) });
   },
 
   // 手势检测 - 触摸开始
@@ -1538,5 +1541,98 @@ Page({
     } catch (e) {
       console.warn('onSelectedLogoError 异常', e);
     }
+  },
+
+  // 添加更多餐厅按钮点击事件
+  onAddMoreRestaurants: function() {
+    // 显示带动画效果的输入弹窗
+    wx.showModal({
+      title: '添加餐厅',
+      content: '',
+      editable: true,
+      showCancel: true,
+      cancelText: '取消',
+      confirmText: '添加',
+      success: (res) => {
+        if (res.confirm && res.content && res.content.trim()) {
+          const restaurantName = res.content.trim();
+          // 添加淡入动画效果
+          wx.showLoading({
+            title: '添加中...',
+            mask: true
+          });
+          
+          setTimeout(() => {
+            wx.hideLoading();
+            this.addCustomRestaurant(restaurantName);
+          }, 500);
+        }
+      }
+    });
+  },
+
+  // 实际添加自定义餐厅逻辑
+  addCustomRestaurant: function(restaurantName) {
+    // 使用user_added_前缀确保能被正确识别为用户添加的餐厅
+    const userAddedId = `user_added_${restaurantName}`;
+    
+    // 检查是否已存在（添加安全检查）
+    const restaurants = this.data.restaurants || [];
+    const existingRestaurant = restaurants.find(r => r.name === restaurantName);
+    if (existingRestaurant) {
+      wx.showToast({
+        title: '餐厅已存在',
+        icon: 'none',
+        duration: 1500
+      });
+      return;
+    }
+    
+    // 创建新餐厅对象，参照欢迎页逻辑
+    const newRestaurant = {
+      id: userAddedId,
+      sid: userAddedId,
+      name: restaurantName,
+      category: '自定义',
+      rating: 0,
+      icon: '/images/placeholder.svg',
+      logoPath: '/images/placeholder.svg',
+      hdLogoPath: '/images/placeholder.svg'
+    };
+    
+    // 添加到当前页面的restaurants数组
+     const updatedRestaurants = [...restaurants, newRestaurant];
+     this.setData({ restaurants: updatedRestaurants });
+    
+    // 保存到本地存储，参照欢迎页的存储方式
+    try {
+      // 保存到welcomeSelections中
+      let welcomeSelections = wx.getStorageSync('welcomeSelections') || [];
+      if (!welcomeSelections.includes(userAddedId)) {
+        welcomeSelections.push(userAddedId);
+        wx.setStorageSync('welcomeSelections', welcomeSelections);
+      }
+      
+      // 同时保存到user_data中
+      const userData = wx.getStorageSync('user_data') || {};
+      userData.welcomeSelections = welcomeSelections;
+      wx.setStorageSync('user_data', userData);
+      
+      // 保存餐厅详细信息到userAddedRestaurants
+      let userAddedRestaurants = wx.getStorageSync('userAddedRestaurants') || [];
+      if (!userAddedRestaurants.find(r => r.name === restaurantName)) {
+        userAddedRestaurants.push(newRestaurant);
+        wx.setStorageSync('userAddedRestaurants', userAddedRestaurants);
+      }
+    } catch (e) {
+      console.warn('保存用户添加餐厅失败', e);
+    }
+
+    // 成功提示
+    wx.showToast({
+      title: '添加成功',
+      icon: 'success',
+      duration: 1500
+    });
   }
 });

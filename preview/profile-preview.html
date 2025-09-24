@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心页面预览</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .profile-page {
+            max-width: 375px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .user-card {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .user-info {
+            flex: 1;
+        }
+        .name-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .nickname {
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+        }
+        .level-badge {
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .points-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .meta {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+        }
+        .points-val {
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .test-controls {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .test-controls h3 {
+            color: white;
+            margin: 0 0 15px 0;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        .control-group label {
+            color: white;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .control-group input {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .level-info {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+        }
+        .level-info h3 {
+            color: white;
+            margin: 0 0 15px 0;
+        }
+        .level-item {
+            color: white;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .level-item:last-child {
+            border-bottom: none;
+        }
+        .current-level {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 8px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-page">
+        <!-- 测试控制区 -->
+        <div class="test-controls">
+            <h3>等级测试控制</h3>
+            <div class="control-group">
+                <label>当前积分:</label>
+                <input type="number" id="pointsInput" value="0" min="0" max="500">
+            </div>
+            <button onclick="updateLevel()" style="width: 100%; padding: 10px; border: none; border-radius: 8px; background: #4CAF50; color: white; font-weight: bold;">更新等级</button>
+        </div>
+
+        <!-- 用户信息区 -->
+        <div class="user-card">
+            <div class="avatar">👤</div>
+            <div class="user-info">
+                <div class="name-badge">
+                    <span class="nickname">神秘用户</span>
+                    <span class="level-badge" id="levelBadge">P5-应届牛马</span>
+                </div>
+                <div class="points-row">
+                    <span class="meta">积分</span>
+                    <span class="points-val" id="pointsDisplay">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 等级配置信息 -->
+        <div class="level-info">
+            <h3>等级配置</h3>
+            <div id="levelsList"></div>
+        </div>
+    </div>
+
+    <script>
+        // 等级配置数据
+        const levelsConfig = {
+            "actions": {
+                "spin": 5,
+                "vote": 3,
+                "bookmark": 2,
+                "share": 10
+            },
+            "levels": [
+                { "name": "P5-应届牛马", "min": 0 },
+                { "name": "P6-PPT大师", "min": 30 },
+                { "name": "P7-吵架王中王", "min": 60 },
+                { "name": "P8-精致指挥家", "min": 100 },
+                { "name": "P9-演讲大师", "min": 150 },
+                { "name": "P10-金色传说", "min": 300 }
+            ]
+        };
+
+        // 计算等级函数
+        function recalculateUserLevel(points) {
+            const levels = levelsConfig.levels || [];
+            let current = levels[0] ? levels[0].name : 'P5-应届牛马';
+            for (let i = 0; i < levels.length; i++) {
+                if (points >= levels[i].min) {
+                    current = levels[i].name;
+                } else {
+                    break;
+                }
+            }
+            return current;
+        }
+
+        // 更新等级显示
+        function updateLevel() {
+            const points = parseInt(document.getElementById('pointsInput').value) || 0;
+            const level = recalculateUserLevel(points);
+            
+            document.getElementById('pointsDisplay').textContent = points;
+            document.getElementById('levelBadge').textContent = level;
+        }
+
+        // 显示等级配置
+        function displayLevelsConfig() {
+            const levelsList = document.getElementById('levelsList');
+            levelsList.innerHTML = '';
+            
+            levelsConfig.levels.forEach((level, index) => {
+                const div = document.createElement('div');
+                div.className = 'level-item';
+                div.innerHTML = `<strong>${level.name}</strong> - 需要 ${level.min} 分`;
+                levelsList.appendChild(div);
+            });
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            displayLevelsConfig();
+            updateLevel();
+        });
+    </script>
+</body>
+</html>

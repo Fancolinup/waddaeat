@@ -24,7 +24,8 @@
             </view>
             <view wx:if="{{item.type === 'quote'}}">
               <view class="fav-type">【语录】</view>
-              <view class="fav-title">{{item.content}}</view>
+              <view class="fav-title">{{item.content.zh}}</view>
+              <view class="fav-subtitle">{{item.content.en}}</view>
             </view>
           </view>
         </view>
