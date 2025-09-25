@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Eatigo 转盘预览 - 外卖品牌文案与数据</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{
+      --bg:#ffffff;
+      --text:#222;
+      --muted:#666;
+      --chip-bg:#f7f7f7;
+      --chip-border:#e5e5e5;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;padding:24px;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;}
+    h2{margin:0 0 16px;font-size:20px}
+    .preview-card{max-width:720px;margin:0 auto;border:1px solid #eee;border-radius:16px;padding:20px;box-shadow:0 6px 16px rgba(0,0,0,0.06)}
+    .sub{color:var(--muted);font-size:13px;margin-bottom:12px}
+    .brands-title{font-weight:600;margin:12px 0 8px;font-size:16px}
+    .brands-list{display:flex;flex-wrap:wrap;gap:10px}
+    .brand-item{padding:6px 12px;border-radius:14px;background:var(--chip-bg);border:1px solid var(--chip-border);font-size:14px}
+    .note{margin-top:16px;color:#888;font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="preview-card">
+    <h2>决策浮层（外卖）预览</h2>
+    <div class="sub">验证：文案改为“推荐品牌”，以及麻辣烫品类下品牌名称数据</div>
+    <div class="brands-title">推荐品牌：</div>
+    <div class="brands-list">
+      <div class="brand-item">杨国福麻辣烫</div>
+      <div class="brand-item">张亮麻辣烫</div>
+      <div class="brand-item">刘文祥麻辣烫</div>
+      <div class="brand-item">小谷姐姐麻辣拌麻辣烫</div>
+    </div>
+    <div class="note">说明：此为轻量级HTML预览页面，用于校验文案与数据展示。实际样式与布局以小程序内为准。</div>
+  </div>
+</body>
+</html>

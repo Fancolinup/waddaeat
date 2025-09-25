@@ -25,7 +25,11 @@
 .history-item{display:flex;align-items:center;background:#fff;border-radius:14rpx;padding:14rpx 16rpx;box-shadow:0 6rpx 16rpx rgba(0,0,0,.04)}
 .h-logo{width:56rpx;height:56rpx;border-radius:12rpx;background:#f2f2f2;margin-right:12rpx}
 .h-info{display:flex;flex-direction:column}
+.h-name-row{display:flex;align-items:center;gap:8rpx}
 .h-name{font-size:26rpx;color:#111}
+.h-type-tag{font-size:20rpx;padding:2rpx 8rpx;border-radius:8rpx;color:#fff;font-weight:500}
+.h-type-tag.takeout{background:linear-gradient(135deg,#ff6b6b,#ee5a24)}
+.h-type-tag.beverage{background:linear-gradient(135deg,#4ecdc4,#44bd87)}
 .h-time{font-size:22rpx;color:#888;margin-top:4rpx}
 .empty{color:#999;font-size:24rpx;text-align:center;padding:20rpx 0}
 

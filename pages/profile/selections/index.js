@@ -74,7 +74,8 @@ Page({
           return {
             name,
             timeText: this.formatTime(r.timestamp || r.time),
-            logoPath: this.resolveLogo(name)
+            logoPath: this.resolveLogo(name),
+            wheelType: r.wheelType || 'restaurant'
           };
         });
 
@@ -114,26 +115,19 @@ Page({
   },
   onHistoryLogoError(e){
     const name = e.currentTarget.dataset.name;
+    console.log('[Selections] 历史记录logo加载失败 - 餐厅名称:', name);
+    console.log('[Selections] 错误详情:', e.detail);
     const idx = this.data.recentAccepts.findIndex(item => item.name === name);
-    if (idx === -1) return;
-    const py = this.data.pinyinMap[name];
-    const retry = Object.assign({}, this.data.logoRetryMap);
-    const count = (retry[`history_${name}`] || 0) + 1;
-    retry[`history_${name}`] = count;
-    this.setData({ logoRetryMap: retry });
-    if (py){
-      if (count === 1){
-        const url = cloudImageManager.getCloudImageUrl(py, 'jpg');
-        this.setData({ [`recentAccepts[${idx}].logoPath`]: url });
-        return;
-      } else if (count === 2){
-        const url = cloudImageManager.getCloudImageUrl(py, 'webp');
-        this.setData({ [`recentAccepts[${idx}].logoPath`]: url });
-        return;
-      }
+    if (idx === -1) {
+      console.warn('[Selections] 未找到对应的历史记录项:', name);
+      return;
     }
-    const placeholderUrl = cloudImageManager.getCloudImageUrl('placeholder');
+    
+    // 使用本地占位符图片，确保一定可见
+    const placeholderUrl = '/images/placeholder.svg';
+    console.log('[Selections] 设置占位符URL:', placeholderUrl);
     this.setData({ [`recentAccepts[${idx}].logoPath`]: placeholderUrl });
+    console.log('[Selections] 历史记录logo加载失败，使用占位符:', name);
   },
   // 将品牌名数组转换为界面模型
   buildBrandModels(brandNames) {
@@ -160,42 +154,40 @@ Page({
   // 解析 logo 路径（优先按拼音命名；按 png->jpg->webp 回退；最后占位）
   resolveLogo(name) {
     try {
+      console.log('[Selections] 解析logo路径 - 餐厅名称:', name);
+      console.log('[Selections] 拼音映射数据:', this.data.pinyinMap);
       const py = this.data.pinyinMap[name];
+      console.log('[Selections] 找到拼音映射:', name, '->', py);
       if (py) {
-        // 默认使用 png
-        return cloudImageManager.getCloudImageUrl(py, 'png');
+        const logoUrl = cloudImageManager.getCloudImageUrl(py, 'png');
+        console.log('[Selections] 生成logo URL:', logoUrl);
+        return logoUrl;
+      } else {
+        console.warn('[Selections] 未找到拼音映射，餐厅名称:', name);
+        // 使用本地占位符图片而不是云端占位符
+        return '/images/placeholder.svg';
       }
     } catch (e) {
       console.error('[Selections] 解析logo路径出错:', e);
     }
-    return cloudImageManager.getCloudImageUrl('placeholder', 'png');
+    // 使用本地占位符图片而不是云端占位符
+    return '/images/placeholder.svg';
   },
-  // Logo 加载失败兜底：按扩展名回退，最终使用占位符
   onLogoError(e){
     const name = e.currentTarget.dataset.name;
-    const detail = e.detail || {};
-    console.warn('[Selections] Logo加载失败，准备回退:', name, detail);
-    const idx = this.data.brands.findIndex(b=>b.name===name);
-    if (idx===-1) return;
-    const py = this.data.pinyinMap[name];
-    const retry = Object.assign({}, this.data.logoRetryMap);
-    const count = (retry[name]||0) + 1;
-    retry[name] = count;
-    this.setData({ logoRetryMap: retry });
-    if (py){
-      // 第一次失败：尝试 jpg；第二次失败：尝试 webp
-      if (count === 1){
-        const url = cloudImageManager.getCloudImageUrl(py, 'jpg');
-        this.setData({ [`brands[${idx}].logoPath`]: url });
-        return;
-      } else if (count === 2){
-        const url = cloudImageManager.getCloudImageUrl(py, 'webp');
-        this.setData({ [`brands[${idx}].logoPath`]: url });
-        return;
-      }
+    console.log('[Selections] 品牌logo加载失败 - 餐厅名称:', name);
+    console.log('[Selections] 错误详情:', e.detail);
+    const idx = this.data.brands.findIndex(item => item.name === name);
+    if (idx === -1) {
+      console.warn('[Selections] 未找到对应的品牌项:', name);
+      return;
     }
-    // 最终兜底使用本地占位符，保证一定可见
-    this.setData({ [`brands[${idx}].logoPath`]: '/images/placeholder.svg' });
+    
+    // 使用本地占位符图片，确保一定可见
+    const placeholderUrl = '/images/placeholder.svg';
+    console.log('[Selections] 设置占位符URL:', placeholderUrl);
+    this.setData({ [`brands[${idx}].logoPath`]: placeholderUrl });
+    console.log('[Selections] 品牌logo加载失败，使用占位符:', name);
   },
   // 切换选中
   toggleSelect(e) {

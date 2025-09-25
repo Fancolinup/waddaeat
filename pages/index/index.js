@@ -4,6 +4,8 @@ const { generateRecommendations } = require('../../utils/recommendation');
 const { updateRestaurantScore } = require('../../utils/scoringManager');
 const { updateUserPreference } = require('../../utils/preferenceLearner');
 const { cloudImageManager } = require('../../utils/cloudImageManager');
+const takeoutData = require('../../data/takeout');
+const beverageData = require('../../data/beverage');
 // removed: const shareWording = require('../../shareWording.json');
 
 // 调试时间戳辅助
@@ -11,6 +13,9 @@ const ts = () => new Date().toISOString();
 
 Page({
   data: {
+    // 转盘类型切换
+    wheelType: 'restaurant', // 'restaurant', 'takeout', 'beverage'
+    
     // 轮盘 & 数据
     segments: [], // 12 items
     wheelRadius: 310, // rpx offset for icon positions
@@ -44,7 +49,7 @@ Page({
     currentTime: '',
 
     // 文案径向布局参数（从外向内排列，末端离圆心 5rpx）
-    labelOuterMargin: 60,      // 距离外缘的安全边距（rpx）— 更靠近边缘但不贴边
+    labelOuterMargin: 30,      // 距离外缘的安全边距（rpx）— 向边缘方向移动30rpx
     labelInnerMargin: 40,      // 末端距离圆心（rpx）
     labelMinStep: 22,          // 字符最小步进（rpx）— 略增字距
     labelMaxStep: 34,          // 字符最大步进（rpx）— 略增字距
@@ -96,6 +101,28 @@ Page({
     const next = keys[(idx + 1) % keys.length]; // 第一次点击从 b 切到 a
     this.setData({ currentPaletteKey: next });
     try { wx.setStorageSync('paletteKey', next); } catch(e) {}
+  },
+
+  // 转盘类型切换
+  onSwitchWheelType(e) {
+    const newType = e.currentTarget.dataset.type;
+    if (newType === this.data.wheelType || this.data.isSpinning) return;
+    
+    // 触觉反馈
+    wx.vibrateShort({ type: 'light' });
+    
+    // 灵动岛切换动画
+    this.setData({ wheelType: newType });
+    
+    // 刷新转盘数据
+    this.initWheel(false);
+    
+    // 隐藏结果浮层
+    this.setData({ showDecisionLayer: false, showShareArea: false, selected: null });
+    
+    // 提示切换完成
+    const typeNames = { restaurant: '餐厅', takeout: '外卖', beverage: '茶饮' };
+    wx.showToast({ title: `已切换到${typeNames[newType]}转盘`, icon: 'success', duration: 1500 });
   },
 
   onUnload() {
@@ -326,6 +353,114 @@ Page({
     }
   },
 
+  // 生成外卖转盘推荐（从takeout.json的category_name中选取）
+  generateTakeoutRecommendations(count = 12) {
+    try {
+      const categories = takeoutData.takeout_categories || [];
+      if (categories.length === 0) return [];
+      
+      // 随机选择 count 个类别
+      const shuffled = [...categories].sort(() => Math.random() - 0.5);
+      const selected = shuffled.slice(0, count);
+      
+      const pinyinMap = {
+        '汉堡': 'hanbao',
+        '米饭套餐': 'mifantaocan',
+        '面条': 'miantiao',
+        '披萨': 'pisa',
+        '炸鸡': 'zhaji',
+        '寿司': 'shousi',
+        '烧烤': 'shaokao',
+        '火锅': 'huoguo',
+        '麻辣烫': 'malatang',
+        '粥品': 'zhoupin',
+        '甜品': 'tianpin',
+        '轻食沙拉': 'qingshishala',
+        '水饺馄饨': 'shuijiaohuntun',
+        '米粉米线': 'mifenmixian',
+        '麻辣香锅': 'malaxiangguo'
+      };
+      return selected.map((category, index) => {
+        const cname = category.category_name || '';
+        const py = pinyinMap[cname];
+        return {
+          id: `takeout_${index + 1}`,
+          name: cname || '外卖类别',
+          type: '外卖',
+          brands: category.brands || [],
+          icon: py ? cloudImageManager.getCloudImageUrl(py, 'png') : cloudImageManager.getCloudImageUrl('placeholder', 'png'),
+          iconClass: this.getTakeoutIconClass(cname),
+          recommendationScore: Math.random() * 100,
+          specificScore: Math.random() * 100,
+          preferenceScore: Math.random() * 100
+        };
+      });
+    } catch (e) {
+      console.error('生成外卖推荐失败:', e);
+      return [];
+    }
+  },
+
+  // 生成茶饮转盘推荐（从beverage.json的name中选取）
+  generateBeverageRecommendations(count = 12) {
+    try {
+      const brands = beverageData.beverage_brands || [];
+      if (brands.length === 0) return [];
+      
+      // 随机选择12个品牌
+      const shuffled = [...brands].sort(() => Math.random() - 0.5);
+      const selected = shuffled.slice(0, count);
+      
+      return selected.map((brand, index) => ({
+        id: brand.id || `beverage_${index + 1}`,
+        name: brand.name || '茶饮品牌',
+        type: brand.type || '茶饮',
+        typeClass: this.getBeverageTypeClass(brand.type || '茶饮'),
+        pinyin: brand.pinyin || '',
+        priceLevel: brand.priceLevel || 2,
+        tags: brand.tags || [],
+        popularityScore: brand.popularityScore || 0.5,
+        icon: (brand.pinyin ? cloudImageManager.getCloudImageUrl(brand.pinyin, 'png') : cloudImageManager.getCloudImageUrl('placeholder')),
+        recommendationScore: (brand.popularityScore || 0.5) * 100,
+        specificScore: Math.random() * 100,
+        preferenceScore: Math.random() * 100
+      }));
+    } catch (e) {
+      console.error('生成茶饮推荐失败:', e);
+      return [];
+    }
+  },
+
+  // 将中文茶饮类型转换为英文类名
+  getBeverageTypeClass(type) {
+    const typeMap = {
+      '咖啡': 'coffee',
+      '奶茶': 'milktea', 
+      '茶饮': 'tea'
+    };
+    return typeMap[type] || 'tea';
+  },
+
+  // 根据外卖类别名称映射到CSS图标类
+  getTakeoutIconClass(categoryName) {
+    const name = String(categoryName || '').trim();
+    const map = [
+      { keys: ['粥', '粥品', '皮蛋瘦肉粥', '海鲜粥'], cls: 'steaming-porridge' },
+      { keys: ['米饭', '盖饭', '盒饭', '套餐'], cls: 'rice-bento' },
+      { keys: ['面', '粉', '米线', '米粉'], cls: 'noodles' },
+      { keys: ['炸鸡', '汉堡', '披萨', '西式快餐', '快餐'], cls: 'fastfood' },
+      { keys: ['烧烤', '串', '烤'], cls: 'bbq' },
+      { keys: ['火锅'], cls: 'hotpot' },
+      { keys: ['小吃', '零食'], cls: 'snack' },
+      { keys: ['甜品', '奶昔', '冰淇淋'], cls: 'dessert' },
+      { keys: ['汤'], cls: 'soup' }
+    ];
+    for (const rule of map) {
+      if (rule.keys.some(k => name.includes(k))) return rule.cls;
+    }
+    return 'default';
+  },
+
   // 初始化轮盘（12个推荐）
   initWheel(preserveRotation = false) {
     try {
@@ -337,7 +472,16 @@ Page({
       }
 
       const userData = getUserData();
-      const recs = generateRecommendations(userData, 12);
+      let recs = [];
+      
+      // 根据转盘类型生成不同数据
+      if (this.data.wheelType === 'takeout') {
+        recs = this.generateTakeoutRecommendations(12);
+      } else if (this.data.wheelType === 'beverage') {
+        recs = this.generateBeverageRecommendations(12);
+      } else {
+        recs = generateRecommendations(userData, 12);
+      }
       const fmt = (v) => (typeof v === 'number' ? Number(v).toFixed(2) : '--');
       console.log(`[${ts()}] 推荐列表(生成/刷新)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''} [总:${fmt(r && r.recommendationScore)} 评:${fmt(r && r.specificScore)} 偏:${fmt(r && r.preferenceScore)}]`));
       const count = 12;
@@ -366,7 +510,7 @@ Page({
           id: String(r.id),
           name,
           type: r.type,
-          icon: this.getRestaurantIconPath(name),
+          icon: (r && r.icon) ? r.icon : this.getRestaurantIconPath(name),
           promoText: r.dynamicPromotions && r.dynamicPromotions[0] ? r.dynamicPromotions[0].promoText : '',
           angle: idx * step + step / 2, // 该段中心角（相对轮盘自身坐标系）
           slotNo: idx + 1,
@@ -374,6 +518,11 @@ Page({
           specificScore: (r && typeof r.specificScore === 'number') ? r.specificScore : undefined,
           preferenceScore: (r && typeof r.preferenceScore === 'number') ? r.preferenceScore : undefined,
           recommendationScore: (r && typeof r.recommendationScore === 'number') ? r.recommendationScore : undefined,
+          // 结果浮层使用的可选字段（外卖/茶饮）
+          brands: Array.isArray(r && r.brands) ? r.brands : [],
+          iconClass: r && r.iconClass,
+          typeClass: r && r.typeClass,
+          tags: Array.isArray(r && r.tags) ? r.tags : [],
           chars
         };
       });
@@ -518,8 +667,8 @@ Page({
     if (sel) {
       const userData = getUserData();
       updateRestaurantScore(userData, String(sel.id), 'reject', { name: sel.name });
-      try { updateUserPreference(String(sel.id), 'dislike'); } catch(e) {}
-      try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'reject', source: 'roulette' }); } catch(e) {}
+      if (this.data.wheelType === 'restaurant') { try { updateUserPreference(String(sel.id), 'dislike'); } catch(e) {} }
+      try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'reject', source: 'roulette', wheelType: this.data.wheelType }); } catch(e) {}
     }
     this.setData({ showDecisionLayer: false, showShareArea: false });
     // 保持累计角度与当前显示顺序；不刷新 segments
@@ -531,8 +680,8 @@ Page({
     if (!sel) return;
     const userData = getUserData();
     updateRestaurantScore(userData, String(sel.id), 'accept', { name: sel.name });
-    try { updateUserPreference(String(sel.id), 'like'); } catch(e) {}
-    try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'accept', source: 'roulette' }); } catch(e) {}
+    if (this.data.wheelType === 'restaurant') { try { updateUserPreference(String(sel.id), 'like'); } catch(e) {} }
+    try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'accept', source: 'roulette', wheelType: this.data.wheelType }); } catch(e) {}
 
     // 锁定分享餐厅，生成文案并展示分享区，隐藏结果浮层
     this.setData({ shareTargetName: sel.name, showShareArea: true, showDecisionLayer: false });
@@ -558,7 +707,7 @@ Page({
         const filename = lastSlash >= 0 ? icon.substring(lastSlash + 1) : icon;
         const dot = filename.lastIndexOf('.');
         let name = filename;
-        let ext = 'jpg';
+        let ext = 'png';
         if (dot > 0) { ext = filename.substring(dot + 1); name = filename.substring(0, dot); }
         try {
           item.icon = await cloudImageManager.getTempHttpsUrl(name, ext);
@@ -751,8 +900,8 @@ Page({
     }
   },
 
-  // 初始化轮盘（12个推荐）
-  initWheel(preserveRotation = false) {
+  // 初始化轮盘（12个推荐，旧实现：仅餐厅）
+  initWheelLegacy(preserveRotation = false) {
     try {
       // 用于变更对比的上一轮推荐（按 slotNo 记录）
       const prevSegments = Array.isArray(this.data.segments) ? this.data.segments : [];
@@ -799,6 +948,11 @@ Page({
           specificScore: (r && typeof r.specificScore === 'number') ? r.specificScore : undefined,
           preferenceScore: (r && typeof r.preferenceScore === 'number') ? r.preferenceScore : undefined,
           recommendationScore: (r && typeof r.recommendationScore === 'number') ? r.recommendationScore : undefined,
+          // 结果浮层使用的可选字段（外卖/茶饮）
+          brands: Array.isArray(r && r.brands) ? r.brands : [],
+          iconClass: r && r.iconClass,
+          typeClass: r && r.typeClass,
+          tags: Array.isArray(r && r.tags) ? r.tags : [],
           chars
         };
       });
@@ -943,8 +1097,8 @@ Page({
     if (sel) {
       const userData = getUserData();
       updateRestaurantScore(userData, String(sel.id), 'reject', { name: sel.name });
-      try { updateUserPreference(String(sel.id), 'dislike'); } catch(e) {}
-      try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'reject', source: 'roulette' }); } catch(e) {}
+      if (this.data.wheelType === 'restaurant') { try { updateUserPreference(String(sel.id), 'dislike'); } catch(e) {} }
+      try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'reject', source: 'roulette', wheelType: this.data.wheelType }); } catch(e) {}
     }
     this.setData({ showDecisionLayer: false, showShareArea: false });
     // 保持累计角度与当前显示顺序；不刷新 segments
@@ -956,8 +1110,8 @@ Page({
     if (!sel) return;
     const userData = getUserData();
     updateRestaurantScore(userData, String(sel.id), 'accept', { name: sel.name });
-    try { updateUserPreference(String(sel.id), 'like'); } catch(e) {}
-    try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'accept', source: 'roulette' }); } catch(e) {}
+    if (this.data.wheelType === 'restaurant') { try { updateUserPreference(String(sel.id), 'like'); } catch(e) {} }
+    try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'accept', source: 'roulette', wheelType: this.data.wheelType }); } catch(e) {}
 
     // 锁定分享餐厅，生成文案并展示分享区，隐藏结果浮层
     this.setData({ shareTargetName: sel.name, showShareArea: true, showDecisionLayer: false });
@@ -1498,32 +1652,52 @@ Page({
     }
   },
 
-  // 首页结果浮层 logo 错误处理：优先尝试 jpg → webp → 占位图（优先本地占位图）
+  // 首页结果浮层 logo 错误处理：优先尝试 png → jpg → webp → 占位图（优先本地占位图）
   onSelectedLogoError() {
     try {
       const sel = this.data.selected;
       if (!sel || !sel.name) return;
 
-      const map = this.getPinyinMap();
-      const key = map && map[sel.name] ? map[sel.name] : sel.name;
-      const retryCount = this.data.logoRetryMap[key] || 0;
-      
-      console.log(`[${ts()}] Logo加载失败：${sel.name} (${key}), 重试次数：${retryCount}`);
+      let name = '';
+      let ext = 'png';
+
+      // 若 selected.icon 是云 fileID，优先解析原始扩展名（通常为 png）
+      if (sel.icon && typeof sel.icon === 'string' && sel.icon.indexOf('cloud://') === 0) {
+        const lastSlash = sel.icon.lastIndexOf('/');
+        const filename = lastSlash >= 0 ? sel.icon.substring(lastSlash + 1) : sel.icon;
+        const dot = filename.lastIndexOf('.');
+        if (dot > 0) {
+          name = filename.substring(0, dot);
+          const parsedExt = filename.substring(dot + 1);
+          ext = parsedExt || 'png';
+        } else {
+          name = filename;
+        }
+      } else {
+        const map = this.getPinyinMap();
+        name = map && map[sel.name] ? map[sel.name] : sel.name;
+      }
+
+      const retryCount = this.data.logoRetryMap[name] || 0;
+      console.log(`[${ts()}] Logo加载失败：${sel.name} (${name}), 重试次数：${retryCount}`);
 
       let nextPromise;
       if (retryCount === 0) {
-        // 尝试 jpg（转临时 https）
-        nextPromise = Promise.resolve(cloudImageManager.getTempHttpsUrl(key, 'jpg'));
+        // 先尝试 png（临时 https）
+        nextPromise = Promise.resolve(cloudImageManager.getTempHttpsUrl(name, 'png'));
       } else if (retryCount === 1) {
-        // 尝试 webp（转临时 https）
-        nextPromise = Promise.resolve(cloudImageManager.getTempHttpsUrl(key, 'webp'));
+        // 再尝试 jpg
+        nextPromise = Promise.resolve(cloudImageManager.getTempHttpsUrl(name, 'jpg'));
+      } else if (retryCount === 2) {
+        // 再尝试 webp
+        nextPromise = Promise.resolve(cloudImageManager.getTempHttpsUrl(name, 'webp'));
       } else {
-        // 最终直接回退到本地占位图
+        // 最终回退到本地占位图（项目内已有svg占位）
         nextPromise = Promise.resolve(this.data.placeholderImageUrl || '/images/placeholder.svg');
       }
 
       const newLogoRetryMap = { ...this.data.logoRetryMap };
-      newLogoRetryMap[key] = retryCount + 1;
+      newLogoRetryMap[name] = retryCount + 1;
 
       nextPromise.then((nextUrl) => {
         this.setData({

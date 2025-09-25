@@ -6,6 +6,19 @@
   </view>
   <view class="title">What's today's feast?</view>
 
+  <!-- 转盘切换按钮组（灵动岛风格） -->
+  <view class="wheel-type-switcher ws-{{wheelType}}">
+    <view class="switcher-item item-restaurant {{wheelType === 'restaurant' ? 'active' : ''}}" data-type="restaurant" bindtap="onSwitchWheelType">
+      <view class="icon icon-plate"></view>
+    </view>
+    <view class="switcher-item item-takeout {{wheelType === 'takeout' ? 'active' : ''}}" data-type="takeout" bindtap="onSwitchWheelType">
+      <view class="icon icon-bag"></view>
+    </view>
+    <view class="switcher-item item-beverage {{wheelType === 'beverage' ? 'active' : ''}}" data-type="beverage" bindtap="onSwitchWheelType">
+      <view class="icon icon-cup"></view>
+    </view>
+  </view>
+
   <!-- 轮盘容器：指针向下，轮盘本身旋转，按钮保持固定 -->
   <view class="hero-area">
     <view class="roulette-wheel-container">
@@ -44,11 +57,33 @@
   <!-- 决策浮层 -->
   <view class="decision-layer" wx:if="{{showDecisionLayer}}">
     <view class="dl-body">
+      <!-- 根据转盘类型切换logo呈现方式：餐厅/茶饮/外卖统一使用云端图片 -->
       <image class="dl-logo" src="{{selected ? selected.icon : placeholderImageUrl}}" mode="aspectFill" binderror="onSelectedLogoError" />
       <view class="dl-info">
         <view class="dl-name">{{selected && selected.name}}</view>
-        <view class="dl-type">{{selected && (selected.type || '餐厅')}}</view>
+        <view class="dl-type" wx:if="{{wheelType !== 'beverage'}}">{{selected && (selected.type || '餐厅')}}</view>
         <view class="dl-promo">{{selected && (selected.promoText || '优惠信息：敬请期待')}}</view>
+        
+        <!-- 外卖品牌列表 -->
+        <!-- 外卖品牌列表 -->
+        <!-- 外卖品牌列表已移至结果浮层底部展示位置（见下方） -->
+        
+        <!-- 茶饮类型标签 -->
+        <view class="dl-beverage-info" wx:if="{{wheelType === 'beverage' && selected}}">
+          <view class="beverage-type-tag beverage-type-{{selected.typeClass}}">{{selected.type}}</view>
+          <view class="beverage-tags" wx:if="{{selected.tags && selected.tags.length}}">
+            <text class="tag-item" wx:for="{{selected.tags}}" wx:key="*this">{{item}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    <!-- 外卖品牌列表：置于结果浮层底部（按钮上方） -->
+    <view class="dl-brands" wx:if="{{wheelType === 'takeout' && selected && selected.brands}}">
+      <view class="brands-title">推荐品牌：</view>
+      <view class="brands-list">
+        <view class="brand-item" wx:for="{{selected.brands}}" wx:key="brand_name">
+          {{item.brand_name}}
+        </view>
       </view>
     </view>
     <view class="dl-actions">
@@ -58,8 +93,8 @@
     </view>
   </view>
 
-  <!-- 添加更多餐厅按钮 -->
-  <view class="add-restaurant-section">
+  <!-- 添加更多餐厅按钮：仅在餐厅转盘下显示 -->
+  <view class="add-restaurant-section" wx:if="{{wheelType === 'restaurant'}}">
     <button class="add-restaurant-btn" bindtap="onAddMoreRestaurants">添加更多餐厅</button>
   </view>
 

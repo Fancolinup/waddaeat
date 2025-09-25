@@ -114,6 +114,26 @@
 
     .share-bar { position: fixed; left: 20px; right: 20px; bottom: 20px; padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; }
     .share-text { font-size: 14px; color: #222; flex: 1; margin-right: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* --- 新增：切换按钮CSS图标候选展示 --- */
+    .icon-gallery { margin: 20px 0 10px; }
+    .icon-gallery h2 { font-size: 18px; color: #111; margin: 0 0 8px; }
+    .icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+    .icon-tile { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+    .style-a { background: linear-gradient(135deg, #dff2ff, #f0fffb); color: #0b4a6f; }
+    .style-b { background: linear-gradient(135deg, #222, #444); color: #ffffff; }
+    .style-c { background: linear-gradient(135deg, #667eea, #764ba2); color: #ffffff; }
+    /* 形状：与小程序中的 icon-plate / icon-bag / icon-cup 相似的CSS绘制 */
+    .icon-shape { width: 40px; height: 40px; position: relative; }
+    /* 餐盘 */
+    .demo-plate::before { content:""; position:absolute; left:50%; top:50%; width:34px; height:34px; border-radius:50%; background: radial-gradient(circle at 50% 50%, currentColor 0 60%, rgba(255,255,255,0.6) 60% 100%); transform: translate(-50%, -50%); }
+    .demo-plate::after { content:""; position:absolute; left:50%; top:50%; width:22px; height:10px; background: linear-gradient(90deg, transparent 0 15%, #fff 15% 35%, transparent 35% 65%, #fff 65% 85%, transparent 85%); transform: translate(-50%, -50%); border-radius:6px; }
+    /* 外卖袋 */
+    .demo-bag::before { content:""; position:absolute; left:50%; top:50%; width:26px; height:28px; background:#fff; border-radius:6px; transform: translate(-50%, -45%); box-shadow: inset 0 -6px 0 rgba(0,0,0,0.08); }
+    .demo-bag::after { content:""; position:absolute; left:50%; top:50%; width:18px; height:10px; border:4px solid #fff; border-bottom:none; border-radius:16px 16px 0 0; transform: translate(-50%, -80%); }
+    /* 饮料杯 */
+    .demo-cup::before { content:""; position:absolute; left:50%; top:50%; width:26px; height:30px; background:#fff; border-radius:4px; transform: translate(-50%, -45%); }
+    .demo-cup::after { content:""; position:absolute; left:50%; top:50%; width:4px; height:18px; background:#fff; transform: translate(-10px, -80%); border-radius:2px; }
   </style>
 </head>
 <body>
@@ -285,3 +305,22 @@
   </script>
 </body>
 </html>
+
+<!-- 新增：切换按钮CSS图标候选展示（3套风格 × 3类型） -->
+<div class="icon-gallery glass">
+  <h2>切换按钮 CSS 图标候选</h2>
+  <div class="icon-grid">
+    <!-- 风格A：浅色渐变，参考个人页卡片背景 -->
+    <div class="icon-tile style-a"><div class="icon-shape demo-plate" aria-label="餐厅-风格A"></div></div>
+    <div class="icon-tile style-a"><div class="icon-shape demo-bag" aria-label="外卖-风格A"></div></div>
+    <div class="icon-tile style-a"><div class="icon-shape demo-cup" aria-label="茶饮-风格A"></div></div>
+    <!-- 风格B：深色渐变，当前切换条选中态风格 -->
+    <div class="icon-tile style-b"><div class="icon-shape demo-plate" aria-label="餐厅-风格B"></div></div>
+    <div class="icon-tile style-b"><div class="icon-shape demo-bag" aria-label="外卖-风格B"></div></div>
+    <div class="icon-tile style-b"><div class="icon-shape demo-cup" aria-label="茶饮-风格B"></div></div>
+    <!-- 风格C：品牌色渐变（紫蓝），与当前active状态一致的明亮方案 -->
+    <div class="icon-tile style-c"><div class="icon-shape demo-plate" aria-label="餐厅-风格C"></div></div>
+    <div class="icon-tile style-c"><div class="icon-shape demo-bag" aria-label="外卖-风格C"></div></div>
+    <div class="icon-tile style-c"><div class="icon-shape demo-cup" aria-label="茶饮-风格C"></div></div>
+  </div>
+</div>
