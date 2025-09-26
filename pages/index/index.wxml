@@ -50,36 +50,38 @@
 
   <!-- 决策浮层 -->
   <view class="decision-layer" hidden="{{!showDecisionLayer}}">
-    <view class="dl-body">
-      <!-- 根据转盘类型切换logo呈现方式：餐厅/茶饮/外卖统一使用云端图片 -->
-      <image class="dl-logo" src="{{selected ? selected.icon : placeholderImageUrl}}" mode="aspectFill" binderror="onSelectedLogoError" />
-      <view class="dl-info">
-        <view class="dl-name">{{selected && selected.name}}</view>
-        <view class="dl-type" wx:if="{{wheelType !== 'beverage'}}">{{selected && (selected.type || '餐厅')}}</view>
-        <view class="dl-promo">{{selected && (selected.promoText || '优惠信息：敬请期待')}}</view>
-        
-        <!-- 外卖品牌列表 -->
-        <!-- 外卖品牌列表 -->
-        <!-- 外卖品牌列表已移至结果浮层底部展示位置（见下方） -->
-        
-        <!-- 茶饮类型标签 -->
-        <view class="dl-beverage-info" wx:if="{{wheelType === 'beverage' && selected}}">
-          <view class="beverage-type-tag beverage-type-{{selected.typeClass}}">{{selected.type}}</view>
-          <view class="beverage-tags" wx:if="{{selected.tags && selected.tags.length}}">
-            <text class="tag-item" wx:for="{{selected.tags}}" wx:key="*this">{{item}}</text>
+    <scroll-view class="dl-content" scroll-y="true">
+      <view class="dl-body">
+        <!-- 根据转盘类型切换logo呈现方式：餐厅/茶饮/外卖统一使用云端图片 -->
+        <image class="dl-logo" src="{{selected ? selected.icon : placeholderImageUrl}}" mode="aspectFill" binderror="onSelectedLogoError" />
+        <view class="dl-info">
+          <view class="dl-name">{{selected && selected.name}}</view>
+          <view class="dl-type" wx:if="{{wheelType !== 'beverage'}}">{{selected && (selected.type || '餐厅')}}</view>
+          <view class="dl-promo">{{selected && (selected.promoText || '优惠信息：敬请期待')}}</view>
+          
+          <!-- 外卖品牌列表 -->
+          <!-- 外卖品牌列表 -->
+          <!-- 外卖品牌列表已移至结果浮层底部展示位置（见下方） -->
+          
+          <!-- 茶饮类型标签 -->
+          <view class="dl-beverage-info" wx:if="{{wheelType === 'beverage' && selected}}">
+            <view class="beverage-type-tag beverage-type-{{selected.typeClass}}">{{selected.type}}</view>
+            <view class="beverage-tags" wx:if="{{selected.tags && selected.tags.length}}">
+              <text class="tag-item" wx:for="{{selected.tags}}" wx:key="*this">{{item}}</text>
+            </view>
           </view>
         </view>
       </view>
-    </view>
-    <!-- 外卖品牌列表：置于结果浮层底部（按钮上方） -->
-    <view class="dl-brands" wx:if="{{wheelType === 'takeout' && selected && selected.brands}}">
-      <view class="brands-title">推荐品牌：</view>
-      <view class="brands-list">
-        <view class="brand-item" wx:for="{{selected.brands}}" wx:key="brand_name">
-          {{item.brand_name}}
+      <!-- 外卖品牌列表：置于结果浮层底部（按钮上方） -->
+      <view class="dl-brands" wx:if="{{wheelType === 'takeout' && selected && selected.brands}}">
+        <view class="brands-title">推荐品牌：</view>
+        <view class="brands-list">
+          <view class="brand-item" wx:for="{{selected.brands}}" wx:key="brand_name">
+            {{item.brand_name}}
+          </view>
         </view>
       </view>
-    </view>
+    </scroll-view>
     <view class="dl-actions">
       <button class="dl-btn dl-primary" bindtap="onAccept">就它</button>
       <button class="dl-btn dl-secondary" bindtap="onReroll">再转一次</button>
@@ -114,6 +116,7 @@
       <block wx:for="{{shortlist}}" wx:key="id">
         <view class="short-slot filled {{activeShortlistId === item.id ? 'selected' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onTapShortlistCard">
           <image class="short-img" src="{{item.icon}}" mode="scaleToFill" />
+          <view class="short-caption">{{item.name}}</view>
           <text class="short-remove" data-id="{{item.id}}" catchtap="onRemoveShort">×</text>
         </view>
       </block>

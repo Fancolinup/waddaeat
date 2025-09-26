@@ -495,7 +495,48 @@
 .decision-name { font-size: 36rpx; font-weight: 700; margin-bottom: 16rpx; }
 .decision-actions { display: flex; gap: 16rpx; }
 .btn-primary { background: #111; color: #fff; padding: 12rpx 24rpx; border-radius: 12rpx; }
-.btn-ghost { background: #f4f4f4; color: #333; padding: 12rpx 24rpx; border-radius: 12rpx; }
+ .btn-ghost { background: #f4f4f4; color: #333; padding: 12rpx 24rpx; border-radius: 12rpx; }
+
+/* 备选卡片名称：在备选logo底部显示（所有商家） */
+.short-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 44rpx;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 24rpx;
+  line-height: 44rpx;
+  text-align: center;
+  padding: 0 8rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 1; /* 删除按钮z-index为2，避免遮挡 */
+}
+
+/* 结果浮层：固定按钮在底部（留出边距），内容可滚动 */
+.decision-layer {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 24rpx; /* 统一内边距，具体按钮留白由 .dl-actions 控制 */
+}
+.dl-content {
+  flex: 1;
+  min-height: 0; /* 允许scroll-view在flex容器内正确收缩 */
+  padding-bottom: 120rpx; /* 给底部按钮区域预留空间，避免内容被遮挡 */
+}
+.decision-layer .dl-actions {
+  position: absolute;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: 24rpx;  /* 与容器底部保持距离，不贴边 */
+  margin-top: 0;
+  display: flex;
+  gap: 20rpx;
+  z-index: 11; /* 浮在内容之上 */
+}
 
 /* 备选区（三列，透明背景虚线占位；填充为图片卡片） */
 .shortlist { 
