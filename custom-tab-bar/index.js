@@ -6,20 +6,20 @@ Component({
     list: [
       {
         pagePath: '/pages/index/index',
-        iconPath: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/icon_home.png',
-        selectedIconPath: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/icon_home_selected.png',
+        iconPath: '/images/icon_home.png',
+        selectedIconPath: '/images/icon_home_selected.png',
         text: '今日选择'
       },
       {
         pagePath: '/pages/voice/index',
-        iconPath: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/icon_voice.png',
-        selectedIconPath: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/icon_voice_selected.png',
+        iconPath: '/images/icon_voice.png',
+        selectedIconPath: '/images/icon_voice_selected.png',
         text: '职场嘴替'
       },
       {
         pagePath: '/pages/profile/profile',
-        iconPath: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/icon_profile.png',
-        selectedIconPath: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/icon_profile_selected.png',
+        iconPath: '/images/icon_profile.png',
+        selectedIconPath: '/images/icon_profile_selected.png',
         text: '个人'
       }
     ],
@@ -76,12 +76,11 @@ Component({
       
       this.setData({ switching: true });
       
-      // 立即更新选中状态，避免延迟导致的闪烁
-      this.setData({ selected: index });
-      
       wx.switchTab({ 
         url: path,
         success: () => {
+          // 切换成功后再更新选中状态，避免在切换过程中出现图标来回切换
+          this.setData({ selected: index });
           // 延迟重置switching状态，确保页面切换完成
           setTimeout(() => {
             this.setData({ switching: false });
