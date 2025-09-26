@@ -6,6 +6,7 @@ const { updateUserPreference } = require('../../utils/preferenceLearner');
 const { cloudImageManager } = require('../../utils/cloudImageManager');
 const takeoutData = require('../../data/takeout');
 const beverageData = require('../../data/beverage');
+const pinyin = require('../../restaurant_pinyin.js');
 // removed: const shareWording = require('../../shareWording.json');
 
 // 调试时间戳辅助
@@ -62,7 +63,10 @@ Page({
     displayOrder: [],
 
     // 记录首页结果浮层 logo 的扩展名尝试次数：key=name 或拼音，value=0..3
-    logoRetryMap: {}
+    logoRetryMap: {},
+    // 顶部toast显示
+    showTopToast: false,
+    topToastText: ''
   },
 
   onLoad() {
@@ -82,6 +86,11 @@ Page({
     setTimeout(() => {
       this.verifyCenterPosition();
     }, 500);
+
+    // 预加载转盘切换按钮的云图标
+    try {
+      cloudImageManager.preloadImages(['canteen', 'takeout', 'beverage']);
+    } catch (e) { console.warn('预加载切换按钮图标失败', e); }
   },
 
   onShow() {
@@ -111,8 +120,18 @@ Page({
     // 触觉反馈
     wx.vibrateShort({ type: 'light' });
     
-    // 灵动岛切换动画
-    this.setData({ wheelType: newType });
+    // 添加切换动画类
+    this.setData({ 
+      wheelType: newType,
+      switchingAnimation: true 
+    });
+    
+    // 移除动画类
+    setTimeout(() => {
+      this.setData({ switchingAnimation: false });
+      // 切换完成后，记录一次距离验证日志
+      this.verifyCenterPosition('afterSwitch');
+    }, 300);
     
     // 刷新转盘数据
     this.initWheel(false);
@@ -120,9 +139,15 @@ Page({
     // 隐藏结果浮层
     this.setData({ showDecisionLayer: false, showShareArea: false, selected: null });
     
-    // 提示切换完成
-    const typeNames = { restaurant: '餐厅', takeout: '外卖', beverage: '茶饮' };
-    wx.showToast({ title: `已切换到${typeNames[newType]}转盘`, icon: 'success', duration: 1500 });
+    // 提示切换完成（顶部自定义toast）
+  const typeNames = { restaurant: '餐厅', takeout: '外卖', beverage: '茶饮' };
+  const _text = `已切换到${typeNames[newType]}转盘`;
+  this.setData({ showTopToast: true, topToastText: _text });
+  if (this._toastTimer) clearTimeout(this._toastTimer);
+  this._toastTimer = setTimeout(() => {
+    this.setData({ showTopToast: false });
+    this._toastTimer = null;
+  }, 1500);
   },
 
   onUnload() {
@@ -133,7 +158,7 @@ Page({
   },
 
   // 精确验证卡片居中位置
-  verifyCenterPosition() {
+  verifyCenterPosition(phase = 'manual') {
     console.log('=== 开始验证卡片居中位置 ===');
     
     const query = wx.createSelectorQuery();
@@ -146,6 +171,10 @@ Page({
     query.select('.hero-area').boundingClientRect();
     // 获取轮盘容器信息
     query.select('.roulette-wheel-container').boundingClientRect();
+    // 获取切换按钮与备选区信息
+    query.select('.wheel-type-switcher-area').boundingClientRect();
+    query.select('.wheel-type-switcher').boundingClientRect();
+    query.select('.shortlist').boundingClientRect();
     
     query.exec((res) => {
       const viewport = res[0];
@@ -228,6 +257,17 @@ Page({
         console.warn('⚠️ 无法获取轮盘容器信息');
       }
       
+      // 追加切换按钮与备选区的距离测量
+      const area = res[4];
+      const switcher = res[5];
+      const shortlist = res[6];
+      if (area && switcher && shortlist) {
+        const distancePx = Math.max(0, shortlist.top - (area.top + switcher.height));
+        console.log(`🔍 [verify] phase=${phase} 切换按钮到备选区的垂直距离=${distancePx.toFixed(2)}px`, { areaTop: area.top, switcherHeight: switcher.height, shortlistTop: shortlist.top });
+      } else {
+        console.warn('⚠️ 无法获取切换按钮/备选区的布局信息');
+      }
+
       console.log('=== 卡片居中位置验证完成 ===');
     });
   },
@@ -252,58 +292,9 @@ Page({
     this.setData({ greeting, currentTime: `It's ${time}, ${day}` });
   },
 
-  /** 获取品牌拼音映射（与欢迎页保持一致） */
+  /** 获取品牌拼音映射（统一使用模块数据） */
   getPinyinMap() {
-    return {
-      "Baker&Spice": "Baker&Spice",
-      "超级碗": "chaojiwan",
-      "陈香贵": "chenxianggui",
-      "汉堡王": "hanbaowang",
-      "肯德基": "kendeji",
-      "蓝蛙": "lanwa",
-      "麦当劳": "maidanglao",
-      "马记永": "majiyong",
-      "莆田餐厅": "putiancanting",
-      "蜀大侠": "shudaxia",
-      "沃歌斯": "wogesi",
-      "西贝莜面村": "xibeiyoumiancun",
-      "海底捞": "haidilao",
-      "鼎泰丰": "dingtaifeng",
-      "呷哺呷哺": "xiabuxiabu",
-      "星巴克": "xingbake",
-      "喜茶": "xicha",
-      "南京大牌档": "nanjingdapaidang",
-      "鹿港小镇": "lugangxiaozhen",
-      "唐宫": "tanggong",
-      "外婆家": "waipojia",
-      "乐乐茶": "lelecha",
-      "良品铺子": "liangpinpuzi",
-      "喜家德": "xijiade",
-      "三米粥铺": "sanmizhoupu",
-      "南翔馒头店": "nanxiangmantoudian",
-      "那家小馆": "najiaxiaoguan",
-      "新元素": "xinyuansu",
-      "奈雪的茶": "naixuedecha",
-      "永和大王": "yonghedawang",
-      "小杨生煎": "xiaoyangshengjian",
-      "云海肴": "yunhaiyao",
-      "西树泡芙": "xishupaofu",
-      "喜茶 GO": "xichago",
-      "一点点": "yidiandian",
-      "新白鹿": "xinbailu",
-      "小南国": "xiaonanguo",
-      "小龙坎": "xiaolongkan",
-      "谭鸭血": "tanyaxie",
-      "大娘水饺": "daniangshuijiao",
-      "苏小柳": "suxiaoliu",
-      "蔡澜港式点心": "cailangangshidianxin",
-      "添好运": "tianhaoyun",
-      "很久以前羊肉串": "henjiuyiqianyangrouchuan",
-      "汤先生": "tangxiansheng",
-      // 新增缺失映射
-      "和府捞面": "hefulaomian",
-      "左庭右院": "zuotingyouyuan",
-    };
+    return pinyin;
   },
 
   getPackageAFullIcons() {
@@ -464,6 +455,11 @@ Page({
   // 初始化轮盘（12个推荐）
   initWheel(preserveRotation = false) {
     try {
+      // 初始化阶段：禁用过渡动画，防止旋转动画在对齐时出现
+      if (!preserveRotation) {
+        this._initInProgress = true;
+        this.setData({ spinClass: 'no-transition' });
+      }
       // 用于变更对比的上一轮推荐（按 slotNo 记录）
       const prevSegments = Array.isArray(this.data.segments) ? this.data.segments : [];
       const prevBySlot = {};
@@ -584,85 +580,58 @@ Page({
         }));
       }
       this.setData(base);
+      // 初始化完成后，移除禁用动画类，允许后续旋转动画生效
+      if (!preserveRotation) {
+        wx.nextTick(() => {
+          setTimeout(() => {
+            this.setData({ spinClass: '' });
+            this._initInProgress = false;
+          }, 0);
+        });
+      }
+      // 后台静默预加载本轮12个选项的图标，减少图片显示延迟
+      try { this.preloadSegmentIcons(segments); } catch(_) {}
     } catch(e) {
       console.error(`[${ts()}] 初始化轮盘失败`, e);
       this.setData({ segments: [], selected: null, showDecisionLayer: false, displayOrder: [] });
     }
   },
 
-  // 刷新推荐：重算推荐与转盘显示，重置累计旋转角，确保指针指向第1名
-  onRefreshWheel() {
-    if (this.data.isSpinning) return;
-    console.log(`[${ts()}] 手动刷新：换一批推荐（12家），并将指针对齐第1名`);
-    // 重新生成12家推荐并重置旋转到slot1
-    this.initWheel(false);
-    // 隐藏结果浮层与分享区
-    this.setData({ showDecisionLayer: false, showShareArea: false, selected: null });
-    // 提示刷新完成
-    try { wx.showToast({ title: '转盘已刷新', icon: 'success' }); } catch(e) {}
-  },
-
-  // 旋转开始（调试版：固定720°）
-  spinRoulette() {
-    if (!this.data.segments.length) return;
-    if (this.data.isSpinning) return; // 防重复触发
-    this.setData({ isSpinning: true });
-
-    // 积分：转动转盘
-    try { addPoints && addPoints('spin'); } catch (e) { console.warn('addPoints spin error', e); }
-
-    // 恢复正常旋转：随机角度 + 多圈旋转
-    const minSpins = 3; // 最少3圈
-    const maxSpins = 6; // 最多6圈
-    const randomSpins = minSpins + Math.random() * (maxSpins - minSpins);
-    const randomAngle = Math.random() * 360; // 随机停止角度
-    const totalDelta = randomSpins * 360 + randomAngle;
-    
-    console.log(`[${ts()}] 开始转动：+${totalDelta.toFixed(1)}°（${randomSpins.toFixed(1)}圈+${randomAngle.toFixed(1)}°），当前累计角度=${this.data.rouletteRotation}`);
-
-    this.setData({ rouletteRotation: this.data.rouletteRotation + totalDelta, showDecisionLayer: false });
-
-    // 与 .roulette-wheel 的 transition: 2.8s 对齐，略放宽
-    setTimeout(() => {
-      try {
-        const pointerAngle = 0; // 修正：指针在CSS中位于top位置，对应0°
-        const count = this.data.segments.length;
-        const step = 360 / count;
-        const finalRotation = this.data.rouletteRotation; // 最终累计角度
-        const effectiveRot = ((finalRotation % 360) + 360) % 360;
-
-        // 基于段中心角的鲁棒命中：寻找与指针角差最小的段
-        let hitIndex = 0;
-        let minDiff = 9999;
-        for (let i = 0; i < count; i++) {
-          const center = ((this.data.segments[i].angle + effectiveRot) % 360 + 360) % 360;
-          let diff = Math.abs(center - pointerAngle);
-          diff = Math.min(diff, 360 - diff); // 环形距离
-          if (diff < minDiff) { minDiff = diff; hitIndex = i; }
+  // 静默预加载12个选项的云端图片（不阻塞UI）
+  preloadSegmentIcons(segments) {
+    try {
+      if (!Array.isArray(segments) || segments.length === 0) return;
+      const names = [];
+      for (const s of segments) {
+        const icon = s && s.icon;
+        if (typeof icon === 'string' && icon.indexOf('cloud://') === 0) {
+          const lastSlash = icon.lastIndexOf('/');
+          const filename = lastSlash >= 0 ? icon.substring(lastSlash + 1) : icon;
+          const dot = filename.lastIndexOf('.');
+          const base = dot > 0 ? filename.substring(0, dot) : filename;
+          if (base && base !== 'placeholder') names.push(base);
+        } else if (s && s.name) {
+          try {
+            const map = this.getPinyinMap && this.getPinyinMap();
+            const py = map && map[s.name] ? map[s.name] : s.name;
+            if (py && typeof py === 'string' && py !== 'placeholder') names.push(py);
+          } catch (_) {}
         }
-        const hit = this.data.segments[hitIndex];
-
-        if (!hit || !hit.name) {
-          console.error(`[${ts()}] 转盘数据异常`, { hitIndex, segments: this.data.segments, hit });
-          this.setData({ isSpinning: false });
-          return;
-        }
-
-        // 转动结束日志：编号与命中餐厅
-        console.log(`[${ts()}] 转动结束：指针编号=${hit.slotNo}，餐厅="${hit.name}"，finalRotation=${finalRotation.toFixed(1)}，effectiveRot=${effectiveRot.toFixed(1)}，step=${step}`);
-
-        // 命中后重置首页 logo 扩展名重试计数
-        this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
-      } catch (e) {
-        console.error(`[${ts()}] 转盘数据异常`, e);
-        this.setData({ isSpinning: false });
       }
-    }, 3100);
-
+      const uniqueNames = Array.from(new Set(names));
+      if (uniqueNames.length) {
+        const p = cloudImageManager.preloadImages(uniqueNames);
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      }
+    } catch (e) {
+      console.warn('预加载段图标出错', e);
+    }
   },
+
 
   onReroll() {
-    if (this.data.isSpinning) return; // 动画期间禁止再次触发
+    // 初始化阶段或动画期间，禁止再次触发
+    if (this.data.isSpinning || this._initInProgress) return;
     const sel = this.data.selected;
     if (sel) {
       const userData = getUserData();
@@ -670,9 +639,22 @@ Page({
       if (this.data.wheelType === 'restaurant') { try { updateUserPreference(String(sel.id), 'dislike'); } catch(e) {} }
       try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'reject', source: 'roulette', wheelType: this.data.wheelType }); } catch(e) {}
     }
-    this.setData({ showDecisionLayer: false, showShareArea: false });
-    // 保持累计角度与当前显示顺序；不刷新 segments
-    this.spinRoulette();
+    // 隐藏结果浮层与分享区，清空选中
+    this.setData({ showDecisionLayer: false, showShareArea: false, selected: null });
+
+    // 刷新后自动旋转：先刷新12个推荐并完成显示（瞬时对齐），再在初始化完成后触发旋转
+    console.log(`[${ts()}] 再转一次：换一批推荐（12家），并将指针对齐第1名，同时自动旋转`);
+    this.initWheel(false);
+
+    // 等待 _initInProgress 复位（移除 no-transition），再触发与点击开始按钮一致的旋转动画
+    const trySpin = () => {
+      if (this._initInProgress) {
+        setTimeout(trySpin, 16); // 下一帧再试，避免与初始化冲突
+      } else {
+        this.spinRoulette();
+      }
+    };
+    try { wx.nextTick(() => setTimeout(trySpin, 0)); } catch (_) { setTimeout(trySpin, 0); }
   },
 
   onAccept() {
@@ -709,19 +691,12 @@ Page({
         let name = filename;
         let ext = 'png';
         if (dot > 0) { ext = filename.substring(dot + 1); name = filename.substring(0, dot); }
-        try {
-          item.icon = await cloudImageManager.getTempHttpsUrl(name, ext);
-        } catch (e1) {
-          try {
-            item.icon = await cloudImageManager.getTempHttpsUrl(name, 'jpg');
-          } catch (e2) {
-            try {
-              item.icon = await cloudImageManager.getTempHttpsUrl(name, 'webp');
-            } catch (e3) {
-              item.icon = await cloudImageManager.getTempHttpsUrl('placeholder', 'png');
-            }
-          }
-        }
+        let url = '';
+        try { url = await cloudImageManager.getTempHttpsUrl(name, ext); } catch (e1) {}
+        if (!url || url.indexOf('cloud://') === 0) { try { url = await cloudImageManager.getTempHttpsUrl(name, 'jpg'); } catch (e2) {} }
+        if (!url || url.indexOf('cloud://') === 0) { try { url = await cloudImageManager.getTempHttpsUrl(name, 'webp'); } catch (e3) {} }
+        if (!url || url.indexOf('cloud://') === 0) { url = this.data.placeholderImageUrl || '/images/placeholder.svg'; }
+        item.icon = url;
       }
     } catch (err) {
       console.warn('onAddShortlist temp url convert failed', err);
@@ -765,6 +740,51 @@ Page({
     // 不需要额外提示框
   },
 
+  // 生成/刷新分享文案
+  loadShareText(prev = '') {
+    try {
+      const name = this.data.shareTargetName || (this.data.selected && this.data.selected.name) || '';
+      let wordings = [];
+      try {
+        // 优先尝试从 shareWording.json 读取（存在则使用）
+        const json = require('../../shareWording.json');
+        if (Array.isArray(json)) {
+          wordings = json;
+        } else if (json && Array.isArray(json.wordings)) {
+          wordings = json.wordings;
+        }
+      } catch (e) {
+        // 读取失败时使用内置备选文案
+        wordings = [
+          '今天吃什么？',
+          '不如让它来决定吧！',
+          '一起去吃吧～',
+          '我选这个，走起！'
+        ];
+      }
+
+      // 拼装候选文案（含餐厅名的更具针对性）
+      const candidates = [];
+      if (name) {
+        candidates.push(`今天就吃${name}吧？`);
+        candidates.push(`不如试试${name}？`);
+        candidates.push(`${name}看起来不错，一起？`);
+        candidates.push(`我决定选${name}，走起！`);
+      } else {
+        candidates.push(...wordings);
+      }
+
+      // 去重并规避与上一条重复
+      const uniq = Array.from(new Set(candidates)).filter(t => t && t !== prev);
+      const chosen = uniq.length ? uniq[Math.floor(Math.random() * uniq.length)] : (prev || '让它来决定吧！');
+
+      this.setData({ shareText: chosen });
+    } catch (e) {
+      console.warn('loadShareText error', e);
+      this.setData({ shareText: '让它来决定吧！' });
+    }
+  },
+
   onShareAppMessage() {
     const promise = new Promise(resolve => {
       try { addPoints && addPoints('share'); } catch (e) { console.warn('addPoints share error', e); }
@@ -799,58 +819,9 @@ Page({
     this.setData({ greeting, currentTime: `It's ${time}, ${day}` });
   },
 
-  /** 获取品牌拼音映射（与欢迎页保持一致） */
+  /** 获取品牌拼音映射（统一使用模块数据） */
   getPinyinMap() {
-    return {
-      "Baker&Spice": "Baker&Spice",
-      "超级碗": "chaojiwan",
-      "陈香贵": "chenxianggui",
-      "汉堡王": "hanbaowang",
-      "肯德基": "kendeji",
-      "蓝蛙": "lanwa",
-      "麦当劳": "maidanglao",
-      "马记永": "majiyong",
-      "莆田餐厅": "putiancanting",
-      "蜀大侠": "shudaxia",
-      "沃歌斯": "wogesi",
-      "西贝莜面村": "xibeiyoumiancun",
-      "海底捞": "haidilao",
-      "鼎泰丰": "dingtaifeng",
-      "呷哺呷哺": "xiabuxiabu",
-      "星巴克": "xingbake",
-      "喜茶": "xicha",
-      "南京大牌档": "nanjingdapaidang",
-      "鹿港小镇": "lugangxiaozhen",
-      "唐宫": "tanggong",
-      "外婆家": "waipojia",
-      "乐乐茶": "lelecha",
-      "良品铺子": "liangpinpuzi",
-      "喜家德": "xijiade",
-      "三米粥铺": "sanmizhoupu",
-      "南翔馒头店": "nanxiangmantoudian",
-      "那家小馆": "najiaxiaoguan",
-      "新元素": "xinyuansu",
-      "奈雪的茶": "naixuedecha",
-      "永和大王": "yonghedawang",
-      "小杨生煎": "xiaoyangshengjian",
-      "云海肴": "yunhaiyao",
-      "西树泡芙": "xishupaofu",
-      "喜茶 GO": "xichago",
-      "一点点": "yidiandian",
-      "新白鹿": "xinbailu",
-      "小南国": "xiaonanguo",
-      "小龙坎": "xiaolongkan",
-      "谭鸭血": "tanyaxie",
-      "大娘水饺": "daniangshuijiao",
-      "苏小柳": "suxiaoliu",
-      "蔡澜港式点心": "cailangangshidianxin",
-      "添好运": "tianhaoyun",
-      "很久以前羊肉串": "henjiuyiqianyangrouchuan",
-      "汤先生": "tangxiansheng",
-      // 新增缺失映射
-      "和府捞面": "hefulaomian",
-      "左庭右院": "zuotingyouyuan",
-    };
+    return pinyin;
   },
 
   getPackageAFullIcons() {
@@ -903,6 +874,11 @@ Page({
   // 初始化轮盘（12个推荐，旧实现：仅餐厅）
   initWheelLegacy(preserveRotation = false) {
     try {
+      // 初始化阶段：禁用过渡动画，防止旋转动画在对齐时出现（legacy）
+      if (!preserveRotation) {
+        this._initInProgress = true;
+        this.setData({ spinClass: 'no-transition' });
+      }
       // 用于变更对比的上一轮推荐（按 slotNo 记录）
       const prevSegments = Array.isArray(this.data.segments) ? this.data.segments : [];
       const prevBySlot = {};
@@ -1035,6 +1011,8 @@ Page({
   // 旋转开始（调试版：固定720°）
   spinRoulette() {
     if (!this.data.segments.length) return;
+    // 初始化阶段未结束时，禁止触发旋转
+    if (this._initInProgress) return;
     if (this.data.isSpinning) return; // 防重复触发
     this.setData({ isSpinning: true });
 
@@ -1052,16 +1030,15 @@ Page({
 
     this.setData({ rouletteRotation: this.data.rouletteRotation + totalDelta, showDecisionLayer: false });
 
-    // 与 .roulette-wheel 的 transition: 2.8s 对齐，略放宽
+    // 与 .roulette-wheel 的 transition: 3.2s 对齐，延迟调整确保动画完成
     setTimeout(() => {
       try {
         const pointerAngle = 0; // 修正：指针在CSS中位于top位置，对应0°
         const count = this.data.segments.length;
         const step = 360 / count;
-        const finalRotation = this.data.rouletteRotation; // 最终累计角度
-        const effectiveRot = ((finalRotation % 360) + 360) % 360;
+        const finalRotation = this.data.rouletteRotation % 360;
+        const effectiveRot = (finalRotation + 360) % 360;
 
-        // 基于段中心角的鲁棒命中：寻找与指针角差最小的段
         let hitIndex = 0;
         let minDiff = 9999;
         for (let i = 0; i < count; i++) {
@@ -1087,220 +1064,9 @@ Page({
         console.error(`[${ts()}] 转盘数据异常`, e);
         this.setData({ isSpinning: false });
       }
-    }, 3100);
+    }, 3400);
 
   },
-
-  onReroll() {
-    if (this.data.isSpinning) return; // 动画期间禁止再次触发
-    const sel = this.data.selected;
-    if (sel) {
-      const userData = getUserData();
-      updateRestaurantScore(userData, String(sel.id), 'reject', { name: sel.name });
-      if (this.data.wheelType === 'restaurant') { try { updateUserPreference(String(sel.id), 'dislike'); } catch(e) {} }
-      try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'reject', source: 'roulette', wheelType: this.data.wheelType }); } catch(e) {}
-    }
-    this.setData({ showDecisionLayer: false, showShareArea: false });
-    // 保持累计角度与当前显示顺序；不刷新 segments
-    this.spinRoulette();
-  },
-
-  onAccept() {
-    const sel = this.data.selected;
-    if (!sel) return;
-    const userData = getUserData();
-    updateRestaurantScore(userData, String(sel.id), 'accept', { name: sel.name });
-    if (this.data.wheelType === 'restaurant') { try { updateUserPreference(String(sel.id), 'like'); } catch(e) {} }
-    try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'accept', source: 'roulette', wheelType: this.data.wheelType }); } catch(e) {}
-
-    // 锁定分享餐厅，生成文案并展示分享区，隐藏结果浮层
-    this.setData({ shareTargetName: sel.name, showShareArea: true, showDecisionLayer: false });
-    this.loadShareText();
-    wx.showToast({ title: '已记录，就它了', icon: 'success' });
-  },
-
-  onAddShortlist: async function() {
-    const sel = this.data.selected;
-    if (!sel) return;
-    const list = this.data.shortlist.slice(0,3);
-    if (list.find(x => x.id === sel.id)) { return; }
-    if (list.length >= 3) { 
-      wx.showToast({ title: '备选区已满，请先删除', icon: 'none' });
-      // 备选区已满时，不隐藏浮层，让用户可以继续操作
-      return; 
-    }
-    let item = { ...sel };
-    try {
-      const icon = item.icon;
-      if (icon && typeof icon === 'string' && icon.indexOf('cloud://') === 0) {
-        const lastSlash = icon.lastIndexOf('/');
-        const filename = lastSlash >= 0 ? icon.substring(lastSlash + 1) : icon;
-        const dot = filename.lastIndexOf('.');
-        let name = filename;
-        let ext = 'jpg';
-        if (dot > 0) { ext = filename.substring(dot + 1); name = filename.substring(0, dot); }
-        try {
-          item.icon = await cloudImageManager.getTempHttpsUrl(name, ext);
-        } catch (e1) {
-          try {
-            item.icon = await cloudImageManager.getTempHttpsUrl(name, 'jpg');
-          } catch (e2) {
-            try {
-              item.icon = await cloudImageManager.getTempHttpsUrl(name, 'webp');
-            } catch (e3) {
-              item.icon = await cloudImageManager.getTempHttpsUrl('placeholder', 'png');
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('onAddShortlist temp url convert failed', err);
-    }
-    list.push(item);
-    // 成功加入备选后隐藏结果浮层
-    this.setData({ shortlist: list, showDecisionLayer: false });
-    this.updatePlaceholderSlots();
-    wx.showToast({ title: '已加入备选', icon: 'success' });
-  },
-
-  onRemoveShort(e) {
-    const id = e.currentTarget.dataset.id;
-    this.setData({ shortlist: this.data.shortlist.filter(x => x.id !== id) });
-    this.updatePlaceholderSlots();
-  },
-
-  onTapShortlistCard(e) {
-    const { id, name } = e.currentTarget.dataset;
-    if (!id || !name) return;
-    
-    // 如果点击的是已选中的卡片，则取消选中
-    if (this.data.activeShortlistId === id) {
-      this.setData({ activeShortlistId: '', shareTargetName: '', showShareArea: false });
-      return;
-    }
-    
-    // 选中新的卡片
-    this.setData({ activeShortlistId: id, shareTargetName: name, showShareArea: true });
-    this.loadShareText();
-  },
-
-  onCopyShare() {
-    const text = this.data.shareText || '今天吃什么？';
-    wx.setClipboardData({ data: text, success: () => wx.showToast({ title: '已复制，可转发好友', icon: 'success' }) });
-  },
-
-  onRefreshShare() {
-    const prev = this.data.shareText || '';
-    this.loadShareText(prev);
-    // 不需要额外提示框
-  },
-
-   // Share wording（懒加载 + 文件系统兜底，兼容真机与开发者工具）
-  loadShareText(excludeText = '') {
-     // 内嵌文案数据作为兜底
-     const fallbackWording = [
-       "有没有人一起去{restaurant}，我觉得不错～",
-       "要不要试试{restaurant}，今天感觉很合适！",
-       "我提议{restaurant}，大家意下如何？",
-       "今天突然很想吃{restaurant}，有人一起吗？",
-       "吃{restaurant}可好？简单省事～",
-       "刚想到{restaurant}，大家要不要去？",
-       "要不要去{restaurant}，挺想吃的～",
-       "{restaurant}怎么样？大家一起？",
-       "饭点到了，别卷了，{restaurant}走起？",
-       "今天就{restaurant}了，有意见吗？",
-       "投票{restaurant}，同意的举手！",
-       "不如去{restaurant}，省得纠结～",
-       "突然想到{restaurant}，要不要试试？",
-       "今天心情适合{restaurant}，走吗？",
-       "决定了，{restaurant}！有人反对吗？",
-       "要不{restaurant}？感觉挺好的～",
-       "提名{restaurant}，大家觉得呢？",
-       "今天就{restaurant}吧，别再犹豫了～",
-       "心血来潮想吃{restaurant}，一起？",
-       "不如{restaurant}，简单直接！"
-     ];
-
-     // 1) 动态 require（新基础库与开发者工具通常可用）
-     let arr = [];
-     try {
-       const maybe = require('../../shareWording.json');
-       if (Array.isArray(maybe)) {
-         arr = maybe;
-         console.log('通过require加载文案成功:', arr.length, '条');
-       }
-     } catch (e) {
-       console.log('require加载失败:', e.message);
-       // ignore and fallback
-     }
-
-     // 2) 文件系统兜底，多路径尝试（真机环境下跳过以避免错误）
-     if (!arr.length && wx.getFileSystemManager && typeof __wxConfig === 'undefined') {
-       // 仅在开发环境下尝试文件系统读取
-       try {
-         const fsm = wx.getFileSystemManager();
-         const candidates = [
-           'shareWording.json', '/shareWording.json', './shareWording.json',
-           '../../shareWording.json', '../shareWording.json', 'utils/../shareWording.json'
-         ];
-         for (let i = 0; i < candidates.length && !arr.length; i++) {
-           try {
-             const content = fsm.readFileSync(candidates[i], 'utf-8');
-             const parsed = JSON.parse(content);
-             if (Array.isArray(parsed)) {
-               arr = parsed;
-               console.log('通过文件系统加载文案成功:', candidates[i], arr.length, '条');
-             }
-           } catch (ignore) {
-             // 静默处理文件读取失败，避免控制台错误
-           }
-         }
-       } catch (ignoreFs) {
-         console.log('文件系统不可用:', ignoreFs.message);
-       }
-     }
-
-     // 3) 使用内嵌文案作为最终兜底
-     if (!arr.length) {
-       arr = fallbackWording;
-       console.log('使用内嵌文案:', arr.length, '条');
-     }
-
-     console.log('最终文案数组长度:', arr.length);
-
-     // 4) 设置文案（优先使用锁定餐厅名），并避免与上次重复
-     const targetName = this.data.shareTargetName || (this.data.selected ? this.data.selected.name : '');
-     
-     // 如果没有选中餐厅，显示特定提示文案
-     if (!targetName) {
-       this.setData({ shareText: '（选择餐厅后出现文案）' });
-       console.log('未选中餐厅，显示提示文案');
-       return;
-     }
-     
-     if (arr.length) {
-        // 先过滤掉与当前文案相同的模板
-        let availableTemplates = arr.slice();
-        if (excludeText) {
-          availableTemplates = arr.filter(tpl => tpl.replace('{restaurant}', targetName) !== excludeText);
-          // 如果过滤后没有可用模板，则使用全部模板
-          if (availableTemplates.length === 0) {
-            availableTemplates = arr.slice();
-          }
-        }
-        
-        const tpl = availableTemplates[Math.floor(Math.random() * availableTemplates.length)] || '';
-        const text = tpl.replace('{restaurant}', targetName);
-        this.setData({ shareText: text });
-        
-        // 添加调试信息
-        console.log('刷新文案:', { excludeText, newText: text, targetName, availableCount: availableTemplates.length });
-     } else {
-       const fallbackText = `今天吃什么？不如试试${targetName}`;
-       this.setData({ shareText: fallbackText });
-       console.log('使用最终兜底文案:', fallbackText);
-     }
-   },
 
   // 维护备选占位数量（容量=3）
   updatePlaceholderSlots() {
@@ -1771,7 +1537,8 @@ Page({
       rating: 0,
       icon: '/images/placeholder.svg',
       logoPath: '/images/placeholder.svg',
-      hdLogoPath: '/images/placeholder.svg'
+      hdLogoPath: '/images/placeholder.svg',
+      userAdded: true
     };
     
     // 添加到当前页面的restaurants数组
@@ -1780,19 +1547,27 @@ Page({
     
     // 保存到本地存储，参照欢迎页的存储方式
     try {
-      // 保存到welcomeSelections中
+      // 保存到 welcomeSelections（按ID）
       let welcomeSelections = wx.getStorageSync('welcomeSelections') || [];
       if (!welcomeSelections.includes(userAddedId)) {
         welcomeSelections.push(userAddedId);
         wx.setStorageSync('welcomeSelections', welcomeSelections);
       }
+
+      // 同步欢迎页的品牌名选择：welcomeSelectionsByBrand（按品牌名）
+      let welcomeSelectionsByBrand = wx.getStorageSync('welcomeSelectionsByBrand') || [];
+      if (!welcomeSelectionsByBrand.includes(restaurantName)) {
+        welcomeSelectionsByBrand.push(restaurantName);
+        wx.setStorageSync('welcomeSelectionsByBrand', welcomeSelectionsByBrand);
+      }
       
-      // 同时保存到user_data中
+      // 同时保存到 user_data 中（两个字段都同步）
       const userData = wx.getStorageSync('user_data') || {};
       userData.welcomeSelections = welcomeSelections;
+      userData.welcomeSelectionsByBrand = welcomeSelectionsByBrand;
       wx.setStorageSync('user_data', userData);
       
-      // 保存餐厅详细信息到userAddedRestaurants
+      // 保存餐厅详细信息到 userAddedRestaurants
       let userAddedRestaurants = wx.getStorageSync('userAddedRestaurants') || [];
       if (!userAddedRestaurants.find(r => r.name === restaurantName)) {
         userAddedRestaurants.push(newRestaurant);
@@ -1808,5 +1583,12 @@ Page({
       icon: 'success',
       duration: 1500
     });
+
+    // 立即刷新转盘：重新生成12家推荐并重置到第1名
+    try {
+      this.initWheel(false);
+    } catch (e) {
+      console.warn('刷新转盘失败', e);
+    }
   }
 });

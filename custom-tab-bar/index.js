@@ -6,20 +6,20 @@ Component({
     list: [
       {
         pagePath: '/pages/index/index',
-        iconPath: '/images/icon_home.png',
-        selectedIconPath: '/images/icon_home_selected.png',
+        iconPath: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/icon_home.png',
+        selectedIconPath: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/icon_home_selected.png',
         text: '今日选择'
       },
       {
         pagePath: '/pages/voice/index',
-        iconPath: '/images/icon_voice.png',
-        selectedIconPath: '/images/icon_voice_selected.png',
+        iconPath: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/icon_voice.png',
+        selectedIconPath: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/icon_voice_selected.png',
         text: '职场嘴替'
       },
       {
         pagePath: '/pages/profile/profile',
-        iconPath: '/images/icon_profile.png',
-        selectedIconPath: '/images/icon_profile_selected.png',
+        iconPath: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/icon_profile.png',
+        selectedIconPath: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/icon_profile_selected.png',
         text: '个人'
       }
     ],

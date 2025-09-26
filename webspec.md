@@ -153,3 +153,53 @@ setData 优化
   z-index: 10; /* 确保层级正确 */
 }
 ```
+
+附：定位与微调实战规范与避坑（项目经验沉淀）
+
+定位方式选择顺序（由高到低）
+- 不改变周围布局的微调：position: relative + top/left/right/bottom（优先）
+- 动画或交互联动：transform: translate(...)（仅用于需要过渡/动画的节点）
+- 彻底脱离文档流的锚定：position: absolute + 明确定位上下文（父级 position: relative）
+- 区块间距控制：使用 margin（调整相邻区块间距）
+
+何时避免使用 transform
+- 目标元素或祖先在状态切换时会应用 transform（例如 .xxx.switching），你的 translate 可能被覆盖或叠加导致不可预测
+- 需要影响命中区域/滚动区域的几何尺寸（transform 不改变布局尺寸，仅改变视觉）
+- 需要参与容器尺寸计算（transform 不会改变占位，可能导致对齐错位）
+
+关于负值与流影响
+- padding 不能为负，不能通过负 padding 缩小间距
+- 负 margin 会影响兄弟元素布局，容易产生“联动位移”，非必要不要用
+- top/bottom/left/right 仅改变自身视觉位置，不会挤压兄弟元素，适合局部上/下/左/右微移
+
+绝对定位要点
+- 明确定位上下文：最近的祖先必须设 position: relative（或 absolute/fixed），否则锚点不受控
+- 优先用 bottom/right 等相对锚点，避免硬编码 magic number
+- 注意交互区域不被遮挡；必要时配合 z-index，同时避免滥用极大 z-index
+
+堆叠上下文与 z-index
+- transform、filter、opacity<1 等会创建新的 stacking context，子元素 z-index 可能被“困住”
+- 覆盖层需在相同 stacking context 或将父级 z-index 一并抬高
+
+分层与职责
+- 避免同一节点既用于状态动画（transform）又用于静态微调（translate/top 同时存在）
+- 使用“外包裹层用于静态微调，内层用于动画”的分层策略，降低冲突
+
+本项目最佳实践示例
+- 切换区容器微调：将切换按钮容器仅上移 15rpx，采用 position: relative + top: -15rpx，而非 translateY，原因：
+  - 切换状态类可能在目标或祖先节点上写入 transform，translateY 易被复写或叠加
+  - top 仅影响自身视觉位置，不改变其它节点布局，避免色盘按钮、轮盘等组件发生联动位移
+- 右下角锚定按钮：将按钮放在轮盘容器内部；父容器设 position: relative，按钮设 position: absolute; right/bottom 指定间距，获得稳定锚定
+
+调试清单
+- 检查计算样式与优先级（是否被更高优先级选择器覆盖）
+- 检查是否存在状态类（如 .switching）在切换时写入 transform
+- 检查点击/触摸区域是否与视觉位置一致（尤其在使用 transform 时）
+- 检查不同机型与 DPR 下 rpx 缩放表现
+- 多轮切换/动画后是否出现“累积位移”或错位
+
+统一单位与可维护性
+- 定位与微调统一使用 rpx，避免 px 带来的适配偏差
+- 避免魔法数；需要时加注释说明来源与依赖
+- 避免在多处重复定义偏移值，必要时抽为公共样式变量（或集中注释）
+```

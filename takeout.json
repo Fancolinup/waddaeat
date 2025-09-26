@@ -1,50 +1,130 @@
 {
-"takeout_categories": [
-{
-"category_name": "汉堡",
-"brands": [
-{"brand_name": "麦当劳", "tags": ["麦乐送", "超值套餐"]},
-{"brand_name": "肯德基", "tags": ["疯狂星期四", "原味鸡"]},
-{"brand_name": "汉堡王", "tags": ["皇堡", "无限续杯"]},
-{"brand_name": "华莱士", "tags": ["性价比高"]}
-]
-},
-{
-"category_name": "米饭套餐",
-"brands": [
-{"brand_name": "老碗会", "tags": ["中式简餐"]},
-{"brand_name": "犟骨头", "tags": ["排骨饭"]},
-{"brand_name": "黄焖鸡米饭", "tags": ["国民套餐"]},
-{"brand_name": "真功夫", "tags": ["蒸饭", "营养搭配"]}
-]
-},
-{
-"category_name": "西式快餐",
-"brands": [
-{"brand_name": "肯德基", "tags": ["炸鸡桶"]},
-{"brand_name": "德克士", "tags": ["脆皮炸鸡"]},
-{"brand_name": "叫了个炸鸡", "tags": ["整只炸鸡"]},
-{"brand_name": "卤西西", "tags": ["炸物卤味"]}
-]
-},
-{
+  "takeout_categories": [
+    {
+      "category_name": "汉堡",
+      "brands": [
+        {
+          "brand_name": "麦当劳",
+          "tags": [
+            "麦乐送",
+            "超值套餐"
+          ]
+        },
+        {
+          "brand_name": "肯德基",
+          "tags": [
+            "疯狂星期四",
+            "原味鸡"
+          ]
+        },
+        {
+          "brand_name": "汉堡王",
+          "tags": [
+            "皇堡",
+            "无限续杯"
+          ]
+        },
+        {
+          "brand_name": "华莱士",
+          "tags": [
+            "性价比高"
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "米饭套餐",
+      "brands": [
+        {
+          "brand_name": "老碗会",
+          "tags": [
+            "中式简餐"
+          ]
+        },
+        {
+          "brand_name": "犟骨头",
+          "tags": [
+            "排骨饭"
+          ]
+        },
+        {
+          "brand_name": "黄焖鸡米饭",
+          "tags": [
+            "国民套餐"
+          ]
+        },
+        {
+          "brand_name": "真功夫",
+          "tags": [
+            "蒸饭",
+            "营养搭配"
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "西式快餐",
+      "brands": [
+        {
+          "brand_name": "肯德基",
+          "tags": [
+            "炸鸡桶"
+          ]
+        },
+        {
+          "brand_name": "德克士",
+          "tags": [
+            "脆皮炸鸡"
+          ]
+        },
+        {
+          "brand_name": "叫了个炸鸡",
+          "tags": [
+            "整只炸鸡"
+          ]
+        },
+        {
+          "brand_name": "卤西西",
+          "tags": [
+            "炸物卤味"
+          ]
+        }
+      ]
+    },
+    {
       "category_name": "麻辣烫",
       "brands": [
         {
           "brand_name": "杨国福麻辣烫",
-          "tags": ["温和骨汤", "食材多样", "全国超6000家门店"]
+          "tags": [
+            "温和骨汤",
+            "食材多样",
+            "全国超6000家门店"
+          ]
         },
         {
           "brand_name": "张亮麻辣烫",
-          "tags": ["营养搭配", "牛骨汤底", "海外门店超100家"]
+          "tags": [
+            "营养搭配",
+            "牛骨汤底",
+            "海外门店超100家"
+          ]
         },
         {
           "brand_name": "刘文祥麻辣烫",
-          "tags": ["东北老式风味", "麻辣鲜香", "亲民价格"]
+          "tags": [
+            "东北老式风味",
+            "麻辣鲜香",
+            "亲民价格"
+          ]
         },
         {
           "brand_name": "小谷姐姐麻辣拌麻辣烫",
-          "tags": ["干拌麻辣烫", "麻辣烫+奶茶复合店", "年轻群体喜爱"]
+          "tags": [
+            "干拌麻辣烫",
+            "麻辣烫+奶茶复合店",
+            "年轻群体喜爱"
+          ]
         }
       ]
     },
@@ -53,97 +133,283 @@
       "brands": [
         {
           "brand_name": "六姐",
-          "tags": ["秘制酱料", "博采川渝风味", "全国近400家店"]
+          "tags": [
+            "秘制酱料",
+            "博采川渝风味",
+            "全国近400家店"
+          ]
         },
         {
           "brand_name": "味行动",
-          "tags": ["珠三角区域", "自助香锅", "门店超80家"]
+          "tags": [
+            "珠三角区域",
+            "自助香锅",
+            "门店超80家"
+          ]
         },
         {
           "brand_name": "炭舍TanShe",
-          "tags": ["炭火干锅", "古法川味", "融合菜式"]
+          "tags": [
+            "炭火干锅",
+            "古法川味",
+            "融合菜式"
+          ]
         },
         {
           "brand_name": "汉库",
-          "tags": ["中高端外卖", "专注白领市场", "秘制香锅"]
+          "tags": [
+            "中高端外卖",
+            "专注白领市场",
+            "秘制香锅"
+          ]
         },
         {
           "brand_name": "辣尚瘾",
-          "tags": ["烤鱼+麻辣香锅", "活鱼现杀", "全国超100家店"]
+          "tags": [
+            "烤鱼+麻辣香锅",
+            "活鱼现杀",
+            "全国超100家店"
+          ]
         }
       ]
     },
-{
-"category_name": "米粉/米线",
-"brands": [
-{"brand_name": "四有青年米粉", "tags": ["湖南米粉"]},
-{"brand_name": "阿香米线", "tags": ["过桥米线"]},
-{"brand_name": "大鼓米线", "tags": ["浓汤米线"]},
-{"brand_name": "魔芋三丝", "tags": ["轻食米线"]}
-]
-},
-{
-"category_name": "披萨",
-"brands": [
-{"brand_name": "必胜客", "tags": ["铁盘披萨", "芝心披萨"]},
-{"brand_name": "达美乐", "tags": ["30分钟送达", "外带优惠"]},
-{"brand_name": "乐凯撒", "tags": ["榴莲披萨", "手工现拍"]},
-{"brand_name": "尊宝披萨", "tags": ["性价比高"]}
-]
-},
-{
-"category_name": "中式炒菜",
-"brands": [
-{"brand_name": "大米先生", "tags": ["现炒","白领工作餐"]},
-{"brand_name": "老乡鸡", "tags": ["老母鸡汤","家常味道"]},
-{"brand_name": "南京大牌档", "tags": ["金陵菜"]},
-{"brand_name": "金百万", "tags": ["烤鸭", "京味菜"]}
-]
-},
-{
-"category_name": "粥店",
-"brands": [
-{"brand_name": "嘉和一品", "tags": ["养生粥"]},
-{"brand_name": "三米粥铺", "tags": ["潮汕砂锅粥"]},
-{"brand_name": "曼玲粥店", "tags": ["甜咸粥品"]},
-{"brand_name": "粥故事", "tags": ["搭配小菜"]}
-]
-},
-{
-"category_name": "烧烤",
-"brands": [
-{"brand_name": "木屋烧烤", "tags": ["中式烧烤"]},
-{"brand_name": "很久以前羊肉串", "tags": ["自动烤炉"]},
-{"brand_name": "管氏翅吧", "tags": ["秘制烤翅"]},
-{"brand_name": "丰茂烤串", "tags": ["朝鲜族风味"]}
-]
-},
-{
-"category_name": "水饺/馄饨",
-"brands": [
-{"brand_name": "袁记云饺", "tags": ["鲜虾云吞"]},
-{"brand_name": "大娘水饺", "tags": ["多馅料"]},
-{"brand_name": "吉祥馄饨", "tags": ["个大汤鲜"]},
-{"brand_name": "喜家德", "tags": ["虾仁水饺"]},
-]
-},
-{
-"category_name": "地方特色菜",
-"brands": [
-{"brand_name": "渝是乎", "tags": ["酸菜鱼"]},
-{"brand_name": "云海肴", "tags": ["云南菜"]},
-{"brand_name": "西贝莜面村", "tags": ["西北菜"]},
-{"brand_name": "望湘园", "tags": ["湖南菜"]}
-]
-},
-{
-"category_name": "轻食沙拉",
-"brands": [
-{"brand_name": "沙野轻食", "tags": ["低卡路里"]},
-{"brand_name": "超级碗", "tags": ["健身餐"]},
-{"brand_name": "赛百味", "tags": ["均衡营养"]},
-{"brand_name": "好色派沙拉", "tags": ["高蛋白"]}
-]
-}
-]
+    {
+      "category_name": "米粉/米线",
+      "brands": [
+        {
+          "brand_name": "四有青年米粉",
+          "tags": [
+            "湖南米粉"
+          ]
+        },
+        {
+          "brand_name": "阿香米线",
+          "tags": [
+            "过桥米线"
+          ]
+        },
+        {
+          "brand_name": "大鼓米线",
+          "tags": [
+            "浓汤米线"
+          ]
+        },
+        {
+          "brand_name": "魔芋三丝",
+          "tags": [
+            "轻食米线"
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "披萨",
+      "brands": [
+        {
+          "brand_name": "必胜客",
+          "tags": [
+            "铁盘披萨",
+            "芝心披萨"
+          ]
+        },
+        {
+          "brand_name": "达美乐",
+          "tags": [
+            "30分钟送达",
+            "外带优惠"
+          ]
+        },
+        {
+          "brand_name": "乐凯撒",
+          "tags": [
+            "榴莲披萨",
+            "手工现拍"
+          ]
+        },
+        {
+          "brand_name": "尊宝披萨",
+          "tags": [
+            "性价比高"
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "中式炒菜",
+      "brands": [
+        {
+          "brand_name": "大米先生",
+          "tags": [
+            "现炒",
+            "白领工作餐"
+          ]
+        },
+        {
+          "brand_name": "老乡鸡",
+          "tags": [
+            "老母鸡汤",
+            "家常味道"
+          ]
+        },
+        {
+          "brand_name": "南京大牌档",
+          "tags": [
+            "金陵菜"
+          ]
+        },
+        {
+          "brand_name": "金百万",
+          "tags": [
+            "烤鸭",
+            "京味菜"
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "粥店",
+      "brands": [
+        {
+          "brand_name": "嘉和一品",
+          "tags": [
+            "养生粥"
+          ]
+        },
+        {
+          "brand_name": "三米粥铺",
+          "tags": [
+            "潮汕砂锅粥"
+          ]
+        },
+        {
+          "brand_name": "曼玲粥店",
+          "tags": [
+            "甜咸粥品"
+          ]
+        },
+        {
+          "brand_name": "粥故事",
+          "tags": [
+            "搭配小菜"
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "烧烤",
+      "brands": [
+        {
+          "brand_name": "木屋烧烤",
+          "tags": [
+            "中式烧烤"
+          ]
+        },
+        {
+          "brand_name": "很久以前羊肉串",
+          "tags": [
+            "自动烤炉"
+          ]
+        },
+        {
+          "brand_name": "管氏翅吧",
+          "tags": [
+            "秘制烤翅"
+          ]
+        },
+        {
+          "brand_name": "丰茂烤串",
+          "tags": [
+            "朝鲜族风味"
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "水饺/馄饨",
+      "brands": [
+        {
+          "brand_name": "袁记云饺",
+          "tags": [
+            "鲜虾云吞"
+          ]
+        },
+        {
+          "brand_name": "大娘水饺",
+          "tags": [
+            "多馅料"
+          ]
+        },
+        {
+          "brand_name": "吉祥馄饨",
+          "tags": [
+            "个大汤鲜"
+          ]
+        },
+        {
+          "brand_name": "喜家德",
+          "tags": [
+            "虾仁水饺"
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "地方特色菜",
+      "brands": [
+        {
+          "brand_name": "渝是乎",
+          "tags": [
+            "酸菜鱼"
+          ]
+        },
+        {
+          "brand_name": "云海肴",
+          "tags": [
+            "云南菜"
+          ]
+        },
+        {
+          "brand_name": "西贝莜面村",
+          "tags": [
+            "西北菜"
+          ]
+        },
+        {
+          "brand_name": "望湘园",
+          "tags": [
+            "湖南菜"
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "轻食健康餐",
+      "brands": [
+        {
+          "brand_name": "沙野轻食",
+          "tags": [
+            "低卡路里"
+          ]
+        },
+        {
+          "brand_name": "超级碗",
+          "tags": [
+            "健身餐"
+          ]
+        },
+        {
+          "brand_name": "赛百味",
+          "tags": [
+            "均衡营养"
+          ]
+        },
+        {
+          "brand_name": "好色派沙拉",
+          "tags": [
+            "高蛋白"
+          ]
+        }
+      ]
+    }
+  ]
 }

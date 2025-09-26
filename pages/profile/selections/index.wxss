@@ -15,8 +15,8 @@
 
 .actions{margin-top:24rpx;}
 /* 添加品牌按钮：虚线+圆角 */
-.add-btn{background:#fff;border:2rpx solid #bbb;color:#555;border-radius:16rpx;padding:18rpx 20rpx;font-size:26rpx;}
-.add-btn:active{opacity:.85}
+.add-btn{background:#f8f9fa;border:2rpx dashed #6f42c1;color:#6f42c1;border-radius:16rpx;padding:20rpx 24rpx;font-size:28rpx;font-weight:600;}
+.add-btn:active{opacity:.85;background:#f0f0f0;}
 
 /* 历史区块 */
 .history-section{margin-top:28rpx}

@@ -6,19 +6,6 @@
   </view>
   <view class="title">What's today's feast?</view>
 
-  <!-- 转盘切换按钮组（灵动岛风格） -->
-  <view class="wheel-type-switcher ws-{{wheelType}}">
-    <view class="switcher-item item-restaurant {{wheelType === 'restaurant' ? 'active' : ''}}" data-type="restaurant" bindtap="onSwitchWheelType">
-      <view class="icon icon-plate"></view>
-    </view>
-    <view class="switcher-item item-takeout {{wheelType === 'takeout' ? 'active' : ''}}" data-type="takeout" bindtap="onSwitchWheelType">
-      <view class="icon icon-bag"></view>
-    </view>
-    <view class="switcher-item item-beverage {{wheelType === 'beverage' ? 'active' : ''}}" data-type="beverage" bindtap="onSwitchWheelType">
-      <view class="icon icon-cup"></view>
-    </view>
-  </view>
-
   <!-- 轮盘容器：指针向下，轮盘本身旋转，按钮保持固定 -->
   <view class="hero-area">
     <view class="roulette-wheel-container">
@@ -43,7 +30,6 @@
         <view class="palette-switch" bindtap="onTogglePalette">
           <view class="palette-wheel"></view>
         </view>
-        <image class="refresh-switch" src="/images/refresh_batch.png" bindtap="onRefreshWheel" />
       </view>
   
       <!-- 固定在中心的开始按钮与手型（手型独立覆盖，不影响按钮尺寸） -->
@@ -51,11 +37,19 @@
         <image class="start-hand" src="/images/hand.png" mode="widthFix" />
         <view class="start-button" bindtap="spinRoulette"><text class="art-text">开始</text></view>
       </view>
+
+      <!-- 轮盘右下角扩展操作：添加更多餐厅（相对轮盘容器绝对定位） -->
+      <view wx:if="{{wheelType === 'restaurant'}}" class="roulette-extra-actions">
+        <button class="add-restaurant-btn" bindtap="onAddMoreRestaurants">添加餐厅</button>
+      </view>
     </view>
   </view>
 
+  <!-- 顶部toast提示 -->
+  <view class="top-toast" hidden="{{!showTopToast}}">{{topToastText}}</view>
+
   <!-- 决策浮层 -->
-  <view class="decision-layer" wx:if="{{showDecisionLayer}}">
+  <view class="decision-layer" hidden="{{!showDecisionLayer}}">
     <view class="dl-body">
       <!-- 根据转盘类型切换logo呈现方式：餐厅/茶饮/外卖统一使用云端图片 -->
       <image class="dl-logo" src="{{selected ? selected.icon : placeholderImageUrl}}" mode="aspectFill" binderror="onSelectedLogoError" />
@@ -93,10 +87,25 @@
     </view>
   </view>
 
-  <!-- 添加更多餐厅按钮：仅在餐厅转盘下显示 -->
-  <view class="add-restaurant-section" wx:if="{{wheelType === 'restaurant'}}">
-    <button class="add-restaurant-btn" bindtap="onAddMoreRestaurants">添加更多餐厅</button>
+  <!-- 转盘切换按钮区域容器：提供固定占位，避免与其他元素相互影响 -->
+  <view class="wheel-type-switcher-area">
+    <view class="wheel-type-switcher ws-{{wheelType}} {{switchingAnimation ? 'switching' : ''}}">
+      <view class="switcher-item item-restaurant {{wheelType === 'restaurant' ? 'active' : ''}}" data-type="restaurant" bindtap="onSwitchWheelType">
+        <image class="icon" src="cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/canteen.png" mode="aspectFit"></image>
+        <text class="switcher-text">堂食</text>
+      </view>
+      <view class="switcher-item item-takeout {{wheelType === 'takeout' ? 'active' : ''}}" data-type="takeout" bindtap="onSwitchWheelType">
+        <image class="icon" src="cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/takeout.png" mode="aspectFit"></image>
+        <text class="switcher-text">外卖</text>
+      </view>
+      <view class="switcher-item item-beverage {{wheelType === 'beverage' ? 'active' : ''}}" data-type="beverage" bindtap="onSwitchWheelType">
+        <image class="icon" src="cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/beverage.png" mode="aspectFit"></image>
+        <text class="switcher-text">奶茶咖啡</text>
+      </view>
+    </view>
   </view>
+
+
 
   <!-- 备选区（3个透明背景虚线占位，填充后显示logo卡片+删除按钮） -->
   <view class="shortlist">

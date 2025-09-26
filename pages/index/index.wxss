@@ -12,112 +12,252 @@
   text-align: center; 
   font-size: 36rpx; 
   font-weight: 600; 
-  margin-top: 49rpx;    /* 顶部边距 - 下移 15rpx（由34rpx调整为49rpx） */
-  margin-bottom: -100rpx;  /* 底部边距 - 可调整与转盘距离 */
   margin-left: 24rpx;   /* 左边距 */
   margin-right: 24rpx;  /* 右边距 */
   color: #111; 
+  transform: translateY(49rpx); /* 使用transform替代margin-top进行垂直定位 */
 }
 
-/* 转盘切换按钮组 */
-.wheel-type-switcher {
-  position: absolute;
-  top: 8rpx;
-  right: 30rpx;
-  display: flex;
-  background: rgba(255, 255, 255, 0.68);
-  backdrop-filter: blur(20rpx);
-  border-radius: 50rpx;
-  padding: 8rpx; /* 减小整体高度 */
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
+.top-toast {
+  position: fixed;
+  left: 50%;
+  top: 24rpx;
+  transform: translateX(-50%);
+  padding: 10rpx 16rpx;
+  background: rgba(17,17,17,0.85);
+  color: #fff;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+  box-shadow: 0 8rpx 20rpx rgba(0,0,0,0.12);
   z-index: 100;
-  gap: 8rpx;
+  pointer-events: none;
 }
 
-/* 灵动岛流畅变形：使用容器控制顺序，当前选中前置 */
-.wheel-type-switcher .switcher-item {
-  position: relative;
-  width: 52rpx;  /* 从64rpx减小到52rpx */
-  height: 52rpx; /* 从64rpx减小到52rpx */
-  border-radius: 50%;
-  background: rgba(245, 245, 245, 0.9);
-  transition: all 320ms cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.08);
+/* 转盘切换区域容器：提供独立占位，避免与短清单互相影响 */
+.wheel-type-switcher-area {
+  height: 100rpx;               /* 固定占位高度 */
   display: flex;
   align-items: center;
   justify-content: center;
-  transform: translateZ(0); /* 防抖动：启用合成层 */
+  padding-top: 0rpx;           /* 用内边距控制垂直位置，替代translateY */
+  position: relative;          /* 仅视觉上位移，不影响文档流与周围元素 */
+  top: -35rpx;                 /* 向上移动15rpx，缩小与转盘容器间距 */
 }
 
-/* 选中态：扩大为圆角矩形并前置到第一个 */
+/* 转盘切换按钮组：3D凸起凹陷效果 */
+.wheel-type-switcher {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20rpx;
+  padding: 8rpx;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10rpx);
+  z-index: 10; /* 保持适中层级 */
+  pointer-events: auto; /* 确保可以接收点击事件 */
+  transform: scale(0.7); /* 移除translateY，改由容器占位控制垂直位置，彻底固定 */
+}
+
+/* 切换动画效果 */
+.wheel-type-switcher.switching {
+  /* 移除动画效果，保持固定尺寸 */
+}
+
+/* 按钮基础样式 */
+.wheel-type-switcher .switcher-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 24rpx;
+  border-radius: 42rpx;
+  min-width: 120rpx;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  cursor: pointer;
+  pointer-events: auto; /* 确保按钮可以接收点击事件 */
+  
+  /* 未选中状态：暗色+凹陷3D效果 */
+  background: linear-gradient(145deg, #e6e6e6, #ffffff);
+  box-shadow: 
+    inset 4rpx 4rpx 8rpx rgba(0, 0, 0, 0.1),
+    inset -4rpx -4rpx 8rpx rgba(255, 255, 255, 0.8);
+  color: #666;
+}
+
+/* 选中状态：亮色+凸起3D效果 - 移除位移保持位置固定 */
 .wheel-type-switcher .switcher-item.active {
-  width: 120rpx;  /* 从140rpx减小到120rpx */
-  height: 52rpx;  /* 与未选中保持一致 */
-  border-radius: 24rpx; /* 相应减小 */
-  background: linear-gradient(135deg, #222 0%, #444 100%);
-  box-shadow: 0 10rpx 24rpx rgba(0,0,0,0.16);
-  transform: scale(1.02);
-  order: -1; /* 前置 */
+  background: linear-gradient(145deg, #667eea, #764ba2);
+  box-shadow: 
+    4rpx 4rpx 12rpx rgba(102, 126, 234, 0.3),
+    -4rpx -4rpx 12rpx rgba(118, 75, 162, 0.2),
+    0 0 20rpx rgba(102, 126, 234, 0.4);
+  transform: scale(1.05); /* 移除translateY保持位置固定 */
+  color: #fff;
+  animation: activeGlow 2s ease-in-out infinite alternate;
 }
 
-/* 防止切换时整体布局抖动：固定容器宽度，使用flex-gap */
-.wheel-type-switcher { min-width: 240rpx; }
+@keyframes activeGlow {
+  0% { 
+    box-shadow: 
+      4rpx 4rpx 12rpx rgba(102, 126, 234, 0.3),
+      -4rpx -4rpx 12rpx rgba(118, 75, 162, 0.2),
+      0 0 20rpx rgba(102, 126, 234, 0.4);
+  }
+  100% { 
+    box-shadow: 
+      4rpx 4rpx 12rpx rgba(102, 126, 234, 0.4),
+      -4rpx -4rpx 12rpx rgba(118, 75, 162, 0.3),
+      0 0 25rpx rgba(102, 126, 234, 0.6);
+  }
+}
 
-/* 图标容器与纯CSS图标 */
-.icon { width: 40rpx; height: 40rpx; position: relative; }
+/* 图标样式 */
+.switcher-item .icon {
+  width: 48rpx;
+  height: 48rpx;
+  position: relative;
+  margin-bottom: 10rpx;
+  transition: all 0.4s ease;
+}
+
+/* 文案样式 */
+.switcher-text {
+  font-size: 24rpx;
+  font-weight: 500;
+  transition: all 0.4s ease;
+  text-align: center;
+}
 
 /* 餐盘图标：圆盘+刀叉 */
-.icon-plate {
-  --c:#fff; --d:#ccc;
+.icon-plate::before { 
+  content:""; 
+  position:absolute; 
+  left:50%; 
+  top:50%; 
+  width:28rpx; 
+  height:28rpx; 
+  border-radius:50%; 
+  background: currentColor;
+  opacity: 0.9;
+  transform: translate(-50%, -50%); 
+  transition: all 0.3s ease;
 }
-.icon-plate::before { content:""; position:absolute; left:50%; top:50%; width:34rpx; height:34rpx; border-radius:50%; background: radial-gradient(circle at 50% 50%, var(--c) 0 60%, var(--d) 60% 100%); transform: translate(-50%, -50%); }
-.icon-plate::after { content:""; position:absolute; left:50%; top:50%; width:22rpx; height:10rpx; background: linear-gradient(90deg, transparent 0 15%, #fff 15% 35%, transparent 35% 65%, #fff 65% 85%, transparent 85%); transform: translate(-50%, -50%); border-radius:6rpx; }
+.icon-plate::after { 
+  content:""; 
+  position:absolute; 
+  left:50%; 
+  top:50%; 
+  width:18rpx; 
+  height:8rpx; 
+  background: linear-gradient(90deg, transparent 0 15%, currentColor 15% 35%, transparent 35% 65%, currentColor 65% 85%, transparent 85%); 
+  transform: translate(-50%, -50%); 
+  border-radius:4rpx; 
+  transition: all 0.3s ease;
+}
 
 /* 外卖袋图标：袋身+提手 */
-.icon-bag::before { content:""; position:absolute; left:50%; top:50%; width:26rpx; height:28rpx; background:#fff; border-radius:6rpx; transform: translate(-50%, -45%); box-shadow: inset 0 -6rpx 0 rgba(0,0,0,0.08); }
-.icon-bag::after { content:""; position:absolute; left:50%; top:50%; width:18rpx; height:10rpx; border:4rpx solid #fff; border-bottom:none; border-radius:16rpx 16rpx 0 0; transform: translate(-50%, -80%); }
+.icon-bag::before { 
+  content:""; 
+  position:absolute; 
+  left:50%; 
+  top:50%; 
+  width:22rpx; 
+  height:24rpx; 
+  background: currentColor;
+  opacity: 0.9;
+  border-radius:4rpx; 
+  transform: translate(-50%, -40%); 
+  transition: all 0.3s ease;
+}
+.icon-bag::after { 
+  content:""; 
+  position:absolute; 
+  left:50%; 
+  top:50%; 
+  width:14rpx; 
+  height:8rpx; 
+  border:3rpx solid currentColor; 
+  border-bottom:none; 
+  border-radius:12rpx 12rpx 0 0; 
+  transform: translate(-50%, -75%); 
+  transition: all 0.3s ease;
+}
 
 /* 饮料杯图标：杯身+吸管 */
-.icon-cup::before { content:""; position:absolute; left:50%; top:50%; width:26rpx; height:30rpx; background:#fff; border-radius:4rpx; transform: translate(-50%, -45%); }
-.icon-cup::after { content:""; position:absolute; left:50%; top:50%; width:4rpx; height:18rpx; background:#fff; transform: translate(-10rpx, -80%); border-radius:2rpx; }
+.icon-cup::before { 
+  content:""; 
+  position:absolute; 
+  left:50%; 
+  top:50%; 
+  width:22rpx; 
+  height:26rpx; 
+  background: currentColor;
+  opacity: 0.9;
+  border-radius:3rpx; 
+  transform: translate(-50%, -40%); 
+  transition: all 0.3s ease;
+}
+.icon-cup::after { 
+  content:""; 
+  position:absolute; 
+  left:50%; 
+  top:50%; 
+  width:3rpx; 
+  height:16rpx; 
+  background: currentColor;
+  transform: translate(-8rpx, -75%); 
+  border-radius:2rpx; 
+  transition: all 0.3s ease;
+}
 
-/* 颜色适配：选中态图标反转为深底白图标，未选中浅灰底深色图标 */
-.switcher-item { color:#222; }
-.switcher-item.active { color:#fff; }
-.switcher-item .icon, .switcher-item .icon::before, .switcher-item .icon::after { transition: all 240ms ease; }
-/* 保留图形自身的填充与渐变，不再强制覆盖背景色与边框色，避免图形不可辨识 */
-.switcher-item:not(.active) .icon { filter: drop-shadow(0 2rpx 2rpx rgba(0,0,0,0.18)); }
-.switcher-item.active .icon { filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
-.switcher-item:not(.active) .icon::before, .switcher-item:not(.active) .icon::after { filter: drop-shadow(0 0 0 rgba(0,0,0,0)); background-color: currentColor; border-color: currentColor; }
-.switcher-item.active .icon::before, .switcher-item.active .icon::after { background-color: #fff; border-color: #fff; }
+/* 用图片替换切换按钮图标，移除伪元素 */
+.icon-plate::before, .icon-plate::after,
+.icon-bag::before, .icon-bag::after,
+.icon-cup::before, .icon-cup::after { content: none; }
+
+/* 统一图片图标显示方式 */
+.icon-plate, .icon-bag, .icon-cup {
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+/* 图标图片改用 WXML <image/> 引用，移除 WXSS 背景图片设置（小程序不支持在 WXSS 通过本地资源作为背景图） */
+
+/* 悬停效果 - 移除位移保持位置固定 */
+.switcher-item:not(.active):hover {
+  /* 移除translateY保持位置固定 */
+  box-shadow: 
+    inset 3rpx 3rpx 6rpx rgba(0, 0, 0, 0.08),
+    inset -3rpx -3rpx 6rpx rgba(255, 255, 255, 0.9),
+    0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+/* 点击效果 - 移除位移保持位置固定 */
+.switcher-item:active {
+  transform: scale(0.98); /* 移除translateY保持位置固定 */
+  transition: all 0.1s ease;
+}
+
+.switcher-item.active:active {
+  transform: scale(1.02); /* 移除translateY保持位置固定 */
+  transition: all 0.1s ease;
+}
+
+/* 切换时的特殊动画 - 移除动画效果保持位置固定 */
+.switching .switcher-item {
+  /* 移除动画，保持位置固定 */
+}
+
+.switching .switcher-item.active {
+  /* 移除动画，保持位置固定 */
+}
 
 /* 不再显示外卖右上角tag */
 .type-tag { display: none; }
-
-.switcher-item {
-  position: relative;
-  padding: 16rpx 24rpx;
-  border-radius: 42rpx;
-  transition: all 1s cubic-bezier(0.25, 0.8, 0.25, 1);
-  cursor: pointer;
-}
-
-.switcher-item.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  transform: scale(1.05);
-  box-shadow: 0 4rpx 16rpx rgba(102, 126, 234, 0.3);
-}
-
-.switcher-text {
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #333;
-  transition: color 1s ease;
-}
-
-.switcher-item.active .switcher-text {
-  color: #fff;
-}
 
 .type-tag {
   position: absolute;
@@ -132,8 +272,23 @@
 }
 
 /* 轮盘容器与轮盘本体 */
-.roulette-wheel-container { position: relative; width: 620rpx; height: 620rpx; margin: 0 auto 24rpx; }
-.roulette-wheel { position: absolute; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; transition: transform 2.8s cubic-bezier(.24,.8,.26,1); box-shadow: 0 20rpx 40rpx rgba(0,0,0,0.12); }
+.roulette-wheel-container { 
+  position: relative; 
+  width: 620rpx; 
+  height: 620rpx; 
+  margin: 0 auto 0rpx; 
+}
+
+/* 轮盘右下角扩展操作容器（包含“添加更多餐厅”按钮） */
+.roulette-extra-actions {
+  position: absolute;
+  right: -50rpx;              /* 与右边缘保持合理间距 */
+  bottom: -30rpx;             /* 与底边缘保持合理间距 */
+  z-index: 6;
+}
+.roulette-wheel { position: absolute; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; transition: transform 3.2s cubic-bezier(.24,.8,.26,1); box-shadow: 0 20rpx 40rpx rgba(0,0,0,0.12); }
+  /* 初始化阶段禁用转动过渡，避免对齐时播放动画 */
+  .roulette-wheel.no-transition { transition: none !important; }
 
 /* Palette B 渐变（参考附件图片的暖色调色系） */
 .roulette-wheel.palette-b { 
@@ -258,12 +413,35 @@
 }
 /* 已移除 palette-c 与 palette-d （不再使用） */
 
-/* 右上角操作容器：配色 + 刷新 */
-.top-actions { position: absolute; right: -28rpx; bottom: -28rpx; z-index: 5; display: flex; align-items: center; gap: 16rpx; }
-.top-actions .palette-switch { position: static; width: 64rpx; height: 64rpx; border-radius: 50%; background: rgba(255,255,255,0.9); box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; }
-.top-actions .palette-wheel { width: 40rpx; height: 40rpx; border-radius: 50%; background: conic-gradient(#ff4d4f, #ff7a45, #ffa940, #fadb14, #52c41a, #13c2c2, #1890ff, #2f54eb, #722ed1, #eb2f96, #ff4d4f); box-shadow: inset 0 0 0 4rpx rgba(255,255,255,0.85); }
-.refresh-switch { width: 52rpx; height: 52rpx; padding: 6rpx; border-radius: 50%; background: rgba(255,255,255,0.95); box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.12); }
-.refresh-switch:active { transform: scale(0.96) rotate(8deg); transition: transform .15s ease; }
+/* 右上角操作容器：配色 + 刷新 - 调整色盘按钮样式 */
+.top-actions { 
+  position: absolute; 
+  right: -8rpx; 
+  top: -28rpx; 
+  z-index: 5; 
+  display: flex; 
+  align-items: center; 
+  gap: 16rpx; 
+  /* 移除transform，保持固定位置 */
+}
+.top-actions .palette-switch { 
+  position: static; 
+  width: 83rpx; 
+  height: 83rpx; 
+  border-radius: 50%; 
+  background: rgba(255,255,255,0.9); 
+  box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.12); 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+}
+.top-actions .palette-wheel { 
+  width: 52rpx; 
+  height: 52rpx; 
+  border-radius: 50%; 
+  background: conic-gradient(#ff4d4f, #ff7a45, #ffa940, #fadb14, #52c41a, #13c2c2, #1890ff, #2f54eb, #722ed1, #eb2f96, #ff4d4f); 
+  box-shadow: inset 0 0 0 4rpx rgba(255,255,255,0.85); 
+}
 .palette-switch .icon { width: 40rpx; height: 40rpx; }
 .palette-wheel { width: 40rpx; height: 40rpx; border-radius: 50%; background: conic-gradient(#ff4d4f, #ff7a45, #ffa940, #fadb14, #52c41a, #13c2c2, #1890ff, #2f54eb, #722ed1, #eb2f96, #ff4d4f); box-shadow: inset 0 0 0 4rpx rgba(255,255,255,0.85); }
 .palette-switch:active .palette-wheel { transform: scale(0.96) rotate(8deg); transition: transform .15s ease; }
@@ -321,11 +499,9 @@
 
 /* 备选区（三列，透明背景虚线占位；填充为图片卡片） */
 .shortlist { 
-  margin-top: 15rpx;      /* 备选区顶部边距 - 可调整与转盘距离 */
-  margin-bottom: 20rpx;   /* 备选区底部边距 - 可调整与分享区距离 */
   padding-left: 24rpx;    /* 备选区左边距 */
   padding-right: 24rpx;   /* 备选区右边距 */
-  transform: translateY(-115rpx); /* 备选区垂直位移 - 向上移动15rpx（从-100rpx调整为-115rpx） */
+  transform: translateY(-60rpx); /* 统一位移，避免与后续定义冲突导致抖动 */
 }
 .short-title { 
   font-size: 28rpx; 
@@ -394,34 +570,36 @@
 /* 调整分享条底部距离，适配更高tabBar */
 .share-bar { bottom: 160rpx; }
 .hero-area { 
-  flex: 1; 
+  height: 720rpx;               /* 固定高度，防止因兄弟元素高度变化而重新布局 */
+  flex: 0 0 720rpx;             /* 从Flex填充改为固定占位，保持独立 */
   display: flex; 
   align-items: center; 
   justify-content: center; 
-  padding-top: -20rpx;     /* 转盘区顶部内边距 - 可调整转盘垂直位置 */
-  padding-bottom: 0rpx;  /* 转盘区底部内边距 */
+  position: relative;
 }
 
-/* 添加更多餐厅按钮样式 */
+/* 添加更多餐厅按钮容器样式 - 第二个定义（第847行） */
 .add-restaurant-section {
   display: flex;
   justify-content: center;
-  margin: 0 0 5rpx 0;
+  margin: 10rpx 0 10rpx 0; /* 增加垂直间距，让其与切换区分离 */
   position: relative;
   z-index: 10;
-  transform: translateY(-90rpx);
+  transform: translateY(-20rpx); /* 轻微上移以靠近转盘，但不造成整体联动 */
 }
 
+/* 添加更多餐厅按钮（标准尺寸、贴近右下角） */
 .add-restaurant-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 50rpx;
-  padding: 24rpx 48rpx;
-  font-size: 28rpx;
+  background: rgba(108, 117, 125, 0.1);
+  color: #374151;            /* 稍深文本提高可读性 */
+  border: 1rpx solid #d1d5db;/* 细边框贴近规范 */
+  border-radius: 24rpx;
+  padding: 12rpx 20rpx;      /* 标准尺寸：更小的内边距 */
+  font-size: 22rpx;          /* 标准字号 */
   font-weight: 600;
-  box-shadow: 0 8rpx 24rpx rgba(102, 126, 234, 0.3);
-  transition: all 0.3s ease;
+  box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.08);
+  transition: background .2s ease, box-shadow .2s ease, transform .2s ease;
+  transform: none;           /* 保持静态位置，避免位移 */
 }
 
 .add-restaurant-btn::after {
@@ -429,8 +607,8 @@
 }
 
 .add-restaurant-btn:active {
-  transform: translateY(2rpx);
-  box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.4);
+  transform: scale(0.98);    /* 轻微按压反馈，不引起位置偏移 */
+  background: rgba(108,117,125,0.15);
 }
 /* 轮盘主题边框与光晕 */
 .roulette-wheel.palette-a {
@@ -475,16 +653,7 @@
 
 /* 调整分享条底部距离，适配更高tabBar */
 .share-bar { bottom: 160rpx; }
-.hero-area { 
-  flex: 1; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  padding-top: -20rpx;     /* 转盘区顶部内边距 - 可调整转盘垂直位置 */
-  padding-bottom: 0rpx;  /* 转盘区底部内边距 */
-  padding-left: 24rpx;   /* 转盘区左边距 */
-  padding-right: 24rpx;  /* 转盘区右边距 */
-}
+/* 移除重复的 .hero-area 定义，保留文件前部的固定高度版本，避免因flex和负padding导致整体位移 */
 .disabled-banner{position:absolute;top:16rpx;left:16rpx;display:flex;align-items:center;background:#f0f3f6;color:#9aa8b5;border:1rpx solid #c5d0da;border-radius:12rpx;padding:8rpx 12rpx;opacity:.9}
 .disabled-banner .icon{margin-right:8rpx}
 .banner-location{z-index:30}
@@ -636,11 +805,11 @@
 
 /* 备选区（三列，透明背景虚线占位；填充为图片卡片） */
 .shortlist { 
-  margin-top: 15rpx;      /* 备选区顶部边距 - 可调整与转盘距离 */
-  margin-bottom: 20rpx;   /* 备选区底部边距 - 可调整与分享区距离 */
+  margin-top: 30rpx;      /* 备选区顶部边距 - 可调整与转盘距离 */
+  margin-bottom: 75rpx;   /* 备选区底部边距 - 可调整与分享区距离 */
   padding-left: 24rpx;    /* 备选区左边距 */
   padding-right: 24rpx;   /* 备选区右边距 */
-  transform: translateY(-115rpx); /* 备选区垂直位移 - 向上移动15rpx（从-100rpx调整为-115rpx） */
+  transform: translateY(-60rpx); /* 降低位移，避免影响上方元素的视觉联动 */
 }
 .short-title { 
   font-size: 28rpx; 
@@ -724,19 +893,21 @@
   margin: 0 0 5rpx 0;
   position: relative;
   z-index: 10;
-  transform: translateY(-90rpx);
+  transform: translateY(-20rpx);
 }
 
+/* 添加更多餐厅按钮（标准尺寸、贴近右下角） */
 .add-restaurant-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 50rpx;
-  padding: 24rpx 48rpx;
-  font-size: 28rpx;
+  background: rgba(108, 117, 125, 0.1);
+  color: #374151;            /* 稍深文本提高可读性 */
+  border: 1rpx solid #d1d5db;/* 细边框贴近规范 */
+  border-radius: 24rpx;
+  padding: 12rpx 20rpx;      /* 标准尺寸：更小的内边距 */
+  font-size: 22rpx;          /* 标准字号 */
   font-weight: 600;
-  box-shadow: 0 8rpx 24rpx rgba(102, 126, 234, 0.3);
-  transition: all 0.3s ease;
+  box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.08);
+  transition: background .2s ease, box-shadow .2s ease, transform .2s ease;
+  transform: none;           /* 保持静态位置，避免位移 */
 }
 
 .add-restaurant-btn::after {
@@ -744,8 +915,8 @@
 }
 
 .add-restaurant-btn:active {
-  transform: translateY(2rpx);
-  box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.4);
+  transform: scale(0.98);    /* 轻微按压反馈，不引起位置偏移 */
+  background: rgba(108,117,125,0.15);
 }
 /* 轮盘主题边框与光晕 */
 .roulette-wheel.palette-a {

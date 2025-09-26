@@ -1,4 +1,5 @@
 // pages/loading/loading.js
+const { cloudImageManager } = require('../../utils/cloudImageManager');
 Page({
   data: {
     loadingText: '加载中，请稍候...',
@@ -6,6 +7,16 @@ Page({
   },
 
   onLoad: function (options) {
+    // 在启动加载时预加载底部tab图标
+    try {
+      cloudImageManager.preloadImages([
+        'icon_home', 'icon_home_selected',
+        'icon_voice', 'icon_voice_selected',
+        'icon_profile', 'icon_profile_selected'
+      ]);
+    } catch (e) {
+      console.warn('[Loading] 预加载tab图标失败', e);
+    }
     this.startLoading();
   },
 
