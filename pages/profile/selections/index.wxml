@@ -9,7 +9,7 @@
   <view class="bubble-list">
     <block wx:for="{{brands}}" wx:key="name">
       <view class="bubble {{item.selected?'selected':''}}" data-name="{{item.name}}" bindtap="toggleSelect">
-        <image class="logo" src="{{item.logoPath}}" mode="aspectFill" data-name="{{item.name}}" binderror="onLogoError" />
+        <image class="logo" src="{{item.logoPath}}" mode="aspectFill" data-name="{{item.name}}" data-index="{{index}}" binderror="onLogoError" />
         <text class="name">{{item.name}}</text>
         <view class="close" catchtap="deleteBrand" data-name="{{item.name}}">×</view>
       </view>

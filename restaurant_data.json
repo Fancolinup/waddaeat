@@ -231,75 +231,6 @@
       "basePreferenceScore": 5
     },
     {
-      "id": "sh_011",
-      "name": "星巴克",
-      "type": "咖啡茶饮",
-      "description": "",
-      "priceLevel": 2,
-      "tags": ["甜", "简餐", "一人食", "同事聚餐", "外卖优选"],
-      "location": {
-        "city": ["上海"],
-        "businessDistrict": ["陆家嘴", "南京西路", "徐家汇", "静安寺", "五角场"]
-      },
-      "dynamicPromotions": [
-        {
-          "type": "weekly",
-          "dayOfWeek": 2,
-          "promoText": "咖啡买一送一"
-        }
-      ],
-      "popularityScore": 0.87,
-      "healthScore": 0.4,
-      "spicyScore": 0.0,
-      "basePreferenceScore": 5
-    },
-    {
-      "id": "sh_012",
-      "name": "喜茶",
-      "type": "茶饮",
-      "description": "",
-      "price极Level": 2,
-      "tags": ["甜", "小吃", "一人食", "外卖优选"],
-      "location": {
-        "city": ["上海"],
-        "businessDistrict": ["南京东路", "静安寺", "五角场"]
-      },
-      "dynamicPromotions": [
-        {
-          "type": "weekly",
-          "dayOfWeek": 5,
-          "promoText": "新品买一送一"
-        }
-      ],
-      "popularityScore": 0.84,
-      "healthScore": 0.3,
-      "spicyScore": 0.0,
-      "basePreferenceScore": 5
-    },
-    {
-      "id": "sh_013",
-      "name": "奈雪的茶",
-      "type": "茶饮",
-      "description": "",
-      "priceLevel": 2,
-      "tags": ["甜", "小吃", "一人食", "外卖优选"],
-      "location": {
-        "city": ["上海"],
-        "businessDistrict": ["陆家嘴", "人民广场", "徐家汇"]
-      },
-      "dynamicPromotions": [
-        {
-          "type": "weekly",
-          "dayOfWeek": 6,
-          "promoText": "软欧包特价"
-        }
-      ],
-      "popularityScore": 0.81,
-      "healthScore": 0.3,
-      "spicyScore": 0.0,
-      "basePreferenceScore": 5
-    },
-    {
       "id": "sh_014",
       "name": "海底捞",
       "type": "火锅",
@@ -1400,29 +1331,6 @@
       ],
       "popularityScore": 0.79,
       "healthScore": 0.2,
-      "spicyScore": 0.0,
-      "basePreferenceScore": 5
-    },
-    {
-      "id": "sh_062",
-      "name": "7分甜",
-      "type": "茶饮",
-      "description": "",
-      "priceLevel": 1,
-      "tags": ["甜", "小吃", "一人食", "外卖优选"],
-      "location": {
-        "city": ["上海"],
-        "businessDistrict": ["人民广场", "徐家汇", "中山公园"]
-      },
-      "dynamicPromotions": [
-        {
-          "type": "weekly",
-          "dayOfWeek": 3,
-          "promoText": "杨枝甘露特价"
-        }
-      ],
-      "popularityScore": 0.77,
-      "health极Score": 0.2,
       "spicyScore": 0.0,
       "basePreferenceScore": 5
     },

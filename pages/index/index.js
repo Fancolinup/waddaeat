@@ -37,8 +37,10 @@ Page({
     shortlist: [],
     
     // 云图片占位符
-    placeholderImageUrl: '/images/placeholder.svg',
+    placeholderImageUrl: cloudImageManager.getCloudImageUrl('placeholder', 'png'),
     placeholderSlots: [0,0,0],
+    // 轮盘类型切换按钮图标（HTTPS临时链接或占位图）
+    switchIcons: { canteen: '', takeout: '', beverage: '' },
     activeShortlistId: '',
 
     // 分享
@@ -87,10 +89,46 @@ Page({
       this.verifyCenterPosition();
     }, 500);
 
-    // 预加载转盘切换按钮的云图标
+    // 预加载转盘切换按钮的云图标，并转换为 HTTPS 临时链接绑定到 wxml
     try {
       cloudImageManager.preloadImages(['canteen', 'takeout', 'beverage']);
+      (async () => {
+        const names = ['canteen','takeout','beverage'];
+        const nextIcons = { ...this.data.switchIcons };
+        for (const n of names) {
+          let url = '';
+          try { url = await cloudImageManager.getTempHttpsUrl(n, 'png'); } catch (_) {}
+          if (!url || url.indexOf('cloud://') === 0) {
+            try { url = await cloudImageManager.getTempHttpsUrl(n, 'jpg'); } catch (_) {}
+          }
+          if (!url || url.indexOf('cloud://') === 0) {
+            try { url = await cloudImageManager.getTempHttpsUrl(n, 'webp'); } catch (_) {}
+          }
+          nextIcons[n] = url && url.indexOf('cloud://') !== 0 ? url : cloudImageManager.getCloudImageUrl('placeholder', 'png');
+        }
+        this.setData({ switchIcons: nextIcons });
+      })();
     } catch (e) { console.warn('预加载切换按钮图标失败', e); }
+
+    // 将占位图初始化为 HTTPS 临时链接，避免渲染层将 cloud:// 误当作本地路径导致 500（含多扩展尝试与本地兜底）
+    try {
+      (async () => {
+        let url = await cloudImageManager.getTempHttpsUrl('placeholder', 'png');
+        if (!url || url.indexOf('cloud://') === 0) {
+          try { url = await cloudImageManager.getTempHttpsUrl('placeholder', 'jpg'); } catch (_) {}
+        }
+        if (!url || url.indexOf('cloud://') === 0) {
+          try { url = await cloudImageManager.getTempHttpsUrl('placeholder', 'webp'); } catch (_) {}
+        }
+        // 仍失败则使用云端fileID作为兜底，避免回退到本地图
+        if (!url || url.indexOf('cloud://') === 0) {
+          url = cloudImageManager.getCloudImageUrl('placeholder', 'png');
+        }
+        this.setData({ placeholderImageUrl: url });
+      })().catch((e) => console.warn('初始化占位图 HTTPS 链接失败', e));
+    } catch (e) {
+      console.warn('初始化占位图 HTTPS 链接失败', e);
+    }
   },
 
   onShow() {
@@ -337,10 +375,10 @@ Page({
       }
 
       // 兜底占位图
-      return cloudImageManager.getCloudImageUrl('placeholder');
+      return cloudImageManager.getCloudImageUrl('placeholder', 'png');
     } catch (e) {
       console.warn('getRestaurantIconPath 解析失败，使用占位图:', e);
-      return cloudImageManager.getCloudImageUrl('placeholder');
+      return cloudImageManager.getCloudImageUrl('placeholder', 'png');
     }
   },
 
@@ -411,7 +449,7 @@ Page({
         priceLevel: brand.priceLevel || 2,
         tags: brand.tags || [],
         popularityScore: brand.popularityScore || 0.5,
-        icon: (brand.pinyin ? cloudImageManager.getCloudImageUrl(brand.pinyin, 'png') : cloudImageManager.getCloudImageUrl('placeholder')),
+        icon: (brand.pinyin ? cloudImageManager.getCloudImageUrl(brand.pinyin, 'png') : cloudImageManager.getCloudImageUrl('placeholder', 'png')),
         recommendationScore: (brand.popularityScore || 0.5) * 100,
         specificScore: Math.random() * 100,
         preferenceScore: Math.random() * 100
@@ -684,7 +722,40 @@ Page({
     let item = { ...sel };
     try {
       const icon = item.icon;
-      if (icon && typeof icon === 'string' && icon.indexOf('cloud://') === 0) {
+      
+      // 检查是否为手动添加的餐厅
+      const isUserAdded = item.id && typeof item.id === 'string' && item.id.startsWith('user_added_');
+      
+      if (isUserAdded) {
+        // 手动添加的餐厅使用云端placeholder图片
+        console.log(`[${ts()}] 备选区添加手动餐厅: ${item.name}, 使用云端placeholder`);
+        let url = '';
+        try { 
+          url = await cloudImageManager.getTempHttpsUrl('placeholder', 'png'); 
+        } catch (e1) {
+          console.warn('获取placeholder.png失败:', e1);
+        }
+        if (!url || url.indexOf('cloud://') === 0) { 
+          try { 
+            url = await cloudImageManager.getTempHttpsUrl('placeholder', 'jpg'); 
+          } catch (e2) {
+            console.warn('获取placeholder.jpg失败:', e2);
+          } 
+        }
+        if (!url || url.indexOf('cloud://') === 0) { 
+          try { 
+            url = await cloudImageManager.getTempHttpsUrl('placeholder', 'webp'); 
+          } catch (e3) {
+            console.warn('获取placeholder.webp失败:', e3);
+          } 
+        }
+        if (!url || url.indexOf('cloud://') === 0) { 
+          // 云端图片获取失败，使用云端placeholder的fileID作为兜底
+          url = cloudImageManager.getCloudImageUrl('placeholder', 'png');
+          console.log('[备选区] 云端placeholder获取失败，使用云端fileID:', url);
+        }
+        item.icon = url;
+      } else if (icon && typeof icon === 'string' && icon.indexOf('cloud://') === 0) {
         const lastSlash = icon.lastIndexOf('/');
         const filename = lastSlash >= 0 ? icon.substring(lastSlash + 1) : icon;
         const dot = filename.lastIndexOf('.');
@@ -695,7 +766,7 @@ Page({
         try { url = await cloudImageManager.getTempHttpsUrl(name, ext); } catch (e1) {}
         if (!url || url.indexOf('cloud://') === 0) { try { url = await cloudImageManager.getTempHttpsUrl(name, 'jpg'); } catch (e2) {} }
         if (!url || url.indexOf('cloud://') === 0) { try { url = await cloudImageManager.getTempHttpsUrl(name, 'webp'); } catch (e3) {} }
-        if (!url || url.indexOf('cloud://') === 0) { url = this.data.placeholderImageUrl || '/images/placeholder.svg'; }
+        if (!url || url.indexOf('cloud://') === 0) { url = this.data.placeholderImageUrl || cloudImageManager.getCloudImageUrl('placeholder', 'png'); }
         item.icon = url;
       }
     } catch (err) {
@@ -727,6 +798,23 @@ Page({
     // 选中新的卡片
     this.setData({ activeShortlistId: id, shareTargetName: name, showShareArea: true });
     this.loadShareText();
+  },
+
+  onShortConfirm(e) {
+    const { id, name } = e.currentTarget.dataset;
+    if (!id) return;
+    const list = this.data.shortlist || [];
+    const sel = list.find(x => String(x.id) === String(id));
+    if (!sel) return;
+    const userData = getUserData();
+    updateRestaurantScore(userData, String(sel.id), 'accept', { name: sel.name });
+    if (this.data.wheelType === 'restaurant') { try { updateUserPreference(String(sel.id), 'like'); } catch(e) {} }
+    try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'accept', source: 'shortlist', wheelType: this.data.wheelType }); } catch(e) {}
+    
+    // 交互反馈：锁定分享对象并展示分享区，同时取消选中态
+    this.setData({ shareTargetName: sel.name, showShareArea: true, activeShortlistId: '' });
+    this.loadShareText();
+    wx.showToast({ title: '已记录，就它了', icon: 'success' });
   },
 
   onCopyShare() {
@@ -864,10 +952,10 @@ Page({
       }
 
       // 兜底占位图
-      return cloudImageManager.getCloudImageUrl('placeholder');
+      return cloudImageManager.getCloudImageUrl('placeholder', 'png');
     } catch (e) {
       console.warn('getRestaurantIconPath 解析失败，使用占位图:', e);
-      return cloudImageManager.getCloudImageUrl('placeholder');
+      return cloudImageManager.getCloudImageUrl('placeholder', 'png');
     }
   },
 
@@ -1058,8 +1146,62 @@ Page({
         // 转动结束日志：编号与命中餐厅
         console.log(`[${ts()}] 转动结束：指针编号=${hit.slotNo}，餐厅="${hit.name}"，finalRotation=${finalRotation.toFixed(1)}，effectiveRot=${effectiveRot.toFixed(1)}，step=${step}`);
 
+        // 命中后补齐标签（若缺失），从数据源 restaurant_data.js 获取
+        try {
+          if (!hit.tags || !hit.tags.length) {
+            const ds = require('../../restaurant_data.js');
+            const rec = Array.isArray(ds) ? ds.find(r => String(r.id) === String(hit.id) || r.name === hit.name) : null;
+            if (rec && Array.isArray(rec.tags)) { hit.tags = rec.tags; }
+          }
+        } catch(e) { /* 静默失败，不影响主流程 */ }
         // 命中后重置首页 logo 扩展名重试计数
-        this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
+        // 初始化 selected 时先使用占位图，异步转换云图标为 HTTPS，避免渲染层把 cloud:// 视作本地路径
+        try {
+          let nameForUrl = '';
+          let ext = 'png';
+          const iconStr = typeof hit.icon === 'string' ? hit.icon : '';
+          
+          // 检查是否为手动添加的餐厅
+          const isUserAdded = hit.id && typeof hit.id === 'string' && hit.id.startsWith('user_added_');
+          
+          if (isUserAdded) {
+            // 手动添加的餐厅直接使用云端placeholder图片，避免闪烁
+            hit.icon = cloudImageManager.getCloudImageUrl('placeholder', 'png');
+            this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
+            console.log(`[${ts()}] 手动添加餐厅命中: ${hit.name}, 直接使用云端placeholder，避免闪烁`);
+            return; // 跳过异步获取逻辑
+          } else if (iconStr.indexOf('cloud://') === 0) {
+            const lastSlash = iconStr.lastIndexOf('/');
+            const filename = lastSlash >= 0 ? iconStr.substring(lastSlash + 1) : iconStr;
+            const dot = filename.lastIndexOf('.');
+            nameForUrl = dot > 0 ? filename.substring(0, dot) : filename;
+            ext = dot > 0 ? (filename.substring(dot + 1) || 'png') : 'png';
+          } else {
+            const map = this.getPinyinMap && this.getPinyinMap();
+            nameForUrl = map && hit.name ? (map[hit.name] || hit.name) : hit.name || 'placeholder';
+          }
+          
+          // 尝试直接获取正确的logo，避免先显示placeholder再切换
+          cloudImageManager.getTempHttpsUrl(nameForUrl, ext).then((tempUrl) => {
+            let finalIcon;
+            if (tempUrl && typeof tempUrl === 'string' && tempUrl.indexOf('cloud://') !== 0) {
+              finalIcon = tempUrl;
+            } else {
+              // 如果获取的仍是云端fileID，直接使用它
+              finalIcon = cloudImageManager.getCloudImageUrl(nameForUrl, ext);
+            }
+            
+            hit.icon = finalIcon;
+            this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
+          }).catch(() => {
+            // 如果获取失败，使用云端placeholder
+            hit.icon = cloudImageManager.getCloudImageUrl('placeholder', 'png');
+            this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
+            console.warn(`[${ts()}] 获取${nameForUrl}的HTTPS链接失败，使用云端placeholder`);
+          });
+        } catch (_) {
+          this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
+        }
       } catch (e) {
         console.error(`[${ts()}] 转盘数据异常`, e);
         this.setData({ isSpinning: false });
@@ -1422,7 +1564,17 @@ Page({
   onSelectedLogoError() {
     try {
       const sel = this.data.selected;
-      if (!sel || !sel.name) return;
+      if (!sel || !sel.name) {
+        // 占位图加载失败场景：将占位图转换为 HTTPS 临时链接并更新，避免 cloud:// 触发 500
+        try {
+          cloudImageManager.getTempHttpsUrl('placeholder', 'png').then((url) => {
+            if (url && typeof url === 'string' && url.indexOf('cloud://') !== 0) {
+              this.setData({ placeholderImageUrl: url });
+            }
+          }).catch(() => {});
+        } catch (_) {}
+        return;
+      }
 
       let name = '';
       let ext = 'png';
@@ -1458,8 +1610,8 @@ Page({
         // 再尝试 webp
         nextPromise = Promise.resolve(cloudImageManager.getTempHttpsUrl(name, 'webp'));
       } else {
-        // 最终回退到本地占位图（项目内已有svg占位）
-        nextPromise = Promise.resolve(this.data.placeholderImageUrl || '/images/placeholder.svg');
+        // 最终回退到云端占位图
+        nextPromise = Promise.resolve(cloudImageManager.getCloudImageUrl('placeholder', 'png'));
       }
 
       const newLogoRetryMap = { ...this.data.logoRetryMap };
@@ -1471,8 +1623,8 @@ Page({
           logoRetryMap: newLogoRetryMap
         });
       }).catch(() => {
-        // 兜底静默：使用本地占位图
-        const fallback = this.data.placeholderImageUrl || '/images/placeholder.svg';
+        // 兜底静默：使用云端占位图
+        const fallback = cloudImageManager.getCloudImageUrl('placeholder', 'png');
         this.setData({
           'selected.icon': fallback,
           logoRetryMap: newLogoRetryMap
@@ -1528,16 +1680,16 @@ Page({
       return;
     }
     
-    // 创建新餐厅对象，参照欢迎页逻辑
+    // 创建新餐厅对象，参照欢迎页逻辑，使用云端placeholder图片
     const newRestaurant = {
       id: userAddedId,
       sid: userAddedId,
       name: restaurantName,
       category: '自定义',
       rating: 0,
-      icon: '/images/placeholder.svg',
-      logoPath: '/images/placeholder.svg',
-      hdLogoPath: '/images/placeholder.svg',
+      icon: cloudImageManager.getCloudImageUrl('placeholder', 'png'),
+        logoPath: cloudImageManager.getCloudImageUrl('placeholder', 'png'),
+        hdLogoPath: cloudImageManager.getCloudImageUrl('placeholder', 'png'),
       userAdded: true
     };
     

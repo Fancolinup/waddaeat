@@ -59,8 +59,8 @@ Page({
         .filter(r => {
           if (!r) return false;
           const isAccept = r.action === 'accept';
-          // 仅计入源自转盘上的“就它了”或明确标记为就它来源的记录
-          const isFromJustIt = r.source === 'roulette' || r.type === 'roulette' || r.origin === 'justit';
+          // 计入转盘“就它了”以及备选清单的确认
+          const isFromJustIt = r.source === 'roulette' || r.type === 'roulette' || r.origin === 'justit' || r.source === 'shortlist';
           return isAccept && isFromJustIt;
         })
         .sort((a, b) => {
@@ -123,8 +123,8 @@ Page({
       return;
     }
     
-    // 使用本地占位符图片，确保一定可见
-    const placeholderUrl = '/images/placeholder.svg';
+    // 使用云端占位符图片，确保一定可见
+    const placeholderUrl = cloudImageManager.getCloudImageUrl('placeholder', 'png');
     console.log('[Selections] 设置占位符URL:', placeholderUrl);
     this.setData({ [`recentAccepts[${idx}].logoPath`]: placeholderUrl });
     console.log('[Selections] 历史记录logo加载失败，使用占位符:', name);
@@ -164,30 +164,23 @@ Page({
         return logoUrl;
       } else {
         console.warn('[Selections] 未找到拼音映射，餐厅名称:', name);
-        // 使用本地占位符图片而不是云端占位符
-        return '/images/placeholder.svg';
+        // 使用云端placeholder图片
+        return cloudImageManager.getCloudImageUrl('placeholder', 'png');
       }
     } catch (e) {
       console.error('[Selections] 解析logo路径出错:', e);
     }
-    // 使用本地占位符图片而不是云端占位符
-    return '/images/placeholder.svg';
+    // 使用云端placeholder图片
+    return cloudImageManager.getCloudImageUrl('placeholder', 'png');
   },
   onLogoError(e){
     const name = e.currentTarget.dataset.name;
-    console.log('[Selections] 品牌logo加载失败 - 餐厅名称:', name);
-    console.log('[Selections] 错误详情:', e.detail);
-    const idx = this.data.brands.findIndex(item => item.name === name);
-    if (idx === -1) {
-      console.warn('[Selections] 未找到对应的品牌项:', name);
-      return;
-    }
-    
-    // 使用本地占位符图片，确保一定可见
-    const placeholderUrl = '/images/placeholder.svg';
-    console.log('[Selections] 设置占位符URL:', placeholderUrl);
-    this.setData({ [`brands[${idx}].logoPath`]: placeholderUrl });
-    console.log('[Selections] 品牌logo加载失败，使用占位符:', name);
+    console.log('[Selections] Logo加载失败，餐厅名称:', name);
+    // 使用云端placeholder图片
+    const logoPath = cloudImageManager.getCloudImageUrl('placeholder', 'png');
+    this.setData({
+      [`brands[${e.currentTarget.dataset.index}].logoPath`]: logoPath
+    });
   },
   // 切换选中
   toggleSelect(e) {

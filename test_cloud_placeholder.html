@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试云端placeholder图片</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-item {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-image {
+            width: 100px;
+            height: 100px;
+            border: 1px solid #ccc;
+            margin: 10px;
+            display: inline-block;
+            background-color: #f9f9f9;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .log {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>云端placeholder图片测试</h1>
+        
+        <div class="test-item">
+            <h3>测试1: 直接使用云端路径</h3>
+            <p>路径: cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/placeholder.png</p>
+            <img id="direct-cloud" class="test-image" 
+                 src="cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/placeholder.png"
+                 alt="直接云端路径">
+            <div id="direct-result" class="log">加载中...</div>
+        </div>
+
+        <div class="test-item">
+            <h3>测试2: 模拟cloudImageManager.getCloudImageUrl('placeholder', 'png')</h3>
+            <p>生成的路径: <span id="generated-path"></span></p>
+            <img id="generated-cloud" class="test-image" alt="生成的云端路径">
+            <div id="generated-result" class="log">加载中...</div>
+        </div>
+
+        <div class="test-item">
+            <h3>测试3: 尝试不同扩展名</h3>
+            <div>
+                <p>PNG: <img id="png-test" class="test-image" alt="PNG测试"></p>
+                <p>JPG: <img id="jpg-test" class="test-image" alt="JPG测试"></p>
+                <p>WEBP: <img id="webp-test" class="test-image" alt="WEBP测试"></p>
+            </div>
+            <div id="extension-result" class="log">测试中...</div>
+        </div>
+
+        <div class="test-item">
+            <h3>测试结果总结</h3>
+            <div id="summary" class="log">等待测试完成...</div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟cloudImageManager的逻辑
+        const cloudBase = 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/';
+        
+        function getCloudImageUrl(imageName, extension = 'png') {
+            if (!imageName || imageName === 'placeholder') {
+                return `${cloudBase}placeholder.${extension}`;
+            }
+            return `${cloudBase}${imageName}.${extension}`;
+        }
+
+        // 测试结果记录
+        const testResults = {
+            direct: false,
+            generated: false,
+            png: false,
+            jpg: false,
+            webp: false
+        };
+
+        // 测试1: 直接云端路径
+        const directImg = document.getElementById('direct-cloud');
+        directImg.onload = function() {
+            document.getElementById('direct-result').innerHTML = '<span class="success">✓ 直接云端路径加载成功</span>';
+            testResults.direct = true;
+            updateSummary();
+        };
+        directImg.onerror = function() {
+            document.getElementById('direct-result').innerHTML = '<span class="error">✗ 直接云端路径加载失败</span>';
+            updateSummary();
+        };
+
+        // 测试2: 生成的路径
+        const generatedPath = getCloudImageUrl('placeholder', 'png');
+        document.getElementById('generated-path').textContent = generatedPath;
+        const generatedImg = document.getElementById('generated-cloud');
+        generatedImg.src = generatedPath;
+        generatedImg.onload = function() {
+            document.getElementById('generated-result').innerHTML = '<span class="success">✓ 生成的云端路径加载成功</span>';
+            testResults.generated = true;
+            updateSummary();
+        };
+        generatedImg.onerror = function() {
+            document.getElementById('generated-result').innerHTML = '<span class="error">✗ 生成的云端路径加载失败</span>';
+            updateSummary();
+        };
+
+        // 测试3: 不同扩展名
+        const extensions = ['png', 'jpg', 'webp'];
+        extensions.forEach(ext => {
+            const img = document.getElementById(`${ext}-test`);
+            const path = getCloudImageUrl('placeholder', ext);
+            img.src = path;
+            img.onload = function() {
+                testResults[ext] = true;
+                updateExtensionResult();
+                updateSummary();
+            };
+            img.onerror = function() {
+                updateExtensionResult();
+                updateSummary();
+            };
+        });
+
+        function updateExtensionResult() {
+            const results = extensions.map(ext => {
+                const status = testResults[ext] ? '✓' : '✗';
+                const className = testResults[ext] ? 'success' : 'error';
+                return `<span class="${className}">${status} ${ext.toUpperCase()}</span>`;
+            }).join(' | ');
+            document.getElementById('extension-result').innerHTML = results;
+        }
+
+        function updateSummary() {
+            const successCount = Object.values(testResults).filter(Boolean).length;
+            const totalCount = Object.keys(testResults).length;
+            
+            let summary = `测试完成: ${successCount}/${totalCount} 个测试通过\n\n`;
+            
+            if (successCount === 0) {
+                summary += '❌ 所有测试都失败了，可能的原因：\n';
+                summary += '1. 云存储中不存在placeholder图片文件\n';
+                summary += '2. 云存储路径配置错误\n';
+                summary += '3. 云存储权限问题\n';
+                summary += '4. 网络连接问题\n\n';
+                summary += '建议：检查微信云开发控制台中是否存在该文件';
+            } else if (successCount < totalCount) {
+                summary += '⚠️ 部分测试失败，建议：\n';
+                summary += '1. 检查失败的文件格式是否存在于云存储中\n';
+                summary += '2. 确认云存储中placeholder文件的实际格式';
+            } else {
+                summary += '✅ 所有测试都通过了！云端placeholder图片配置正确。';
+            }
+            
+            document.getElementById('summary').textContent = summary;
+        }
+
+        // 5秒后如果还没有结果，显示超时信息
+        setTimeout(() => {
+            if (Object.values(testResults).every(result => result === false)) {
+                document.getElementById('summary').innerHTML = 
+                    '<span class="error">⏰ 测试超时，可能是网络问题或云存储配置问题</span>';
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

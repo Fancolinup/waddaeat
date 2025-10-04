@@ -168,7 +168,7 @@ const data =
       "type": "西式快餐",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "牛肉", "鸡肉", "快餐", "一人食", "外卖优选", "出餐快", "高热量"],
+      "tags": ["咸", "牛肉", "鸡肉", "快餐", "一人食",  "出餐快", "高热量"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["陆家嘴", "南京东路", "徐家汇"]
@@ -191,7 +191,7 @@ const data =
       "type": "西式快餐",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "鸡肉", "快餐", "一人食", "外卖优选", "出餐快", "高热量"],
+      "tags": ["咸", "鸡肉", "快餐", "一人食",  "出餐快", "高热量"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["南京西路", "静安寺", "五角场"]
@@ -214,7 +214,7 @@ const data =
       "type": "西式快餐",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "牛肉", "快餐", "一人食", "外卖优选", "出餐快", "高热量"],
+      "tags": ["咸", "牛肉", "快餐", "一人食",  "出餐快", "高热量"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["人民广场", "中山公园"]
@@ -229,75 +229,6 @@ const data =
       "popularityScore": 0.82,
       "healthScore": 0.3,
       "spicyScore": 0.2,
-      "basePreferenceScore": 5
-    },
-    {
-      "id": "sh_011",
-      "name": "星巴克",
-      "type": "咖啡茶饮",
-      "description": "",
-      "priceLevel": 2,
-      "tags": ["甜", "简餐", "一人食", "同事聚餐", "外卖优选"],
-      "location": {
-        "city": ["上海"],
-        "businessDistrict": ["陆家嘴", "南京西路", "徐家汇", "静安寺", "五角场"]
-      },
-      "dynamicPromotions": [
-        {
-          "type": "weekly",
-          "dayOfWeek": 2,
-          "promoText": "咖啡买一送一"
-        }
-      ],
-      "popularityScore": 0.87,
-      "healthScore": 0.4,
-      "spicyScore": 0.0,
-      "basePreferenceScore": 5
-    },
-    {
-      "id": "sh_012",
-      "name": "喜茶",
-      "type": "茶饮",
-      "description": "",
-      "priceLevel": 2,
-      "tags": ["甜", "小吃", "一人食", "外卖优选"],
-      "location": {
-        "city": ["上海"],
-        "businessDistrict": ["南京东路", "静安寺", "五角场"]
-      },
-      "dynamicPromotions": [
-        {
-          "type": "weekly",
-          "dayOfWeek": 5,
-          "promoText": "新品买一送一"
-        }
-      ],
-      "popularityScore": 0.84,
-      "healthScore": 0.3,
-      "spicyScore": 0.0,
-      "basePreferenceScore": 5
-    },
-    {
-      "id": "sh_013",
-      "name": "奈雪的茶",
-      "type": "茶饮",
-      "description": "",
-      "priceLevel": 2,
-      "tags": ["甜", "小吃", "一人食", "外卖优选"],
-      "location": {
-        "city": ["上海"],
-        "businessDistrict": ["陆家嘴", "人民广场", "徐家汇"]
-      },
-      "dynamicPromotions": [
-        {
-          "type": "weekly",
-          "dayOfWeek": 6,
-          "promoText": "软欧包特价"
-        }
-      ],
-      "popularityScore": 0.81,
-      "healthScore": 0.3,
-      "spicyScore": 0.0,
       "basePreferenceScore": 5
     },
     {
@@ -444,7 +375,7 @@ const data =
       "type": "上海小吃",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "猪肉", "小吃", "一人食", "外卖优选", "出餐快"],
+      "tags": ["咸", "猪肉", "小吃", "一人食",  "出餐快"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["人民广场", "南京东路", "徐家汇", "静安寺", "五角场"]
@@ -858,7 +789,7 @@ const data =
       "type": "日式快餐",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "牛肉", "快餐", "一人食", "外卖优选", "出餐快"],
+      "tags": ["咸", "牛肉", "快餐", "一人食",  "出餐快"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["南京西路", "人民广场", "五角场"]
@@ -881,7 +812,7 @@ const data =
       "type": "日式快餐",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "牛肉", "快餐", "一人食", "外卖优选", "出餐快"],
+      "tags": ["咸", "牛肉", "快餐", "一人食",  "出餐快"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["静安寺", "中山公园", "徐家汇"]
@@ -904,7 +835,7 @@ const data =
       "type": "日式快餐",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "猪肉", "快餐", "一人食", "外卖优选", "出餐快"],
+      "tags": ["咸", "猪肉", "快餐", "一人食",  "出餐快"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["陆家嘴", "五角场"]
@@ -927,7 +858,7 @@ const data =
       "type": "日式面食",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "猪肉", "快餐", "一人食", "外卖优选", "出餐快"],
+      "tags": ["咸", "猪肉", "快餐", "一人食",  "出餐快"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["南京东路", "静安寺"]
@@ -950,7 +881,7 @@ const data =
       "type": "意式简餐",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "奶酪", "简餐", "一人食", "外卖优选", "出餐快"],
+      "tags": ["咸", "奶酪", "简餐", "一人食",  "出餐快"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["五角场", "中山公园", "徐家汇"]
@@ -973,7 +904,7 @@ const data =
       "type": "西式简餐",
       "description": "",
       "priceLevel": 2,
-      "tags": ["咸", "奶酪", "简餐", "一人食", "外卖优选", "高热量"],
+      "tags": ["咸", "奶酪", "简餐", "一人食",  "高热量"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["人民广场", "陆家嘴", "静安寺"]
@@ -996,7 +927,7 @@ const data =
       "type": "披萨",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "奶酪", "快餐", "一人食", "外卖优选", "高热量"],
+      "tags": ["咸", "奶酪", "快餐", "一人食",  "高热量"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["五角场", "徐家汇", "中山公园"]
@@ -1019,7 +950,7 @@ const data =
       "type": "披萨",
       "description": "",
       "priceLevel": 2,
-      "tags": ["咸", "奶酪", "简餐", "一人食", "外卖优选", "高热量"],
+      "tags": ["咸", "奶酪", "简餐", "一人食",  "高热量"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["南京西路", "陆家嘴"]
@@ -1111,7 +1042,7 @@ const data =
       "type": "上海小吃",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "猪肉", "小吃", "一人食", "外卖优选", "出餐快"],
+      "tags": ["咸", "猪肉", "小吃", "一人食",  "出餐快"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["人民广场", "静安寺", "五角场", "徐家汇"]
@@ -1134,7 +1065,7 @@ const data =
       "type": "小吃",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "猪肉", "小吃", "一人食", "外卖优选", "出餐快"],
+      "tags": ["咸", "猪肉", "小吃", "一人食",  "出餐快"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["中山公园", "五角场", "静安寺"]
@@ -1203,7 +1134,7 @@ const data =
       "type": "养生汤品",
       "description": "",
       "priceLevel": 2,
-      "tags": ["清淡", "鸡肉", "简餐", "一人食", "外卖优选", "健康轻食"],
+      "tags": ["清淡", "鸡肉", "简餐", "一人食",  "健康轻食"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["陆家嘴", "南京西路"]
@@ -1226,7 +1157,7 @@ const data =
       "type": "中式简餐",
       "description": "",
       "priceLevel": 2,
-      "tags": ["咸", "鸡肉", "简餐", "一人食", "外卖优选", "出餐快"],
+      "tags": ["咸", "鸡肉", "简餐", "一人食",  "出餐快"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["人民广场", "五角场", "徐家汇"]
@@ -1249,7 +1180,7 @@ const data =
       "type": "中式快餐",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "猪肉", "快餐", "一人食", "外卖优选", "出餐快"],
+      "tags": ["咸", "猪肉", "快餐", "一人食",  "出餐快"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["中山公园", "静安寺"]
@@ -1272,7 +1203,7 @@ const data =
       "type": "中式快餐",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "鸡肉", "快餐", "一人食", "外卖优选", "出餐快"],
+      "tags": ["咸", "鸡肉", "快餐", "一人食",  "出餐快"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["人民广场", "五角场"]
@@ -1295,7 +1226,7 @@ const data =
       "type": "中式快餐",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "猪肉", "快餐", "一人食", "外卖优选", "出餐快", "深夜营业"],
+      "tags": ["咸", "猪肉", "快餐", "一人食",  "出餐快", "深夜营业"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["静安寺", "中山公园", "徐家汇"]
@@ -1318,7 +1249,7 @@ const data =
       "type": "小吃",
       "description": "",
       "priceLevel": 1,
-      "tags": ["咸", "猪肉", "小吃", "一人食", "外卖优选", "出餐快"],
+      "tags": ["咸", "猪肉", "小吃", "一人食",  "出餐快"],
       "location": {
         "city": ["上海"],
         "businessDistrict": ["五角场", "人民广场"]

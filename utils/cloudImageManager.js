@@ -50,6 +50,30 @@ class CloudImageManager {
     return url;
   }
 
+  /**
+   * 获取placeholder的临时HTTPS链接，专门用于手动添加餐厅的默认logo
+   * @returns {Promise<string>} 临时HTTPS链接或云端fileID
+   */
+  async getPlaceholderHttpsUrl() {
+    try {
+      const fileId = this.getCloudImageUrl('placeholder', 'png');
+      console.log('[CloudImageManager] 获取placeholder临时链接，fileId:', fileId);
+      
+      const httpsUrl = await this.getTempHttpsUrl('placeholder', 'png');
+      if (httpsUrl && httpsUrl.indexOf('https://') === 0) {
+        console.log('[CloudImageManager] 成功获取placeholder临时链接:', httpsUrl);
+        return httpsUrl;
+      } else {
+        console.warn('[CloudImageManager] 临时链接获取失败，返回fileId:', fileId);
+        return fileId;
+      }
+    } catch (error) {
+      console.error('[CloudImageManager] 获取placeholder临时链接出错:', error);
+      // 返回云端fileId作为备用
+      return this.getCloudImageUrl('placeholder', 'png');
+    }
+  }
+
   // 辅助：根据图片名与扩展名生成 fileID
   getFileId(imageName, extension = 'png') {
     if (!imageName || imageName === 'placeholder') return `${this.cloudBase}placeholder.${extension}`;

@@ -516,6 +516,27 @@
   z-index: 1; /* 删除按钮z-index为2，避免遮挡 */
 }
 
+.short-confirm {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 44rpx;
+  line-height: 44rpx;
+  text-align: center;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #fff;
+  /* 毛玻璃效果：蓝色背景 + 模糊 */
+  background: rgba(59, 130, 246, 0.9);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  z-index: 2; /* 盖住名称条，但不遮挡删除按钮 */
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.short-slot.selected .short-confirm { display: block; }
+
 /* 结果浮层：固定按钮在底部（留出边距），内容可滚动 */
 .decision-layer {
   display: flex;
