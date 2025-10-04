@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iOS云图片加载最终测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .device-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title::before {
+            content: "🔧";
+            margin-right: 10px;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .test-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .test-item:hover {
+            border-color: #007bff;
+            transform: translateY(-2px);
+        }
+        
+        .test-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            margin: 0 auto 15px;
+            display: block;
+            object-fit: cover;
+            border: 2px solid #dee2e6;
+        }
+        
+        .test-label {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        
+        .test-url {
+            font-size: 12px;
+            color: #6c757d;
+            word-break: break-all;
+            background: white;
+            padding: 5px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .status-loading {
+            background: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .status-success {
+            background: #28a745;
+        }
+        
+        .status-error {
+            background: #dc3545;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .log-section {
+            background: #212529;
+            color: #28a745;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .summary {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .summary-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .summary-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">🍎 iOS云图片加载最终测试</div>
+            <div class="subtitle">验证所有云端图片在iOS设备上的HTTPS临时链接加载效果</div>
+            <div class="device-info">
+                <strong>设备信息:</strong> <span id="deviceInfo">检测中...</span><br>
+                <strong>用户代理:</strong> <span id="userAgent"></span><br>
+                <strong>测试时间:</strong> <span id="testTime"></span>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">主页面图片测试</div>
+            <div class="test-grid" id="mainPageTests">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">轮盘餐厅图标测试</div>
+            <div class="test-grid" id="restaurantIconTests">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">选择页面图标测试</div>
+            <div class="test-grid" id="selectionPageTests">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">欢迎页面图标测试</div>
+            <div class="test-grid" id="welcomePageTests">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <div class="log-section" id="logSection">
+            <div>📋 测试日志:</div>
+        </div>
+
+        <div class="summary" id="summary" style="display: none;">
+            <div class="summary-title">🎉 测试完成</div>
+            <div class="summary-stats">
+                <div class="stat-item">
+                    <span class="stat-number" id="totalTests">0</span>
+                    <span class="stat-label">总测试数</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="successTests">0</span>
+                    <span class="stat-label">成功加载</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="failedTests">0</span>
+                    <span class="stat-label">加载失败</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="successRate">0%</span>
+                    <span class="stat-label">成功率</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟云图片管理器
+        const cloudImageManager = {
+            cloudBase: 'cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/',
+            
+            // 检测是否为iOS设备
+            get isIOS() {
+                return /iPad|iPhone|iPod/.test(navigator.userAgent);
+            },
+            
+            // 模拟获取云图片URL的方法
+            getCloudImageUrl(name, ext = 'png') {
+                if (this.isIOS) {
+                    // iOS设备返回模拟的HTTPS临时链接
+                    return `https://cloud1-4gw154ajfc4d5163.tcb.qcloud.la/FullRest/${name}.${ext}?sign=mock_signature_${Date.now()}`;
+                } else {
+                    // 非iOS设备返回cloud://协议
+                    return `${this.cloudBase}${name}.${ext}`;
+                }
+            },
+            
+            // 模拟同步方法（已弃用，但保留兼容性）
+            getCloudImageUrlSync(name, ext = 'png') {
+                return `${this.cloudBase}${name}.${ext}`;
+            }
+        };
+
+        // 测试数据
+        const testData = {
+            mainPage: [
+                { name: 'placeholder', label: '占位图' },
+                { name: 'canteen', label: '食堂图标' },
+                { name: 'takeout', label: '外卖图标' },
+                { name: 'beverage', label: '茶饮图标' }
+            ],
+            restaurantIcons: [
+                { name: 'haidilao', label: '海底捞' },
+                { name: 'kendeji', label: '肯德基' },
+                { name: 'maidanglao', label: '麦当劳' },
+                { name: 'xingbake', label: '星巴克' },
+                { name: 'dingtaifeng', label: '鼎泰丰' },
+                { name: 'placeholder', label: '占位图' }
+            ],
+            selectionPage: [
+                { name: 'haidilao', label: '海底捞' },
+                { name: 'waipojia', label: '外婆家' },
+                { name: 'lvchacanting', label: '绿茶餐厅' },
+                { name: 'placeholder', label: '占位图' }
+            ],
+            welcomePage: [
+                { name: 'kendeji', label: '肯德基' },
+                { name: 'hanbaowang', label: '汉堡王' },
+                { name: 'bishengke', label: '必胜客' },
+                { name: 'placeholder', label: '占位图' }
+            ]
+        };
+
+        let testResults = {
+            total: 0,
+            success: 0,
+            failed: 0
+        };
+
+        // 日志函数
+        function log(message) {
+            const logSection = document.getElementById('logSection');
+            const timestamp = new Date().toLocaleTimeString();
+            logSection.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logSection.scrollTop = logSection.scrollHeight;
+        }
+
+        // 创建测试项
+        function createTestItem(data, isIOS) {
+            const url = cloudImageManager.getCloudImageUrl(data.name);
+            const item = document.createElement('div');
+            item.className = 'test-item';
+            item.innerHTML = `
+                <img class="test-image" src="${url}" alt="${data.label}" 
+                     onload="handleImageLoad(this, '${data.name}')" 
+                     onerror="handleImageError(this, '${data.name}')">
+                <div class="test-label">
+                    <span class="status-indicator status-loading" id="status-${data.name}"></span>
+                    ${data.label}
+                </div>
+                <div class="test-url">${url}</div>
+            `;
+            return item;
+        }
+
+        // 图片加载成功处理
+        function handleImageLoad(img, name) {
+            const statusEl = document.getElementById(`status-${name}`);
+            if (statusEl) {
+                statusEl.className = 'status-indicator status-success';
+            }
+            testResults.success++;
+            log(`✅ ${name} 加载成功`);
+            updateSummary();
+        }
+
+        // 图片加载失败处理
+        function handleImageError(img, name) {
+            const statusEl = document.getElementById(`status-${name}`);
+            if (statusEl) {
+                statusEl.className = 'status-indicator status-error';
+            }
+            testResults.failed++;
+            log(`❌ ${name} 加载失败`);
+            updateSummary();
+        }
+
+        // 更新统计信息
+        function updateSummary() {
+            const completed = testResults.success + testResults.failed;
+            if (completed === testResults.total) {
+                const summaryEl = document.getElementById('summary');
+                summaryEl.style.display = 'block';
+                
+                document.getElementById('totalTests').textContent = testResults.total;
+                document.getElementById('successTests').textContent = testResults.success;
+                document.getElementById('failedTests').textContent = testResults.failed;
+                
+                const successRate = testResults.total > 0 ? 
+                    Math.round((testResults.success / testResults.total) * 100) : 0;
+                document.getElementById('successRate').textContent = successRate + '%';
+                
+                log(`🎯 测试完成！成功率: ${successRate}%`);
+            }
+        }
+
+        // 初始化测试
+        function initTests() {
+            const isIOS = cloudImageManager.isIOS;
+            
+            // 更新设备信息
+            document.getElementById('deviceInfo').textContent = isIOS ? 'iOS设备' : '非iOS设备';
+            document.getElementById('userAgent').textContent = navigator.userAgent;
+            document.getElementById('testTime').textContent = new Date().toLocaleString();
+            
+            log(`🚀 开始测试，设备类型: ${isIOS ? 'iOS' : '非iOS'}`);
+            
+            // 创建各个测试区域
+            const sections = [
+                { id: 'mainPageTests', data: testData.mainPage },
+                { id: 'restaurantIconTests', data: testData.restaurantIcons },
+                { id: 'selectionPageTests', data: testData.selectionPage },
+                { id: 'welcomePageTests', data: testData.welcomePage }
+            ];
+            
+            sections.forEach(section => {
+                const container = document.getElementById(section.id);
+                section.data.forEach(item => {
+                    const testItem = createTestItem(item, isIOS);
+                    container.appendChild(testItem);
+                    testResults.total++;
+                });
+            });
+            
+            log(`📊 总共创建 ${testResults.total} 个测试项`);
+            
+            // 如果是iOS设备，特别说明
+            if (isIOS) {
+                log(`🍎 检测到iOS设备，所有图片将使用HTTPS临时链接加载`);
+            } else {
+                log(`🤖 检测到非iOS设备，图片将使用cloud://协议加载`);
+            }
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initTests);
+    </script>
+</body>
+</html>

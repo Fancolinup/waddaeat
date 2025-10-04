@@ -48,6 +48,9 @@
   <!-- 顶部toast提示 -->
   <view class="top-toast" hidden="{{!showTopToast}}">{{topToastText}}</view>
 
+  <!-- 毛玻璃遮罩层 -->
+  <view class="glass-overlay" hidden="{{!showDecisionLayer}}" bindtap="onOverlayTap"></view>
+
   <!-- 决策浮层 -->
   <view class="decision-layer" hidden="{{!showDecisionLayer}}">
     <scroll-view class="dl-content" scroll-y="true">
@@ -88,7 +91,7 @@
     <view class="dl-actions">
       <button class="dl-btn dl-primary" bindtap="onAccept">就它</button>
       <button class="dl-btn dl-secondary" bindtap="onReroll">再转一次</button>
-      <button class="dl-btn dl-secondary" bindtap="onAddShortlist">加入备选</button>
+      <button class="dl-btn dl-tertiary" bindtap="onAddShortlist">加入备选</button>
     </view>
   </view>
 

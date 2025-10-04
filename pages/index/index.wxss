@@ -488,9 +488,33 @@
 .dl-type { margin-top: 6rpx; font-size: 26rpx; color: #6b7280; }
 .dl-promo { margin-top: 6rpx; font-size: 26rpx; color: #374151; display: none; }
 .dl-actions { margin-top: 20rpx; display: flex; gap: 20rpx; }
-.dl-btn { flex: 1; height: 80rpx; border-radius: 40rpx; font-size: 28rpx; font-weight: 700; }
-.dl-primary { background: #4f9ef8; color: #fff; box-shadow: 0 6rpx 12rpx rgba(79,158,248,0.35); }
-.dl-secondary { background: #e5e7eb; color: #374151; }
+.dl-btn { 
+  flex: 1; 
+  height: 80rpx; 
+  border-radius: 16rpx; 
+  font-size: 28rpx; 
+  font-weight: 700; 
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.dl-primary { 
+  background: linear-gradient(135deg, #667eea, #764ba2); 
+  color: #fff; 
+  box-shadow: 0 6rpx 20rpx rgba(102,126,234,0.4); 
+}
+
+.dl-secondary { 
+  background: #f8fafc; 
+  color: #475569; 
+  border: 2rpx solid #e2e8f0;
+}
+
+.dl-tertiary {
+  background: linear-gradient(135deg, #ffecd2, #fcb69f);
+  color: #8b4513;
+  border: none;
+}
 .decision-title { font-size: 28rpx; color: #333; margin-bottom: 8rpx; }
 .decision-name { font-size: 36rpx; font-weight: 700; margin-bottom: 16rpx; }
 .decision-actions { display: flex; gap: 16rpx; }
@@ -546,7 +570,7 @@
 .dl-content {
   flex: 1;
   min-height: 0; /* 允许scroll-view在flex容器内正确收缩 */
-  padding-bottom: 120rpx; /* 给底部按钮区域预留空间，避免内容被遮挡 */
+  padding-bottom: 80rpx; /* 给底部按钮区域预留空间，适配缩短的浮层高度 */
 }
 .decision-layer .dl-actions {
   position: absolute;
@@ -840,11 +864,35 @@
 /* 默认袋子 */
 .icon-takeout-default::before{ content:""; position:absolute; left:50%; top:50%; width:40rpx; height:32rpx; background:#fff; transform:translate(-50%,-50%); border-radius:6rpx; box-shadow: inset 0 -6rpx 0 rgba(0,0,0,0.08);} 
 .icon-takeout-default::after{ content:""; position:absolute; left:50%; top:50%; width:24rpx; height:12rpx; border:4rpx solid #fff; border-bottom:none; border-radius:16rpx 16rpx 0 0; transform: translate(-50%, -80%);}
-/* 决策浮层尺寸调整：允许内容自适应以显示品牌列表 */
+/* 毛玻璃遮罩层 */
+.glass-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 120rpx; /* 避免覆盖底部tab栏 */
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  z-index: 998; /* 低于决策浮层但高于其他内容 */
+}
+
+/* 决策浮层 */
 .decision-layer { 
-  /* 其它样式保持不变，仅调整高度策略 */
-  min-height: 360rpx; 
-  height: auto; 
+  position: fixed; 
+  top: 50%; 
+  left: 50%; 
+  transform: translate(-50%, -50%); 
+  width: 580rpx; 
+  background: rgba(255, 255, 255, 0.95); 
+  backdrop-filter: blur(20rpx); 
+  -webkit-backdrop-filter: blur(20rpx); 
+  border-radius: 24rpx; 
+  padding: 24rpx; 
+  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.15); 
+  z-index: 999; 
+  /* 调整高度，使其接近转盘高度 */
+  height: 280rpx; 
 }
 .dl-header { font-size: 24rpx; letter-spacing: 2rpx; color: #6b7280; margin-bottom: 16rpx; font-weight: 600; }
 .dl-body { display: flex; align-items: center; gap: 20rpx; }
@@ -856,9 +904,27 @@
 .dl-type { margin-top: 6rpx; font-size: 26rpx; color: #6b7280; }
 .dl-promo { margin-top: 6rpx; font-size: 26rpx; color: #374151; display: none; }
 .dl-actions { margin-top: 20rpx; display: flex; gap: 20rpx; }
-.dl-btn { flex: 1; height: 80rpx; border-radius: 40rpx; font-size: 28rpx; font-weight: 700; }
-.dl-primary { background: #4f9ef8; color: #fff; box-shadow: 0 6rpx 12rpx rgba(79,158,248,0.35); }
-.dl-secondary { background: #e5e7eb; color: #374151; }
+.dl-btn { 
+  flex: 1; 
+  height: 80rpx; 
+  border-radius: 16rpx; 
+  font-size: 28rpx; 
+  font-weight: 700; 
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.dl-primary { 
+  background: linear-gradient(135deg, #667eea, #764ba2); 
+  color: #fff; 
+  box-shadow: 0 6rpx 20rpx rgba(102,126,234,0.4); 
+}
+
+.dl-secondary { 
+  background: #f8fafc; 
+  color: #475569; 
+  border: 2rpx solid #e2e8f0;
+}
 .decision-title { font-size: 28rpx; color: #333; margin-bottom: 8rpx; }
 .decision-name { font-size: 36rpx; font-weight: 700; margin-bottom: 16rpx; }
 .decision-actions { display: flex; gap: 16rpx; }
@@ -1169,9 +1235,27 @@
 .dl-type { margin-top: 6rpx; font-size: 26rpx; color: #6b7280; }
 .dl-promo { margin-top: 6rpx; font-size: 26rpx; color: #374151; display: none; }
 .dl-actions { margin-top: 20rpx; display: flex; gap: 20rpx; }
-.dl-btn { flex: 1; height: 80rpx; border-radius: 40rpx; font-size: 28rpx; font-weight: 700; }
-.dl-primary { background: #4f9ef8; color: #fff; box-shadow: 0 6rpx 12rpx rgba(79,158,248,0.35); }
-.dl-secondary { background: #e5e7eb; color: #374151; }
+.dl-btn { 
+  flex: 1; 
+  height: 80rpx; 
+  border-radius: 16rpx; 
+  font-size: 28rpx; 
+  font-weight: 700; 
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.dl-primary { 
+  background: linear-gradient(135deg, #667eea, #764ba2); 
+  color: #fff; 
+  box-shadow: 0 6rpx 20rpx rgba(102,126,234,0.4); 
+}
+
+.dl-secondary { 
+  background: #f8fafc; 
+  color: #475569; 
+  border: 2rpx solid #e2e8f0;
+}
 .decision-title { font-size: 28rpx; color: #333; margin-bottom: 8rpx; }
 .decision-name { font-size: 36rpx; font-weight: 700; margin-bottom: 16rpx; }
 .decision-actions { display: flex; gap: 16rpx; }

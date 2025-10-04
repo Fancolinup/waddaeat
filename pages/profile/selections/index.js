@@ -113,7 +113,8 @@ Page({
       return `${y}-${m}-${day} ${h}:${mi}`;
     } catch(e){ return String(ts); }
   },
-  onHistoryLogoError(e){
+  // 历史记录logo加载失败处理（增强版）
+  async onHistoryLogoError(e){
     const name = e.currentTarget.dataset.name;
     console.log('[Selections] 历史记录logo加载失败 - 餐厅名称:', name);
     console.log('[Selections] 错误详情:', e.detail);
@@ -123,11 +124,23 @@ Page({
       return;
     }
     
-    // 使用云端占位符图片，确保一定可见
-    const placeholderUrl = cloudImageManager.getCloudImageUrl('placeholder', 'png');
-    console.log('[Selections] 设置占位符URL:', placeholderUrl);
-    this.setData({ [`recentAccepts[${idx}].logoPath`]: placeholderUrl });
-    console.log('[Selections] 历史记录logo加载失败，使用占位符:', name);
+    try {
+      // 使用增强的降级机制
+      const py = this.data.pinyinMap[name];
+      const imageName = py || 'placeholder';
+      const fallbackUrl = await cloudImageManager.getImageUrlWithFallback(imageName);
+      
+      console.log('[Selections] 使用降级机制获取URL:', fallbackUrl);
+      this.setData({ [`recentAccepts[${idx}].logoPath`]: fallbackUrl });
+    } catch (error) {
+      console.warn('[Selections] 降级机制失败，使用占位符:', error);
+      // 最终兜底：使用iOS专用加载方法
+      cloudImageManager.loadImageForIOS('placeholder', 'png', (placeholderUrl) => {
+        this.setData({ [`recentAccepts[${idx}].logoPath`]: placeholderUrl });
+      }, () => {
+        this.setData({ [`recentAccepts[${idx}].logoPath`]: '/images/placeholder.png' });
+      });
+    }
   },
   // 将品牌名数组转换为界面模型
   buildBrandModels(brandNames) {
@@ -173,14 +186,55 @@ Page({
     // 使用云端placeholder图片
     return cloudImageManager.getCloudImageUrl('placeholder', 'png');
   },
-  onLogoError(e){
+  // 品牌logo加载失败处理（增强版）
+  async onLogoError(e){
     const name = e.currentTarget.dataset.name;
-    console.log('[Selections] Logo加载失败，餐厅名称:', name);
-    // 使用云端placeholder图片
-    const logoPath = cloudImageManager.getCloudImageUrl('placeholder', 'png');
-    this.setData({
-      [`brands[${e.currentTarget.dataset.index}].logoPath`]: logoPath
-    });
+    const index = e.currentTarget.dataset.index;
+    if (!name || index == null) return;
+    
+    const retryCount = this.data.logoRetryMap[name] || 0;
+    console.log(`[Selections] Logo加载失败：${name}, 重试次数：${retryCount}`);
+    
+    if (retryCount >= 3) {
+      // 超过重试次数，使用占位图
+      cloudImageManager.loadImageForIOS('placeholder', 'png', (placeholderUrl) => {
+        this.setData({
+          [`brands[${index}].logoPath`]: placeholderUrl
+        });
+      }, () => {
+        this.setData({
+          [`brands[${index}].logoPath`]: '/images/placeholder.png'
+        });
+      });
+      return;
+    }
+    
+    try {
+      // 使用cloudImageManager的降级机制
+      const fallbackUrl = await cloudImageManager.getImageUrlWithFallback(name);
+      
+      const newLogoRetryMap = { ...this.data.logoRetryMap };
+      newLogoRetryMap[name] = retryCount + 1;
+      
+      this.setData({
+        [`brands[${index}].logoPath`]: fallbackUrl,
+        logoRetryMap: newLogoRetryMap
+      });
+      
+      console.log(`[Selections] 使用降级机制获取URL成功:`, fallbackUrl);
+    } catch (error) {
+      console.warn('[Selections] 降级机制失败，使用占位符:', error);
+      // 最终兜底：使用iOS专用加载方法
+      cloudImageManager.loadImageForIOS('placeholder', 'png', (placeholderUrl) => {
+        this.setData({
+          [`brands[${index}].logoPath`]: placeholderUrl
+        });
+      }, () => {
+        this.setData({
+          [`brands[${index}].logoPath`]: '/images/placeholder.png'
+        });
+      });
+    }
   },
   // 切换选中
   toggleSelect(e) {

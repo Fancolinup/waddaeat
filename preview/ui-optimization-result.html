@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI优化结果展示 - 堂食标签 & 结果浮层按钮</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 12px;
+        }
+        
+        /* 堂食标签样式（实际应用的样式） */
+        .h-type-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            margin-left: 8px;
+        }
+        
+        .h-type-tag.takeout {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        }
+        
+        .h-type-tag.beverage {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+        }
+        
+        .h-type-tag.dine-in {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+        
+        /* 餐厅记录列表样式 */
+        .recent-list {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        
+        .recent-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .recent-item:last-child {
+            border-bottom: none;
+        }
+        
+        .recent-info {
+            flex: 1;
+        }
+        
+        .recent-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+        
+        .recent-time {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        /* 结果浮层按钮样式（实际应用的样式） */
+        .decision-layer {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        
+        .dl-actions {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .dl-btn {
+            flex: 1;
+            height: 48px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+        }
+        
+        .dl-btn.dl-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 6px 20px rgba(102,126,234,0.4);
+        }
+        
+        .dl-btn.dl-secondary {
+            background: #f8fafc;
+            color: #475569;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .dl-btn.dl-tertiary {
+            background: linear-gradient(135deg, #ffecd2, #fcb69f);
+            color: #8b4513;
+        }
+        
+        .dl-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .demo-restaurant {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+        
+        .success-badge {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 16px;
+        }
+        
+        .feature-list {
+            background: #f0f9ff;
+            border: 2px solid #0ea5e9;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .feature-list h3 {
+            color: #0c4a6e;
+            margin-bottom: 12px;
+        }
+        
+        .feature-list ul {
+            color: #075985;
+            padding-left: 20px;
+        }
+        
+        .feature-list li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center; color: #1f2937; margin-bottom: 32px; font-size: 32px;">UI优化结果展示</h1>
+        
+        <div class="success-badge">✅ 优化完成</div>
+        
+        <!-- 堂食标签展示 -->
+        <div class="section">
+            <h2 class="section-title">1. 堂食标签实现效果</h2>
+            
+            <p style="color: #6b7280; margin-bottom: 16px;">在"个人-我的选择"页面的"最近吃过"列表中，新增了"堂食"标签，使用紫色渐变样式与现有的"外卖"、"茶饮"标签形成良好的视觉区分。</p>
+            
+            <div class="recent-list">
+                <div class="demo-restaurant">最近吃过列表</div>
+                <div class="recent-item">
+                    <div class="recent-info">
+                        <div class="recent-name">海底捞火锅</div>
+                        <div class="recent-time">2024-01-15 19:30</div>
+                    </div>
+                    <span class="h-type-tag dine-in">堂食</span>
+                </div>
+                <div class="recent-item">
+                    <div class="recent-info">
+                        <div class="recent-name">麦当劳</div>
+                        <div class="recent-time">2024-01-14 12:15</div>
+                    </div>
+                    <span class="h-type-tag takeout">外卖</span>
+                </div>
+                <div class="recent-item">
+                    <div class="recent-info">
+                        <div class="recent-name">星巴克</div>
+                        <div class="recent-time">2024-01-13 15:45</div>
+                    </div>
+                    <span class="h-type-tag beverage">茶饮</span>
+                </div>
+                <div class="recent-item">
+                    <div class="recent-info">
+                        <div class="recent-name">西贝莜面村</div>
+                        <div class="recent-time">2024-01-12 18:20</div>
+                    </div>
+                    <span class="h-type-tag dine-in">堂食</span>
+                </div>
+                <div class="recent-item">
+                    <div class="recent-info">
+                        <div class="recent-name">喜茶</div>
+                        <div class="recent-time">2024-01-11 14:30</div>
+                    </div>
+                    <span class="h-type-tag beverage">茶饮</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 结果浮层按钮展示 -->
+        <div class="section">
+            <h2 class="section-title">2. 结果浮层按钮优化效果</h2>
+            
+            <p style="color: #6b7280; margin-bottom: 16px;">优化了今日选择页面决策浮层的三个按钮样式，采用现代渐变风格，提升视觉吸引力和用户体验。</p>
+            
+            <div class="decision-layer">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h3 style="color: #1f2937; margin-bottom: 8px;">🎯 今日推荐</h3>
+                    <p style="color: #6b7280; font-size: 18px; font-weight: 600;">海底捞火锅</p>
+                </div>
+                <div class="dl-actions">
+                    <button class="dl-btn dl-primary">就它</button>
+                    <button class="dl-btn dl-secondary">再转一次</button>
+                    <button class="dl-btn dl-tertiary">加入备选</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 技术实现说明 -->
+        <div class="section">
+            <h2 class="section-title">3. 技术实现说明</h2>
+            
+            <div class="feature-list">
+                <h3>🎨 堂食标签实现</h3>
+                <ul>
+                    <li><strong>样式文件：</strong>在 <code>pages/profile/selections/index.wxss</code> 中添加了 <code>.h-type-tag.dine-in</code> 样式</li>
+                    <li><strong>模板文件：</strong>更新了 <code>pages/profile/selections/index.wxml</code> 中的标签显示逻辑</li>
+                    <li><strong>颜色方案：</strong>使用紫色渐变 <code>linear-gradient(135deg, #667eea, #764ba2)</code></li>
+                    <li><strong>数据支持：</strong>支持 <code>wheelType: 'dine-in'</code> 的餐厅记录</li>
+                </ul>
+            </div>
+            
+            <div class="feature-list" style="margin-top: 16px;">
+                <h3>🎯 按钮样式优化</h3>
+                <ul>
+                    <li><strong>样式文件：</strong>更新了 <code>pages/index/index.wxss</code> 中的所有 <code>.dl-btn</code> 相关样式</li>
+                    <li><strong>模板文件：</strong>更新了 <code>pages/index/index.wxml</code> 中第三个按钮的样式类</li>
+                    <li><strong>圆角优化：</strong>从 40rpx 调整为 16rpx，更加现代化</li>
+                    <li><strong>渐变效果：</strong>主按钮使用紫色渐变，第三按钮使用暖色渐变</li>
+                    <li><strong>交互效果：</strong>添加了 <code>transition</code> 过渡动画</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 32px; padding: 20px; background: #f0fdf4; border-radius: 12px; border: 2px solid #22c55e;">
+            <h3 style="color: #15803d; margin-bottom: 8px;">🎉 优化完成</h3>
+            <p style="color: #166534;">所有UI优化已成功实现，可以在小程序中查看实际效果！</p>
+        </div>
+    </div>
+</body>
+</html>

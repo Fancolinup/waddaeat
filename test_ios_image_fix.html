@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iOS图片加载修复测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            margin: 10px;
+            border: 2px solid #ddd;
+            object-fit: cover;
+        }
+        .image-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .device-info {
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>iOS图片加载修复测试</h1>
+        
+        <div class="device-info" id="deviceInfo">
+            <h3>设备信息</h3>
+            <p>正在检测设备信息...</p>
+        </div>
+
+        <div class="test-section">
+            <h3>测试1: 云端图片加载 (修复后)</h3>
+            <p>测试修复后的云端图片加载机制，iOS设备应该自动使用HTTPS临时链接</p>
+            <div class="image-grid" id="cloudImages"></div>
+            <div class="log" id="cloudLog"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>测试2: 占位图加载</h3>
+            <p>测试占位图在各种情况下的显示</p>
+            <div class="image-grid" id="placeholderImages"></div>
+            <div class="log" id="placeholderLog"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>测试3: 错误处理和降级机制</h3>
+            <p>测试图片加载失败时的降级处理</p>
+            <div class="image-grid" id="errorImages"></div>
+            <div class="log" id="errorLog"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>测试日志</h3>
+            <div class="log" id="mainLog"></div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟CloudImageManager核心功能
+        class TestCloudImageManager {
+            constructor() {
+                this.isIOS = this.detectIOSDevice();
+                this.cache = new Map();
+                this.log('CloudImageManager初始化', `iOS设备: ${this.isIOS}`);
+            }
+
+            detectIOSDevice() {
+                const ua = navigator.userAgent;
+                return /iPhone|iPad|iPod/i.test(ua) || 
+                       (/Macintosh/i.test(ua) && 'ontouchend' in document);
+            }
+
+            log(action, message) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logMessage = `[${timestamp}] ${action}: ${message}`;
+                console.log(logMessage);
+                
+                const mainLog = document.getElementById('mainLog');
+                if (mainLog) {
+                    mainLog.innerHTML += logMessage + '\n';
+                    mainLog.scrollTop = mainLog.scrollHeight;
+                }
+            }
+
+            // 模拟同步版本
+            getCloudImageUrlSync(imageName, ext = 'png') {
+                if (!imageName || imageName === 'placeholder') {
+                    return `cloud://test-env.7465-test-env/images/placeholder.${ext}`;
+                }
+                return `cloud://test-env.7465-test-env/images/${imageName}.${ext}`;
+            }
+
+            // 模拟异步版本 (iOS设备会调用getTempHttpsUrl)
+            async getCloudImageUrl(imageName, ext = 'png') {
+                if (!imageName || imageName === 'placeholder') {
+                    if (this.isIOS) {
+                        this.log('iOS占位图', '使用HTTPS临时链接');
+                        return await this.getTempHttpsUrl('placeholder', ext);
+                    }
+                    return this.getCloudImageUrlSync(imageName, ext);
+                }
+
+                if (this.isIOS) {
+                    this.log('iOS云图片', `获取${imageName}的HTTPS临时链接`);
+                    return await this.getTempHttpsUrl(imageName, ext);
+                }
+                
+                return this.getCloudImageUrlSync(imageName, ext);
+            }
+
+            // 模拟获取HTTPS临时链接
+            async getTempHttpsUrl(imageName, ext = 'png') {
+                const cacheKey = `${imageName}.${ext}`;
+                
+                if (this.cache.has(cacheKey)) {
+                    this.log('缓存命中', `使用缓存的${cacheKey}`);
+                    return this.cache.get(cacheKey);
+                }
+
+                try {
+                    // 模拟微信云存储API调用
+                    await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
+                    
+                    // 模拟成功获取HTTPS链接
+                    const httpsUrl = `https://7465-test-env-1234567890.tcb.qcloud.la/images/${imageName}.${ext}?sign=abcd1234&t=1234567890`;
+                    
+                    this.cache.set(cacheKey, httpsUrl);
+                    this.log('HTTPS链接获取成功', `${imageName}.${ext} -> ${httpsUrl.substring(0, 50)}...`);
+                    
+                    return httpsUrl;
+                } catch (error) {
+                    this.log('HTTPS链接获取失败', `${imageName}.${ext}: ${error.message}`);
+                    // 返回原始fileID作为兜底
+                    return `cloud://test-env.7465-test-env/images/${imageName}.${ext}`;
+                }
+            }
+
+            // 模拟增强降级机制
+            async getImageUrlWithFallback(imageName, preferredExt = 'png') {
+                const extensions = ['png', 'jpg', 'webp'];
+                const startIdx = extensions.indexOf(preferredExt);
+                const orderedExts = startIdx >= 0 
+                    ? [preferredExt, ...extensions.filter(e => e !== preferredExt)]
+                    : extensions;
+
+                for (const ext of orderedExts) {
+                    try {
+                        const url = await this.getCloudImageUrl(imageName, ext);
+                        if (url && !url.startsWith('cloud://')) {
+                            this.log('降级成功', `${imageName}.${ext} 获取到有效URL`);
+                            return url;
+                        }
+                    } catch (error) {
+                        this.log('降级尝试失败', `${imageName}.${ext}: ${error.message}`);
+                    }
+                }
+
+                // 最终兜底
+                this.log('降级兜底', `使用占位图替代${imageName}`);
+                return await this.getCloudImageUrl('placeholder', 'png');
+            }
+        }
+
+        // 初始化测试
+        const cloudImageManager = new TestCloudImageManager();
+
+        // 显示设备信息
+        function showDeviceInfo() {
+            const deviceInfo = document.getElementById('deviceInfo');
+            const ua = navigator.userAgent;
+            const isIOS = cloudImageManager.isIOS;
+            
+            deviceInfo.innerHTML = `
+                <h3>设备信息</h3>
+                <p><strong>User Agent:</strong> ${ua}</p>
+                <p><strong>检测结果:</strong> ${isIOS ? 'iOS设备' : '非iOS设备'}</p>
+                <p><strong>测试时间:</strong> ${new Date().toLocaleString()}</p>
+            `;
+        }
+
+        // 创建测试图片元素
+        function createTestImage(src, alt, onLoad, onError) {
+            const img = document.createElement('img');
+            img.className = 'test-image';
+            img.alt = alt;
+            img.title = alt;
+            
+            const container = document.createElement('div');
+            container.style.textAlign = 'center';
+            container.style.margin = '10px';
+            
+            const label = document.createElement('div');
+            label.style.fontSize = '12px';
+            label.style.marginTop = '5px';
+            label.textContent = alt;
+            
+            const status = document.createElement('span');
+            status.className = 'status info';
+            status.textContent = '加载中...';
+            
+            img.onload = () => {
+                status.className = 'status success';
+                status.textContent = '成功';
+                if (onLoad) onLoad();
+            };
+            
+            img.onerror = () => {
+                status.className = 'status error';
+                status.textContent = '失败';
+                if (onError) onError();
+            };
+            
+            img.src = src;
+            
+            container.appendChild(img);
+            container.appendChild(label);
+            container.appendChild(status);
+            
+            return container;
+        }
+
+        // 测试1: 云端图片加载
+        async function testCloudImages() {
+            const container = document.getElementById('cloudImages');
+            const log = document.getElementById('cloudLog');
+            
+            const testImages = ['kendeji', 'maidanglao', 'haidilao', 'xingbake'];
+            
+            for (const imageName of testImages) {
+                try {
+                    const url = await cloudImageManager.getCloudImageUrl(imageName, 'png');
+                    const imgElement = createTestImage(
+                        url, 
+                        imageName,
+                        () => log.innerHTML += `✅ ${imageName}: 加载成功\n`,
+                        () => log.innerHTML += `❌ ${imageName}: 加载失败\n`
+                    );
+                    container.appendChild(imgElement);
+                    
+                    log.innerHTML += `🔗 ${imageName}: ${url.substring(0, 60)}...\n`;
+                } catch (error) {
+                    log.innerHTML += `❌ ${imageName}: 获取URL失败 - ${error.message}\n`;
+                }
+            }
+        }
+
+        // 测试2: 占位图加载
+        async function testPlaceholderImages() {
+            const container = document.getElementById('placeholderImages');
+            const log = document.getElementById('placeholderLog');
+            
+            try {
+                // 测试同步版本
+                const syncUrl = cloudImageManager.getCloudImageUrlSync('placeholder', 'png');
+                const syncImg = createTestImage(
+                    syncUrl,
+                    '同步占位图',
+                    () => log.innerHTML += `✅ 同步占位图: 加载成功\n`,
+                    () => log.innerHTML += `❌ 同步占位图: 加载失败\n`
+                );
+                container.appendChild(syncImg);
+                log.innerHTML += `🔗 同步占位图: ${syncUrl}\n`;
+
+                // 测试异步版本
+                const asyncUrl = await cloudImageManager.getCloudImageUrl('placeholder', 'png');
+                const asyncImg = createTestImage(
+                    asyncUrl,
+                    '异步占位图',
+                    () => log.innerHTML += `✅ 异步占位图: 加载成功\n`,
+                    () => log.innerHTML += `❌ 异步占位图: 加载失败\n`
+                );
+                container.appendChild(asyncImg);
+                log.innerHTML += `🔗 异步占位图: ${asyncUrl.substring(0, 60)}...\n`;
+                
+            } catch (error) {
+                log.innerHTML += `❌ 占位图测试失败: ${error.message}\n`;
+            }
+        }
+
+        // 测试3: 错误处理和降级机制
+        async function testErrorHandling() {
+            const container = document.getElementById('errorImages');
+            const log = document.getElementById('errorLog');
+            
+            // 测试不存在的图片
+            const nonExistentImages = ['nonexistent1', 'nonexistent2'];
+            
+            for (const imageName of nonExistentImages) {
+                try {
+                    const url = await cloudImageManager.getImageUrlWithFallback(imageName, 'png');
+                    const imgElement = createTestImage(
+                        url,
+                        `降级测试: ${imageName}`,
+                        () => log.innerHTML += `✅ ${imageName}: 降级成功\n`,
+                        () => log.innerHTML += `❌ ${imageName}: 降级失败\n`
+                    );
+                    container.appendChild(imgElement);
+                    
+                    log.innerHTML += `🔄 ${imageName}: 降级后URL - ${url.substring(0, 60)}...\n`;
+                } catch (error) {
+                    log.innerHTML += `❌ ${imageName}: 降级处理失败 - ${error.message}\n`;
+                }
+            }
+        }
+
+        // 运行所有测试
+        async function runAllTests() {
+            cloudImageManager.log('测试开始', '开始运行所有测试');
+            
+            showDeviceInfo();
+            
+            await testCloudImages();
+            await testPlaceholderImages();
+            await testErrorHandling();
+            
+            cloudImageManager.log('测试完成', '所有测试已完成');
+        }
+
+        // 页面加载完成后运行测试
+        document.addEventListener('DOMContentLoaded', runAllTests);
+    </script>
+</body>
+</html>

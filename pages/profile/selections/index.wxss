@@ -30,6 +30,7 @@
 .h-type-tag{font-size:20rpx;padding:2rpx 8rpx;border-radius:8rpx;color:#fff;font-weight:500}
 .h-type-tag.takeout{background:linear-gradient(135deg,#ff6b6b,#ee5a24)}
 .h-type-tag.beverage{background:linear-gradient(135deg,#4ecdc4,#44bd87)}
+.h-type-tag.restaurant{background:linear-gradient(135deg,#667eea,#764ba2)}
 .h-time{font-size:22rpx;color:#888;margin-top:4rpx}
 .empty{color:#999;font-size:24rpx;text-align:center;padding:20rpx 0}
 

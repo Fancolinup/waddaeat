@@ -391,8 +391,8 @@ Page({
       name: restaurantName,
       category: '自定义',
       rating: 0,
-      logoPath: cloudImageManager.getCloudImageUrl('placeholder'),
-      hdLogoPath: cloudImageManager.getCloudImageUrl('placeholder'),
+      logoPath: cloudImageManager.getCloudImageUrlSync('placeholder'),
+      hdLogoPath: cloudImageManager.getCloudImageUrlSync('placeholder'),
       selected: true
     };
     const updatedRestaurants = [...this.data.restaurants, newRestaurant];
@@ -432,18 +432,18 @@ Page({
 
     if (pinyin) {
       if (item.logoPath.indexOf('/packageA/') === 0 && bIcons.includes(pinyin)) {
-        item.logoPath = cloudImageManager.getCloudImageUrl(pinyin);
+        item.logoPath = cloudImageManager.getCloudImageUrlSync(pinyin);
       } else if (item.logoPath.indexOf('/packageB/') === 0 && aIcons.includes(pinyin)) {
-        item.logoPath = cloudImageManager.getCloudImageUrl(pinyin);
+        item.logoPath = cloudImageManager.getCloudImageUrlSync(pinyin);
       } else if (aIcons.includes(pinyin)) {
-        item.logoPath = cloudImageManager.getCloudImageUrl(pinyin);
+        item.logoPath = cloudImageManager.getCloudImageUrlSync(pinyin);
       } else if (bIcons.includes(pinyin)) {
-        item.logoPath = cloudImageManager.getCloudImageUrl(pinyin);
+        item.logoPath = cloudImageManager.getCloudImageUrlSync(pinyin);
       } else {
-        item.logoPath = cloudImageManager.getCloudImageUrl('placeholder');
+        item.logoPath = cloudImageManager.getCloudImageUrlSync('placeholder');
       }
     } else {
-      item.logoPath = cloudImageManager.getCloudImageUrl('placeholder');
+      item.logoPath = cloudImageManager.getCloudImageUrlSync('placeholder');
     }
 
     restaurants[idx] = item;
