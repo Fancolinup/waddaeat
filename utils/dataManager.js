@@ -595,7 +595,20 @@ let pointsCfg = null;
 try {
   pointsCfg = require('../levelsConfig.json');
 } catch (eJson) {
-  try { pointsCfg = require('./pointsConfig'); } catch (eJs) { pointsCfg = { actions: {}, levels: [] }; }
+  try {
+    // 先尝试加载小写文件名，兼容仓库当前文件 pointsconfig.js
+    pointsCfg = require('./pointsconfig');
+    console.warn('[dataManager] points config loaded from JS fallback (lowercase)');
+  } catch (eJsLower) {
+    try {
+      // 再尝试加载驼峰文件名，兼容大小写敏感环境
+      pointsCfg = require('./pointsConfig');
+      console.warn('[dataManager] points config loaded from JS fallback (CamelCase)');
+    } catch (eJsUpper) {
+      console.error('[dataManager] failed to load points config from JSON and JS fallbacks', eJson, eJsLower, eJsUpper);
+      pointsCfg = { actions: {}, levels: [] };
+    }
+  }
 }
 
 /**
@@ -625,12 +638,21 @@ function addPoints(actionKey, uniqueId) {
 function recalculateUserLevel(points) {
   try {
     const levels = (pointsCfg && pointsCfg.levels) || [];
-    let current = levels[0] ? levels[0].name : 'P5-应届牛马';
-    for (let i = 0; i < levels.length; i++) {
-      if (points >= levels[i].min) current = levels[i].name; else break;
+    if (!levels.length) return 'P5-应届牛马';
+    
+    // 从最高等级开始检查，找到第一个满足条件的等级
+    for (let i = levels.length - 1; i >= 0; i--) {
+      if (points >= levels[i].min) {
+        return levels[i].name;
+      }
     }
-    return current;
-  } catch (e) { console.error('[dataManager.recalculateUserLevel] error', e); return 'P5-应届牛马'; }
+    
+    // 如果积分不足最低等级要求，返回第一个等级
+    return levels[0].name;
+  } catch (e) { 
+    console.error('[dataManager.recalculateUserLevel] error', e); 
+    return 'P5-应届牛马'; 
+  }
 }
 
 // 导出新增方法

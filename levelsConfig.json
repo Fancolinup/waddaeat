@@ -1,5 +1,6 @@
 {
   "actions": {
+    "restaurant_accept": 1,
     "spin": 2,
     "vote": 1,
     "bookmark": 1,

@@ -1,0 +1,18 @@
+// Fallback points and levels configuration for environments where JSON require may fail
+module.exports = {
+  actions: {
+    restaurant_accept: 1,
+    spin: 2,
+    vote: 1,
+    bookmark: 1,
+    share: 3
+  },
+  levels: [
+    { name: 'P5-应届牛马', min: 0 },
+    { name: 'P6-PPT大师', min: 200 },
+    { name: 'P7-吵架王中王', min: 400 },
+    { name: 'P8-精致指挥家', min: 800 },
+    { name: 'P9-演讲大师', min: 1500 },
+    { name: 'P10-金色传说', min: 3000 }
+  ]
+};

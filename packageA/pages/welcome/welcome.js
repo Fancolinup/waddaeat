@@ -504,6 +504,17 @@ Page({
           });
         }
 
+        // 添加积分：欢迎页餐厅选择
+        if (typeof dm.addPoints === 'function') {
+          this.data.selectedRestaurants.forEach(sid => {
+            try {
+              dm.addPoints('restaurant_accept', `welcome_${sid}_${Date.now()}`);
+            } catch(e) {
+              console.warn('addPoints restaurant_accept error', e);
+            }
+          });
+        }
+
         // 评分写回：对每个选择执行一次“accept”，提升初始偏好分
         try {
           const scoring = require('../../../utils/scoringManager.js');

@@ -664,6 +664,9 @@ Page({
     updateRestaurantScore(userData, String(sel.id), 'accept', { name: sel.name });
     if (this.data.wheelType === 'restaurant') { try { updateUserPreference(String(sel.id), 'like'); } catch(e) {} }
     try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'accept', source: 'roulette', wheelType: this.data.wheelType }); } catch(e) {}
+    
+    // 添加积分：餐厅选择
+    try { addPoints('restaurant_accept', `${sel.id}_${Date.now()}`); } catch(e) { console.warn('addPoints restaurant_accept error', e); }
 
     // 锁定分享餐厅，生成文案并展示分享区，隐藏结果浮层
     this.setData({ shareTargetName: sel.name, showShareArea: true, showDecisionLayer: false });
@@ -773,6 +776,9 @@ Page({
     if (this.data.wheelType === 'restaurant') { try { updateUserPreference(String(sel.id), 'like'); } catch(e) {} }
     try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'accept', source: 'shortlist', wheelType: this.data.wheelType }); } catch(e) {}
     
+    // 添加积分：备选区餐厅选择
+    try { addPoints('restaurant_accept', `shortlist_${sel.id}_${Date.now()}`); } catch(e) { console.warn('addPoints restaurant_accept error', e); }
+    
     // 交互反馈：锁定分享对象并展示分享区，同时取消选中态
     this.setData({ shareTargetName: sel.name, showShareArea: true, activeShortlistId: '' });
     this.loadShareText();
@@ -837,7 +843,7 @@ Page({
 
   onShareAppMessage() {
     const promise = new Promise(resolve => {
-      try { addPoints && addPoints('share'); } catch (e) { console.warn('addPoints share error', e); }
+      // 积分增加逻辑已移动到 shareToWeChat 函数中，避免重复加分
       // 尝试生成转盘区域截图
       this.captureRouletteArea().then(imagePath => {
         resolve({ 
@@ -1506,6 +1512,13 @@ Page({
 
   // 分享到微信
   shareToWeChat(imagePath) {
+    // 在分享执行前增加积分
+    try { 
+      addPoints && addPoints('share'); 
+    } catch (e) { 
+      console.warn('addPoints share error', e); 
+    }
+    
     const shareContent = {
       title: this.data.shareText || '今天吃什么？',
       path: '/pages/index/index'

@@ -6,7 +6,7 @@
   
   <!-- 顶部文案区 -->
   <view class="header-section">
-    <text class="main-title">欢迎，请选择感兴趣的餐厅</text>
+    <text class="main-title">欢迎，请选择常去的餐厅</text>
     <view class="selection-counter">
       <text class="counter-text">已选择 {{selectedRestaurants.length}} 家餐厅</text>
     </view>

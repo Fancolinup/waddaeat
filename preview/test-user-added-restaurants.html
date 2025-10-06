@@ -136,7 +136,7 @@
             
             try {
                 // 获取当前用户数据
-                let userData = wx.getStorageSync('userData') || {
+                let userData = wx.getStorageSync('user_data') || {
                     welcomeSelections: [],
                     welcomeSelectionsByBrand: [],
                     restaurantScores: {},
@@ -155,7 +155,7 @@
                 }
                 
                 // 保存数据
-                wx.setStorageSync('userData', userData);
+                wx.setStorageSync('user_data', userData);
                 
                 document.getElementById('welcomeResults').textContent = 
                     `成功添加用户餐厅: ${restaurantName}\nID: ${userAddedId}`;
@@ -170,7 +170,7 @@
         
         function showWelcomeSelections() {
             try {
-                const userData = wx.getStorageSync('userData') || {};
+                const userData = wx.getStorageSync('user_data') || {};
                 const welcomeSelections = userData.welcomeSelections || [];
                 const welcomeSelectionsByBrand = userData.welcomeSelectionsByBrand || [];
                 
@@ -195,7 +195,7 @@
                     .then(response => response.text())
                     .then(code => {
                         // 在这里我们直接模拟数据合并逻辑
-                        const userData = wx.getStorageSync('userData') || {};
+                        const userData = wx.getStorageSync('user_data') || {};
                         const welcomeSelections = userData.welcomeSelections || [];
                         
                         // 模拟静态餐厅数据
@@ -247,7 +247,7 @@
         function testRecommendations() {
             try {
                 // 模拟推荐算法测试
-                const userData = wx.getStorageSync('userData') || {};
+                const userData = wx.getStorageSync('user_data') || {};
                 const welcomeSelections = userData.welcomeSelections || [];
                 
                 // 模拟餐厅数据和推荐计算
@@ -318,7 +318,7 @@
         function clearTestData() {
             try {
                 // 清理测试数据
-                localStorage.removeItem('userData');
+                localStorage.removeItem('user_data');
                 
                 document.getElementById('clearResults').textContent = 
                     '测试数据已清理完成';
