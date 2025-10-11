@@ -1,10 +1,9 @@
 <view class="container" bindtouchstart="onTouchStart" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd">
-  <view class="disabled-banner banner-location">
+  <view class="banner-location {{locationStatus === 'loading' ? 'loading' : ''}}" bindtap="onLocationTap">
     <image class="icon" src="/images/map.svg" mode="widthFix" />
-    <text class="msg">定位功能</text>
-    <text class="dev-tag">开发中</text>
+    <text class="msg">{{locationText}}</text>
+    <text wx:if="{{locationStatus === 'loading'}}" class="loading-dot">...</text>
   </view>
-  <view class="title">What's today's feast?</view>
 
   <!-- 轮盘容器：指针向下，轮盘本身旋转，按钮保持固定 -->
   <view class="hero-area">
@@ -88,6 +87,13 @@
         </view>
       </view>
     </scroll-view>
+    
+    <!-- 导航按钮：图片直接作为按钮 -->
+    <view class="dl-navigation" wx:if="{{selected}}">
+      <image class="nav-icon-button" src="cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/mapdirection.png" bindtap="onNavigateToRestaurant" mode="aspectFill"></image>
+      <text class="nav-text" bindtap="onNavigateToRestaurant">导航去这里</text>
+    </view>
+    
     <view class="dl-actions">
       <button class="dl-btn dl-primary" bindtap="onAccept">就它</button>
       <button class="dl-btn dl-secondary" bindtap="onReroll">再转一次</button>

@@ -58,6 +58,14 @@
       }
     ]
   },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "你的位置信息将用于展示地图和计算距离"
+    }
+  },
+  "requiredPrivateInfos": [
+    "chooseLocation"
+  ],
   "networkTimeout": {
     "request": 10000,
     "downloadFile": 10000

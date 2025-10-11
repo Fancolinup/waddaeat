@@ -4,6 +4,8 @@ const { generateRecommendations } = require('../../utils/recommendation');
 const { updateRestaurantScore } = require('../../utils/scoringManager');
 const { updateUserPreference } = require('../../utils/preferenceLearner');
 const { cloudImageManager } = require('../../utils/cloudImageManager');
+const locationService = require('../../utils/locationService');
+const restaurantPriorityService = require('../../utils/restaurantPriorityService');
 const takeoutData = require('../../data/takeout');
 const beverageData = require('../../data/beverage');
 const pinyin = require('../../restaurant_pinyin.js');
@@ -35,6 +37,12 @@ Page({
 
     // 备选
     shortlist: [],
+    
+    // 定位功能
+    locationStatus: 'idle', // 'idle', 'loading', 'success', 'error'
+    locationText: '选择位置',
+    userLocation: null,
+    nearbyRestaurants: [],
     
     // 云图片占位符
     placeholderImageUrl: cloudImageManager.getCloudImageUrlSync('placeholder', 'png'),
@@ -100,6 +108,9 @@ Page({
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 0 });
     }
+    
+    // 恢复位置信息显示
+    this.restoreLocationDisplay();
   },
 
   // 配色切换（循环 B→A→F→G）
@@ -148,6 +159,19 @@ Page({
     this.setData({ showTopToast: false });
     this._toastTimer = null;
   }, 1500);
+  },
+
+  // 显示顶部提示
+  showTopToast(text) {
+    this.setData({ 
+      showTopToast: true, 
+      topToastText: text 
+    });
+    if (this._toastTimer) clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => {
+      this.setData({ showTopToast: false });
+      this._toastTimer = null;
+    }, 1500);
   },
 
   onUnload() {
@@ -476,8 +500,22 @@ Page({
       } else if (this.data.wheelType === 'beverage') {
         recs = this.generateBeverageRecommendations(12);
       } else {
-        recs = generateRecommendations(userData, 12);
+        // 只有餐厅转盘才使用基于位置的推荐
+        if (this.data.userLocation && this.data.locationStatus === 'success') {
+          console.log('[轮盘初始化] 使用基于位置的推荐');
+          // 使用已缓存的定位推荐数据，避免重复调用
+          const locationBasedRecommendations = this._cachedLocationRecommendations || [];
+          if (locationBasedRecommendations.length > 0) {
+            recs = locationBasedRecommendations.slice(0, 12);
+          } else {
+            // 如果没有缓存，回退到普通推荐
+            recs = generateRecommendations(userData, 12);
+          }
+        } else {
+          recs = generateRecommendations(userData, 12);
+        }
       }
+      
       const fmt = (v) => (typeof v === 'number' ? Number(v).toFixed(2) : '--');
       console.log(`[${ts()}] 推荐列表(生成/刷新)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''} [总:${fmt(r && r.recommendationScore)} 评:${fmt(r && r.specificScore)} 偏:${fmt(r && r.preferenceScore)}]`));
       const count = 12;
@@ -672,6 +710,90 @@ Page({
     this.setData({ shareTargetName: sel.name, showShareArea: true, showDecisionLayer: false });
     this.loadShareText();
     wx.showToast({ title: '已记录，就它了', icon: 'success' });
+  },
+
+  // 导航到餐厅位置
+  onNavigateToRestaurant() {
+    const selected = this.data.selected;
+    if (!selected) {
+      wx.showToast({
+        title: '请先选择餐厅',
+        icon: 'none'
+      });
+      return;
+    }
+
+    // 获取餐厅的位置信息
+    // TODO: 当高德API可用时，从真实的amapData中获取经纬度和地址
+    let latitude, longitude, address;
+    
+    if (selected.amapData) {
+      // 从高德API数据中获取位置信息
+      latitude = selected.amapData.latitude;
+      longitude = selected.amapData.longitude;
+      address = selected.amapData.address;
+    } else {
+      // 使用模拟数据（当前阶段）
+      console.log('[导航测试] 使用模拟数据进行导航功能测试');
+      
+      // 模拟数据映射
+      const mockLocationData = {
+        '海底捞火锅': { latitude: 31.2304, longitude: 121.4737, address: '上海市浦东新区陆家嘴环路1000号' },
+        '麦当劳': { latitude: 31.2280, longitude: 121.4750, address: '上海市浦东新区世纪大道1号' },
+        '星巴克': { latitude: 31.2320, longitude: 121.4720, address: '上海市浦东新区银城中路501号' },
+        '必胜客': { latitude: 31.2250, longitude: 121.4780, address: '上海市浦东新区东方路800号' },
+        '肯德基': { latitude: 31.2290, longitude: 121.4760, address: '上海市浦东新区浦东南路1200号' },
+        '西贝莜面村': { latitude: 31.2200, longitude: 121.4800, address: '上海市浦东新区张杨路1500号' },
+        '外婆家': { latitude: 31.2180, longitude: 121.4820, address: '上海市浦东新区花木路1800号' },
+        '绿茶餐厅': { latitude: 31.2260, longitude: 121.4790, address: '上海市浦东新区民生路1300号' },
+        '呷哺呷哺': { latitude: 31.2310, longitude: 121.4730, address: '上海市浦东新区陆家嘴西路168号' },
+        '真功夫': { latitude: 31.2270, longitude: 121.4770, address: '上海市浦东新区世纪大道1568号' }
+      };
+      
+      const mockData = mockLocationData[selected.name];
+      if (mockData) {
+        latitude = mockData.latitude;
+        longitude = mockData.longitude;
+        address = mockData.address;
+      } else {
+        // 默认位置（上海陆家嘴）
+        latitude = 31.2304;
+        longitude = 121.4737;
+        address = '上海市浦东新区陆家嘴';
+      }
+    }
+
+    // 调用微信内置地图
+    wx.openLocation({
+      latitude: latitude,
+      longitude: longitude,
+      name: selected.name,
+      address: address,
+      scale: 18,
+      success: () => {
+        console.log('[导航] 成功打开微信地图导航');
+        // 记录用户行为
+        try {
+          const { addDecisionRecord } = require('../../utils/decisionManager');
+          addDecisionRecord({
+            id: String(selected.id),
+            name: selected.name,
+            action: 'navigate',
+            source: 'roulette',
+            wheelType: this.data.wheelType
+          });
+        } catch(e) {
+          console.warn('[导航] 记录决策失败:', e);
+        }
+      },
+      fail: (err) => {
+        console.error('[导航] 打开微信地图失败:', err);
+        wx.showToast({
+          title: '导航失败，请稍后重试',
+          icon: 'none'
+        });
+      }
+    });
   },
 
   onAddShortlist: async function() {
@@ -1819,5 +1941,155 @@ Page({
     // 所有云端格式都失败，使用本地占位图
     console.warn(`[图片降级] ${imageName} 所有格式都失败，使用本地占位图`);
     return '/images/restaurant-default.svg';
+  },
+
+  // 定位功能相关方法
+  async onLocationTap() {
+    if (this.data.locationStatus === 'loading') {
+      return; // 防止重复点击
+    }
+
+    try {
+      this.setData({
+        locationStatus: 'loading',
+        locationText: '选择位置中'
+      });
+
+      // 直接使用wx.chooseLocation让用户选择位置，无需权限检查
+      const { location, restaurants } = await locationService.getNearbyRestaurants();
+      console.log('[定位] 用户选择的位置:', location);
+      console.log('[定位] 获取到附近餐厅:', restaurants);
+
+      // 获取基于位置的推荐
+      const locationBasedRecommendations = await restaurantPriorityService.getLocationBasedRecommendations(location);
+      console.log('[定位] 基于位置的推荐:', locationBasedRecommendations);
+
+      const displayName = this.truncateLocationName(location.name);
+      this.setData({
+        locationStatus: 'success',
+        locationText: displayName,
+        userLocation: location,
+        nearbyRestaurants: restaurants
+      });
+
+      // 使用基于位置的推荐更新轮盘
+      this.updateWheelWithLocationData(locationBasedRecommendations);
+
+      // 缓存定位推荐数据，供initWheel使用
+      this._cachedLocationRecommendations = locationBasedRecommendations;
+
+      // 显示成功提示
+      this.showTopToast('已获取附近餐厅推荐');
+
+    } catch (error) {
+      console.error('[定位] 获取位置失败:', error);
+      
+      // 区分用户取消和真正的错误
+      if (error.message && error.message.includes('用户取消')) {
+        this.setData({
+          locationStatus: 'idle',
+          locationText: '选择位置'
+        });
+        // 用户取消不显示错误提示
+      } else {
+        this.setData({
+          locationStatus: 'error',
+          locationText: '定位失败'
+        });
+        this.showTopToast('定位失败，请重试');
+      }
+    }
+  },
+
+  // 使用基于位置的数据更新轮盘
+  updateWheelWithLocationData(locationBasedRecommendations) {
+    if (!Array.isArray(locationBasedRecommendations) || locationBasedRecommendations.length === 0) {
+      console.warn('[定位轮盘] 没有基于位置的推荐数据');
+      return;
+    }
+
+    // 取前12个推荐餐厅
+    const recs = locationBasedRecommendations.slice(0, 12);
+    
+    const count = 12;
+    const step = 360 / count;
+    const { wheelRadius, labelOuterMargin, labelInnerMargin, labelMinStep, labelMaxStep } = this.data;
+
+    const segments = Array.from({ length: count }, (_, idx) => {
+      const r = recs[idx] || { name: '', id: `empty_${idx}`, type: 'restaurant' };
+      const name = r.name || '';
+      const nameChars = String(name).split('');
+      const outer = Math.max(0, wheelRadius - labelOuterMargin);
+      const inner = Math.max(0, labelInnerMargin);
+      const available = Math.max(0, outer - inner);
+      
+      let chars = [];
+      if (nameChars.length <= 1) {
+        chars = [{ ch: nameChars[0] || '', pos: Math.max(inner, Math.min(outer, Math.round((outer + inner) / 2))) }];
+      } else {
+        const rawStep = available / (nameChars.length - 1);
+        const stepLen = Math.max(labelMinStep, Math.min(labelMaxStep, rawStep));
+        const start = outer;
+        chars = nameChars.map((ch, cidx) => ({ ch, pos: Math.max(inner, Math.round(start - cidx * stepLen)) }));
+      }
+
+      return {
+        id: String(r.id),
+        name,
+        type: r.type || 'restaurant',
+        icon: r.icon || this.getRestaurantIconPath(name),
+        promoText: r.promoText || '',
+        angle: idx * step + step / 2,
+        slotNo: idx + 1,
+        // 位置相关信息
+        distance: r.distance,
+        priority: r.priority,
+        isFromAmap: r.isFromAmap,
+        isPreselected: r.isPreselected,
+        chars
+      };
+    });
+
+    this.setData({ 
+      segments,
+      displayOrder: Array.from({ length: count }, (_, i) => i + 1)
+    });
+  },
+
+  // 截取位置名称，限制在20个字节内
+  truncateLocationName(name) {
+    if (!name) return '';
+    
+    // 计算字节长度（中文字符占3个字节，英文字符占1个字节）
+    let byteLength = 0;
+    let truncatedName = '';
+    
+    for (let i = 0; i < name.length; i++) {
+      const char = name[i];
+      const charByteLength = /[\u4e00-\u9fa5]/.test(char) ? 3 : 1;
+      
+      if (byteLength + charByteLength <= 20) {
+        byteLength += charByteLength;
+        truncatedName += char;
+      } else {
+        break;
+      }
+    }
+    
+    return truncatedName === name ? name : truncatedName + '...';
+  },
+
+  // 恢复位置信息显示
+  restoreLocationDisplay() {
+    const userLocation = this.data.userLocation;
+    if (userLocation && userLocation.name) {
+      const displayName = this.truncateLocationName(userLocation.name);
+      this.setData({
+        locationStatus: 'success',
+        locationText: displayName
+      });
+    }
   }
 });
+
+console.log('[定位轮盘] 已更新轮盘数据，基于位置推荐');
