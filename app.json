@@ -6,7 +6,8 @@
     "pages/test-voice/index",
     "pages/profile/profile",
     "pages/profile/selections/index",
-    "pages/profile/favorites/index"
+    "pages/profile/favorites/index",
+    "pages/privacy/privacy"
   ],
   "subpackages": [
     {
@@ -30,6 +31,9 @@
     "navigationBarTitleText": "就决定吃你了",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#f8f8f8"
+  },
+  "privacy": {
+    "privacyContractName": "小程序隐私保护指引"
   },
   "tabBar": {
     "custom": true,
@@ -64,7 +68,8 @@
     }
   },
   "requiredPrivateInfos": [
-    "chooseLocation"
+    "chooseLocation",
+    "getLocation"
   ],
   "networkTimeout": {
     "request": 10000,

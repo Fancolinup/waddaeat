@@ -5,11 +5,15 @@ const { updateRestaurantScore } = require('../../utils/scoringManager');
 const { updateUserPreference } = require('../../utils/preferenceLearner');
 const { cloudImageManager } = require('../../utils/cloudImageManager');
 const locationService = require('../../utils/locationService');
-const restaurantPriorityService = require('../../utils/restaurantPriorityService');
+const ranking = require('../../utils/ranking');
 const takeoutData = require('../../data/takeout');
 const beverageData = require('../../data/beverage');
 const pinyin = require('../../restaurant_pinyin.js');
 // removed: const shareWording = require('../../shareWording.json');
+// 高德微信SDK
+const { AMapWX } = require('../../libs/amap-wx.130.js');
+// 高德餐饮类型编码（按用户提供）
+const AMAP_TYPES = '050100|050101|050102|050103|050104|050105|050106|050107|050108|050109|050110|050111|050112|050113|050114|050115|050116|050117|050118|050119|050120|050121|050122|050123|050200|050201|050202|050203|050204|050205|050206|050207|050208|050209|050210|050211|050212|050213|050214|050215|050216|050217|050300|050301|050302|050303|050304|050305|050306|050307|050308|050309|050310|050311';
 
 // 调试时间戳辅助
 const ts = () => new Date().toISOString();
@@ -50,6 +54,7 @@ Page({
     // 轮盘类型切换按钮图标（HTTPS临时链接或占位图）
     switchIcons: { canteen: '', takeout: '', beverage: '' },
     activeShortlistId: '',
+    activeShortlistIndex: -1, // 以索引记录选中项，避免同ID或数据复用导致多选
 
     // 分享
     shareText: '今天吃什么？',
@@ -76,7 +81,11 @@ Page({
     logoRetryMap: {},
     // 顶部toast显示
     showTopToast: false,
-    topToastText: ''
+    topToastText: '',
+    // 随机化转动时长（ms），默认 3200ms
+    spinDurationMs: 3200,
+    // 旋转次数计数器（接受或确认后重置）
+    spinCounter: 0
   },
 
   onLoad() {
@@ -482,6 +491,7 @@ Page({
       // 初始化阶段：禁用过渡动画，防止旋转动画在对齐时出现
       if (!preserveRotation) {
         this._initInProgress = true;
+        this._pendingAutoRefresh = false; // 进入新一轮时复位待刷新标记
         this.setData({ spinClass: 'no-transition' });
       }
       // 用于变更对比的上一轮推荐（按 slotNo 记录）
@@ -493,32 +503,38 @@ Page({
 
       const userData = getUserData();
       let recs = [];
-      
-      // 根据转盘类型生成不同数据
-      if (this.data.wheelType === 'takeout') {
-        recs = this.generateTakeoutRecommendations(12);
-      } else if (this.data.wheelType === 'beverage') {
-        recs = this.generateBeverageRecommendations(12);
+
+      // 特殊刷新路径：若存在强制候选（长度为12），直接使用
+      if (this._forcedRecs && Array.isArray(this._forcedRecs) && this._forcedRecs.length === (this.data.wheelType === 'restaurant' ? 20 : 12)) {
+        recs = this._forcedRecs;
+        console.log(`[${ts()}] 应用强制候选（特殊刷新：保留前5+替换后7为窗口顺延）`);
       } else {
-        // 只有餐厅转盘才使用基于位置的推荐
-        if (this.data.userLocation && this.data.locationStatus === 'success') {
-          console.log('[轮盘初始化] 使用基于位置的推荐');
-          // 使用已缓存的定位推荐数据，避免重复调用
-          const locationBasedRecommendations = this._cachedLocationRecommendations || [];
-          if (locationBasedRecommendations.length > 0) {
-            recs = locationBasedRecommendations.slice(0, 12);
-          } else {
-            // 如果没有缓存，回退到普通推荐
-            recs = generateRecommendations(userData, 12);
-          }
+        // 根据转盘类型生成不同数据
+        if (this.data.wheelType === 'takeout') {
+          recs = this.generateTakeoutRecommendations(12);
+        } else if (this.data.wheelType === 'beverage') {
+          recs = this.generateBeverageRecommendations(12);
         } else {
-          recs = generateRecommendations(userData, 12);
+          // 只有餐厅转盘才使用基于位置的推荐
+          if (this.data.userLocation && this.data.locationStatus === 'success') {
+            console.log('[轮盘初始化] 使用基于位置的推荐');
+            // 使用已缓存的定位推荐数据，避免重复调用
+            const locationBasedRecommendations = this._cachedLocationRecommendations || [];
+            if (locationBasedRecommendations.length > 0) {
+              recs = locationBasedRecommendations.slice(0, 20);
+            } else {
+              // 如果没有缓存，回退到普通推荐
+              recs = generateRecommendations(userData, 20);
+            }
+          } else {
+            recs = generateRecommendations(userData, 20);
+          }
         }
       }
       
       const fmt = (v) => (typeof v === 'number' ? Number(v).toFixed(2) : '--');
       console.log(`[${ts()}] 推荐列表(生成/刷新)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''} [总:${fmt(r && r.recommendationScore)} 评:${fmt(r && r.specificScore)} 偏:${fmt(r && r.preferenceScore)}]`));
-      const count = 12;
+      const count = this.data.wheelType === 'restaurant' ? 20 : 12;
       const step = 360 / count;
       const { wheelRadius, labelOuterMargin, labelInnerMargin, labelMinStep, labelMaxStep } = this.data;
       const pointerAngle = 0; // 修正：指针在CSS中位于top位置，对应0°
@@ -526,8 +542,10 @@ Page({
       // 保持推荐顺序(1..12)，不因指针对齐而重排
       const segments = Array.from({ length: count }, (_, idx) => {
         const r = recs[idx];
-        const name = (r && r.name) ? r.name : '';
-        const nameChars = String(name).split('');
+        const rawName = (r && r.name) ? r.name : '';
+        const name = this.cleanRestaurantName(rawName);
+        const labelName = this.truncateRestaurantLabel(name, 12);
+        const nameChars = String(labelName).split('');
         const outer = Math.max(0, wheelRadius - labelOuterMargin);
         const inner = Math.max(0, labelInnerMargin);
         const available = Math.max(0, outer - inner);
@@ -552,12 +570,25 @@ Page({
           specificScore: (r && typeof r.specificScore === 'number') ? r.specificScore : undefined,
           preferenceScore: (r && typeof r.preferenceScore === 'number') ? r.preferenceScore : undefined,
           recommendationScore: (r && typeof r.recommendationScore === 'number') ? r.recommendationScore : undefined,
+          chars,
           // 结果浮层使用的可选字段（外卖/茶饮）
           brands: Array.isArray(r && r.brands) ? r.brands : [],
           iconClass: r && r.iconClass,
           typeClass: r && r.typeClass,
-          tags: Array.isArray(r && r.tags) ? r.tags : [],
-          chars
+          tags: (function(){const base=Array.isArray(r && r.tags)? r.tags: []; const bt = (r && r.businessTag) || (r && r.category); return bt ? [...base, bt] : base; })(),
+          rating: (r && typeof r.rating === 'number') ? r.rating : undefined,
+          cost: (r && typeof r.cost === 'number') ? r.cost : undefined,
+          ratingDisplay: (r && typeof r.rating === 'number' && r.rating>0) ? (Number(r.rating).toFixed(1) + '分') : '',
+          costDisplay: (r && typeof r.cost === 'number' && r.cost>0) ? ('¥' + Number(r.cost).toFixed(0)) : '',
+          // 来源标识透传
+          isFromAmap: !!(r && r.isFromAmap),
+          isPreselected: !!(r && r.isPreselected),
+          isUserAdded: !!(r && (r.isUserAdded || (typeof r.id === 'string' && r.id.startsWith('user_added_')))),
+          // 位置相关信息（优先使用 amapData）
+          latitude: (r && r.amapData && r.amapData.latitude != null) ? r.amapData.latitude : (r && r.latitude),
+          longitude: (r && r.amapData && r.amapData.longitude != null) ? r.amapData.longitude : (r && r.longitude),
+          address: (r && r.amapData && r.amapData.address) ? r.amapData.address : (r && r.address),
+          amapData: (r && r.amapData && (r.amapData.latitude != null) && (r.amapData.longitude != null)) ? { latitude: r.amapData.latitude, longitude: r.amapData.longitude, address: r.amapData.address, original: r.amapData.original } : ((r && r.latitude != null && r.longitude != null) ? { latitude: r.latitude, longitude: r.longitude, address: r.address } : undefined)
         };
       });
 
@@ -618,6 +649,8 @@ Page({
         }));
       }
       this.setData(base);
+      // 清理一次性强制候选，避免后续复用
+      this._forcedRecs = null;
       // 初始化完成后，移除禁用动画类，允许后续旋转动画生效
       if (!preserveRotation) {
         wx.nextTick(() => {
@@ -677,11 +710,84 @@ Page({
       if (this.data.wheelType === 'restaurant') { try { updateUserPreference(String(sel.id), 'dislike'); } catch(e) {} }
       try { addDecisionRecord({ id: String(sel.id), name: sel.name, action: 'reject', source: 'roulette', wheelType: this.data.wheelType }); } catch(e) {}
     }
-    // 隐藏结果浮层与分享区，清空选中
+
+    // 若达到4次且标记待刷新，并且不是外卖转盘：执行特殊刷新（保留前5，后7替换为13~19），并自动旋转一次
+    if (this._pendingAutoRefresh && this.data.wheelType !== 'takeout') {
+      const oldSegments = (this.data.segments || []).map(s => ({ id: s.id, name: s.name }));
+      // 隐藏结果浮层与分享区，清空选中，并重置计数
+      this.setData({ showDecisionLayer: false, showShareArea: false, selected: null, spinCounter: 0 });
+
+      // 构造强制候选：保留前5（来自当前segments），后7按优先级基准列表窗口偏移顺延（循环）
+      let forcedRecs = [];
+      try {
+        if (this.data.wheelType === 'restaurant') {
+          const first5 = (this.data.segments || []).slice(0, 5).map(s => ({
+            id: s.id,
+            name: s.name,
+            type: s.type,
+            dynamicPromotions: [],
+            brands: Array.isArray(s.brands) ? s.brands : [],
+            iconClass: s.iconClass,
+            typeClass: s.typeClass,
+            tags: Array.isArray(s.tags) ? s.tags : []
+          }));
+
+          const base = Array.isArray(this._basePriorityList) ? this._basePriorityList : [];
+          if (base.length >= 20) {
+            const baseLen = base.length;
+            const need = 20 - first5.length; // 后续填满到20
+            const nextOffset = ((this._priorityOffset || 0) + need) % baseLen;
+            this._priorityOffset = nextOffset;
+            const backN = Array.from({ length: need }, (_, i) => base[(5 + nextOffset + i) % baseLen]);
+            forcedRecs = first5.concat(backN).slice(0, 20);
+            console.log(`[${ts()}] 窗口顺延：后${need}替换为优先级列表的后续${need}个（offset=${nextOffset}，baseLen=${baseLen}）`);
+          } else {
+            const userData = getUserData();
+            const fallback = generateRecommendations(userData, 20) || [];
+            forcedRecs = first5.concat(fallback.slice(first5.length)).slice(0, 20);
+            console.log(`[${ts()}] 优先级基准不足，回退通用推荐(20)`);
+          }
+        } else if (this.data.wheelType === 'beverage' && typeof this.generateBeverageRecommendations === 'function') {
+          forcedRecs = this.generateBeverageRecommendations(12);
+        }
+      } catch(e) {
+        console.warn('构造窗口顺延候选失败，回退普通刷新：', e);
+      }
+
+      if (forcedRecs && forcedRecs.length === (this.data.wheelType === 'restaurant' ? 20 : 12)) {
+        this._forcedRecs = forcedRecs;
+      }
+
+      console.log(`[${ts()}] 再转一次：达到4次未接受/确认，执行特殊刷新（保留前5+替换后7为13~19），并自动旋转`);
+      this.initWheel(false);
+
+      // 等待初始化完成后，比较前后选项变化，并自动触发一次旋转
+      const afterInit = () => {
+        if (this._initInProgress) { setTimeout(afterInit, 16); return; }
+        const newSegments = (this.data.segments || []).map(s => ({ id: s.id, name: s.name }));
+        const changes = [];
+        const maxLen = Math.max(oldSegments.length, newSegments.length);
+        for (let i = 0; i < maxLen; i++) {
+          const oldName = oldSegments[i] && oldSegments[i].name;
+          const newName = newSegments[i] && newSegments[i].name;
+          if (oldName !== newName) {
+            changes.push({ 位置: i + 1, 之前: oldName || '(空)', 之后: newName || '(空)' });
+          }
+        }
+        console.log(`[${ts()}] 刷新后选项变化（位置1-12）：`, changes);
+        this._pendingAutoRefresh = false;
+        try { this.spinRoulette(); } catch(e) { console.warn('自动旋转触发失败:', e); }
+      };
+      try { wx.nextTick(() => setTimeout(afterInit, 0)); } catch (_) { setTimeout(afterInit, 0); }
+      return; // 特殊刷新路径结束
+    }
+
+    // 默认路径：隐藏结果浮层与分享区，清空选中，然后自动旋转
     this.setData({ showDecisionLayer: false, showShareArea: false, selected: null });
 
     // 刷新后自动旋转：先刷新12个推荐并完成显示（瞬时对齐），再在初始化完成后触发旋转
-    console.log(`[${ts()}] 再转一次：换一批推荐（12家），并将指针对齐第1名，同时自动旋转`);
+    const refreshCount = this.data.wheelType === 'restaurant' ? 20 : 12;
+    console.log(`[${ts()}] 再转一次：换一批推荐（${refreshCount}家），并将指针对齐第1名，同时自动旋转`);
     this.initWheel(false);
 
     // 等待 _initInProgress 复位（移除 no-transition），再触发与点击开始按钮一致的旋转动画
@@ -706,10 +812,25 @@ Page({
     // 添加积分：餐厅选择
     try { addPoints('restaurant_accept', `${sel.id}_${Date.now()}`); } catch(e) { console.warn('addPoints restaurant_accept error', e); }
 
-    // 锁定分享餐厅，生成文案并展示分享区，隐藏结果浮层
-    this.setData({ shareTargetName: sel.name, showShareArea: true, showDecisionLayer: false });
+    // 锁定分享餐厅，生成文案并展示分享区，隐藏结果浮层，同时重置旋转计数
+    this.setData({ shareTargetName: sel.name, showShareArea: true, showDecisionLayer: false, spinCounter: 0 });
     this.loadShareText();
     wx.showToast({ title: '已记录，就它了', icon: 'success' });
+    // 接受后清除待刷新标记，避免误触发特殊刷新
+    this._pendingAutoRefresh = false;
+  },
+
+  // 自动刷新：若连续旋转4次未接受/确认，则设置待刷新标记（不对外卖转盘生效，不立即刷新，不隐藏浮层）
+  autoRefreshWheelIfNeeded() {
+    const count = this.data.spinCounter || 0;
+    if (count >= 4) {
+      if (this.data.wheelType === 'takeout') {
+        console.log(`[${ts()}] 自动刷新跳过：外卖转盘不生效（当前计数=${count}）`);
+        return;
+      }
+      console.log(`[${ts()}] 自动刷新满足条件：连续旋转${count}次未接受/确认，标记待刷新，等待用户点击“再转一次”执行刷新`);
+      this._pendingAutoRefresh = true;
+    }
   },
 
   // 导航到餐厅位置
@@ -724,14 +845,19 @@ Page({
     }
 
     // 获取餐厅的位置信息
-    // TODO: 当高德API可用时，从真实的amapData中获取经纬度和地址
+    // 获取餐厅的位置信息（优先真实数据，其次 segments 透传，再回退模拟）
     let latitude, longitude, address;
     
-    if (selected.amapData) {
+    if (selected.amapData && selected.amapData.latitude != null && selected.amapData.longitude != null) {
       // 从高德API数据中获取位置信息
       latitude = selected.amapData.latitude;
       longitude = selected.amapData.longitude;
-      address = selected.amapData.address;
+      address = selected.amapData.address || selected.address || selected.name;
+    } else if (selected.latitude != null && selected.longitude != null) {
+      // 使用segments透传的基础经纬度字段
+      latitude = selected.latitude;
+      longitude = selected.longitude;
+      address = selected.address || selected.name;
     } else {
       // 使用模拟数据（当前阶段）
       console.log('[导航测试] 使用模拟数据进行导航功能测试');
@@ -796,11 +922,85 @@ Page({
     });
   },
 
+  // 跳转到美团（短链方式），并在跳转前复制餐厅名到剪贴板
+  onJumpToMeituan() {
+    const { wheelType, selected } = this.data;
+    if (!(wheelType === 'takeout' || wheelType === 'beverage' || wheelType === 'restaurant')) {
+      return;
+    }
+    const name = selected && selected.name ? String(selected.name).trim() : '';
+    if (!name) {
+      wx.showToast({ title: '请先选择餐厅', icon: 'none' });
+      return;
+    }
+    // 复制餐厅名称到剪贴板并提示
+    wx.setClipboardData({
+      data: name,
+      success: () => {
+        wx.showToast({
+          title: '跳转后直接粘贴并搜索即可',
+          icon: 'none',
+          duration: 1200
+        });
+        setTimeout(() => {
+          // 根据转盘类型选择不同的美团短链
+          const shortLink = (wheelType === 'restaurant')
+            ? '#小程序://美团丨外卖团购特价美食酒店电影/ZXIVCj5kDqYPVny'
+            : '#小程序://美团丨外卖团购特价美食酒店电影/i7P3M0N3oLzsFAB';
+          // 使用页面短链跳转美团小程序
+          wx.navigateToMiniProgram({
+            shortLink,
+            success: () => {
+              console.log(`[跳转美团] 成功，已复制关键词：${name}`);
+            },
+            fail: (err) => {
+              console.warn('[跳转美团] 失败', err);
+              wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' });
+            }
+          });
+        }, 1200);
+      },
+      fail: (err) => {
+        console.warn('[剪贴板] 复制失败', err);
+        wx.showToast({ title: '复制失败，请稍后重试', icon: 'none' });
+      }
+    });
+  },
+
   onAddShortlist: async function() {
     const sel = this.data.selected;
     if (!sel) return;
-    const list = this.data.shortlist.slice(0,3);
-    if (list.find(x => x.id === sel.id)) { return; }
+    const list = (Array.isArray(this.data.shortlist) ? this.data.shortlist : []).slice(0,3);
+    
+    // 优化的重复判断逻辑：主要按id判断，仅在特定情况下按name判断
+    const isDuplicate = list.some(x => {
+      const xName = String(x.name || '').trim();
+      const selName = String(sel.name || '').trim();
+      return xName && selName && xName === selName;
+    });
+    
+    console.log('[备选区] 重复检查详情:', {
+      selected: { 
+        id: sel.id, 
+        name: sel.name, 
+        address: sel.address,
+        isUserAdded: sel.id && String(sel.id).startsWith('user_added_'),
+        isAmap: sel.id && String(sel.id).startsWith('amap_')
+      },
+      shortlist: list.map(x => ({ 
+        id: x.id, 
+        name: x.name, 
+        address: x.address,
+        isUserAdded: x.id && String(x.id).startsWith('user_added_'),
+        isAmap: x.id && String(x.id).startsWith('amap_')
+      })),
+      isDuplicate
+    });
+    
+    if (isDuplicate) { 
+      wx.showToast({ title: '该餐厅已在备选', icon: 'none' });
+      return; 
+    }
     if (list.length >= 3) { 
       wx.showToast({ title: '备选区已满，请先删除', icon: 'none' });
       // 备选区已满时，不隐藏浮层，让用户可以继续操作
@@ -868,31 +1068,39 @@ Page({
 
   onRemoveShort(e) {
     const id = e.currentTarget.dataset.id;
-    this.setData({ shortlist: this.data.shortlist.filter(x => x.id !== id) });
+    const nextList = Array.isArray(this.data.shortlist) ? this.data.shortlist.filter(x => String(x.id) !== String(id)) : [];
+    const activeIdx = this.data.activeShortlistIndex;
+    const removedIdx = (this.data.shortlist || []).findIndex(x => String(x.id) === String(id));
+    const shouldClearActive = removedIdx === activeIdx;
+    this.setData({
+      shortlist: nextList,
+      activeShortlistId: '',
+      activeShortlistIndex: shouldClearActive ? -1 : (activeIdx > removedIdx ? activeIdx - 1 : activeIdx),
+      showShareArea: shouldClearActive ? false : this.data.showShareArea
+    });
     this.updatePlaceholderSlots();
   },
 
   onTapShortlistCard(e) {
-    const { id, name } = e.currentTarget.dataset;
-    if (!id || !name) return;
-    
-    // 如果点击的是已选中的卡片，则取消选中
-    if (this.data.activeShortlistId === id) {
-      this.setData({ activeShortlistId: '', shareTargetName: '', showShareArea: false });
+    const { id, name, idx } = e.currentTarget.dataset;
+    if (!id || !name || typeof idx === 'undefined') return;
+    const current = this.data.activeShortlistIndex;
+    // 单选：若点击的是当前选中项则取消选中
+    if (current === idx) {
+      this.setData({ activeShortlistIndex: -1, shareTargetName: '', showShareArea: false });
       return;
     }
-    
     // 选中新的卡片
-    this.setData({ activeShortlistId: id, shareTargetName: name, showShareArea: true });
+    this.setData({ activeShortlistIndex: idx, shareTargetName: name, showShareArea: true });
     this.loadShareText();
   },
 
   onShortConfirm(e) {
-    const { id, name } = e.currentTarget.dataset;
-    if (!id) return;
+    const { id, name, idx } = e.currentTarget.dataset;
+    if (!id || typeof idx === 'undefined') return;
     const list = this.data.shortlist || [];
-    const sel = list.find(x => String(x.id) === String(id));
-    if (!sel) return;
+    const sel = list[idx];
+    if (!sel || String(sel.id) !== String(id)) return;
     const userData = getUserData();
     updateRestaurantScore(userData, String(sel.id), 'accept', { name: sel.name });
     if (this.data.wheelType === 'restaurant') { try { updateUserPreference(String(sel.id), 'like'); } catch(e) {} }
@@ -901,8 +1109,10 @@ Page({
     // 添加积分：备选区餐厅选择
     try { addPoints('restaurant_accept', `shortlist_${sel.id}_${Date.now()}`); } catch(e) { console.warn('addPoints restaurant_accept error', e); }
     
-    // 交互反馈：锁定分享对象并展示分享区，同时取消选中态
-    this.setData({ shareTargetName: sel.name, showShareArea: true, activeShortlistId: '' });
+    // 交互反馈：锁定分享对象并展示分享区，同时取消选中态，并重置旋转计数
+    this.setData({ shareTargetName: sel.name, showShareArea: true, activeShortlistIndex: -1, spinCounter: 0 });
+    // 短名单确认后清除待刷新标记
+    this._pendingAutoRefresh = false;
     this.loadShareText();
     wx.showToast({ title: '已记录，就它了', icon: 'success' });
   },
@@ -924,12 +1134,11 @@ Page({
       const name = this.data.shareTargetName || (this.data.selected && this.data.selected.name) || '';
       let wordings = [];
       try {
-        // 优先尝试从 shareWording.json 读取（存在则使用）
-        const json = require('../../shareWording.json');
+        // 优先尝试从 shareWording.js 读取（存在则使用）
+        const mod = require('../../shareWording.js');
+        const json = Array.isArray(mod) ? mod : (mod && mod.wordings ? mod.wordings : []);
         if (Array.isArray(json)) {
           wordings = json;
-        } else if (json && Array.isArray(json.wordings)) {
-          wordings = json.wordings;
         }
       } catch (e) {
         // 读取失败时使用内置备选文案
@@ -941,16 +1150,10 @@ Page({
         ];
       }
 
-      // 拼装候选文案（含餐厅名的更具针对性）
-      const candidates = [];
-      if (name) {
-        candidates.push(`今天就吃${name}吧？`);
-        candidates.push(`不如试试${name}？`);
-        candidates.push(`${name}看起来不错，一起？`);
-        candidates.push(`我决定选${name}，走起！`);
-      } else {
-        candidates.push(...wordings);
-      }
+      // 拼装候选文案：统一从预设模板随机选择，并进行占位符替换
+      const candidates = Array.isArray(wordings) && wordings.length
+        ? wordings.map(t => (t || '').replace('{restaurant}', name || '它'))
+        : [];
 
       // 去重并规避与上一条重复
       const uniq = Array.from(new Set(candidates)).filter(t => t && t !== prev);
@@ -1065,10 +1268,10 @@ Page({
       }
 
       const userData = getUserData();
-      const recs = generateRecommendations(userData, 12);
+      const count = this.data.wheelType === 'restaurant' ? 20 : 12;
+      const recs = generateRecommendations(userData, count);
       const fmt = (v) => (typeof v === 'number' ? Number(v).toFixed(2) : '--');
-      console.log(`[${ts()}] 推荐列表(生成/刷新)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''} [总:${fmt(r && r.recommendationScore)} 评:${fmt(r && r.specificScore)} 偏:${fmt(r && r.preferenceScore)}]`));
-      const count = 12;
+      console.log(`[${ts()}] 推荐列表(生成/刷新${count}项)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''} [总:${fmt(r && r.recommendationScore)} 评:${fmt(r && r.specificScore)} 偏:${fmt(r && r.preferenceScore)}]`));
       const step = 360 / count;
       const { wheelRadius, labelOuterMargin, labelInnerMargin, labelMinStep, labelMaxStep } = this.data;
       const pointerAngle = 0; // 修正：指针在CSS中位于top位置，对应0°
@@ -1076,8 +1279,10 @@ Page({
       // 保持推荐顺序(1..12)，不因指针对齐而重排
       const segments = Array.from({ length: count }, (_, idx) => {
         const r = recs[idx];
-        const name = (r && r.name) ? r.name : '';
-        const nameChars = String(name).split('');
+        const rawName = (r && r.name) ? r.name : '';
+        const name = this.cleanRestaurantName(rawName);
+        const labelName = this.truncateRestaurantLabel(name, 12);
+        const nameChars = String(labelName).split('');
         const outer = Math.max(0, wheelRadius - labelOuterMargin);
         const inner = Math.max(0, labelInnerMargin);
         const available = Math.max(0, outer - inner);
@@ -1177,8 +1382,9 @@ Page({
   // 刷新推荐：重算推荐与转盘显示，重置累计旋转角，确保指针指向第1名
   onRefreshWheel() {
     if (this.data.isSpinning) return;
-    console.log(`[${ts()}] 手动刷新：换一批推荐（12家），并将指针对齐第1名`);
-    // 重新生成12家推荐并重置旋转到slot1
+    const refreshCount = this.data.wheelType === 'restaurant' ? 20 : 12;
+    console.log(`[${ts()}] 手动刷新：换一批推荐（${refreshCount}家），并将指针对齐第1名`);
+    // 重新生成推荐并重置旋转到slot1
     this.initWheel(false);
     // 隐藏结果浮层与分享区
     this.setData({ showDecisionLayer: false, showShareArea: false, selected: null });
@@ -1194,21 +1400,80 @@ Page({
     if (this.data.isSpinning) return; // 防重复触发
     this.setData({ isSpinning: true });
 
+    // 每次旋转随机动画时长：2.6s ~ 4.6s
+    const minMs = 2600;
+    const maxMs = 4600;
+    const duration = Math.floor(minMs + Math.random() * (maxMs - minMs));
+    this.setData({ spinDurationMs: duration });
+
+    // 自增旋转计数
+    this.setData({ spinCounter: (this.data.spinCounter || 0) + 1 });
+
     // 积分：转动转盘
     try { addPoints && addPoints('spin'); } catch (e) { console.warn('addPoints spin error', e); }
 
-    // 恢复正常旋转：随机角度 + 多圈旋转
-    const minSpins = 3; // 最少3圈
-    const maxSpins = 6; // 最多6圈
-    const randomSpins = minSpins + Math.random() * (maxSpins - minSpins);
-    const randomAngle = Math.random() * 360; // 随机停止角度
+    // 恢复正常旋转：随机角度 + 多圈旋转（修正：强制正向整数圈，且停止角度在90°~270°，避免小幅度错觉）
+    const minSpins = 3; // 最少3整圈
+    const maxSpins = 6; // 最多6整圈
+    const randomSpins = Math.floor(minSpins + Math.random() * (maxSpins - minSpins + 1)); // 保证整数圈
+    const randomAngle = 90 + Math.random() * 180; // 90°~270°
     const totalDelta = randomSpins * 360 + randomAngle;
     
-    console.log(`[${ts()}] 开始转动：+${totalDelta.toFixed(1)}°（${randomSpins.toFixed(1)}圈+${randomAngle.toFixed(1)}°），当前累计角度=${this.data.rouletteRotation}`);
+    console.log(`[${ts()}] 开始转动：+${totalDelta.toFixed(1)}°（${randomSpins}圈+${randomAngle.toFixed(1)}°），当前累计角度=${this.data.rouletteRotation}`);
+
+    // 触觉反馈：指针划过每个扇形边界时触发一次震动（全程），与CSS减速曲线对齐
+    try {
+      const count = this.data.segments.length;
+      const stepDeg = 360 / count;
+      const crossings = Math.floor(totalDelta / stepDeg); // 本次旋转将跨越的扇形边界次数
+
+      // 清理旧的震动定时器
+      if (Array.isArray(this._vibeTimers)) {
+        this._vibeTimers.forEach(t => clearTimeout(t));
+      }
+      this._vibeTimers = [];
+
+      // 使用与 CSS timing function 完整匹配的近似：cubic-bezier(.24,.8,.26,1)
+      // 已知：属性进度 y 是时间进度 x 的函数（二次贝塞尔），我们需要找到每个角度进度 progress 对应的时间分数 x。
+      // 做法：先通过二分法求参数 u 使得 y(u)=progress，再计算 x(u)，最后 timeoutMs = duration * x(u)。
+      const p1x = 0.24, p1y = 0.8, p2x = 0.26, p2y = 1.0;
+      const cubicCoord = (t, p1, p2) => {
+        const inv = 1 - t;
+        return 3 * p1 * t * inv * inv + 3 * p2 * t * t * inv + t * t * t;
+      };
+      const invertParamForY = (yTarget) => {
+        let lo = 0, hi = 1;
+        for (let k = 0; k < 22; k++) { // 22次迭代以保证收敛精度
+          const mid = (lo + hi) / 2;
+          const y = cubicCoord(mid, p1y, p2y);
+          if (y < yTarget) lo = mid; else hi = mid;
+        }
+        return (lo + hi) / 2;
+      };
+
+      const debounceMinMs = 25; // 更短去抖，避免抑制合法的跨界触发
+      this._lastVibeTs = 0;
+      for (let i = 1; i <= crossings; i++) {
+        const progress = i / crossings; // 角度进度（0~1）
+        const u = invertParamForY(progress);    // 参数解：y(u)=progress
+        const timeFrac = cubicCoord(u, p1x, p2x); // 实际时间分数 x(u)
+        const timeoutMs = Math.floor(duration * timeFrac);
+        const t = setTimeout(() => {
+          if (!this.data.isSpinning) return; // 已结束，不再震动
+          const now = Date.now();
+          if (this._lastVibeTs && (now - this._lastVibeTs) < debounceMinMs) return; // 去抖，避免连续震动
+          try { wx.vibrateShort({ type: 'light' }); } catch (e) {
+            try { wx.vibrateShort(); } catch (_) {}
+          }
+          this._lastVibeTs = now;
+        }, timeoutMs);
+        this._vibeTimers.push(t);
+      }
+    } catch (e) { /* 静默失败，不影响主流程 */ }
 
     this.setData({ rouletteRotation: this.data.rouletteRotation + totalDelta, showDecisionLayer: false });
 
-    // 与 .roulette-wheel 的 transition: 3.2s 对齐，延迟调整确保动画完成
+    // 与动态 transition 时长（spinDurationMs）对齐，确保动画完成
     setTimeout(() => {
       try {
         const pointerAngle = 0; // 修正：指针在CSS中位于top位置，对应0°
@@ -1230,6 +1495,7 @@ Page({
         if (!hit || !hit.name) {
           console.error(`[${ts()}] 转盘数据异常`, { hitIndex, segments: this.data.segments, hit });
           this.setData({ isSpinning: false });
+          if (Array.isArray(this._vibeTimers)) { this._vibeTimers.forEach(t => clearTimeout(t)); this._vibeTimers = []; }
           return;
         }
 
@@ -1258,6 +1524,9 @@ Page({
             // 手动添加的餐厅直接使用云端placeholder图片（同步），避免闪烁
             hit.icon = cloudImageManager.getCloudImageUrl('placeholder', 'png');
             this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
+          if (Array.isArray(this._vibeTimers)) { this._vibeTimers.forEach(t => clearTimeout(t)); this._vibeTimers = []; }
+            if (Array.isArray(this._vibeTimers)) { this._vibeTimers.forEach(t => clearTimeout(t)); this._vibeTimers = []; }
+            try { this.autoRefreshWheelIfNeeded && this.autoRefreshWheelIfNeeded(); } catch(_) {}
             console.log(`[${ts()}] 手动添加餐厅命中: ${hit.name}, 直接使用云端placeholder(同步)，避免闪烁`);
             return; // 跳过异步获取逻辑
           } else if (iconStr.indexOf('cloud://') === 0) {
@@ -1283,10 +1552,14 @@ Page({
             
             hit.icon = finalIcon;
             this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
+            if (Array.isArray(this._vibeTimers)) { this._vibeTimers.forEach(t => clearTimeout(t)); this._vibeTimers = []; }
+            try { this.autoRefreshWheelIfNeeded && this.autoRefreshWheelIfNeeded(); } catch(_) {}
           }).catch(() => {
             // 如果获取失败，使用云端placeholder（同步）
             hit.icon = cloudImageManager.getCloudImageUrl('placeholder', 'png');
             this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
+            if (Array.isArray(this._vibeTimers)) { this._vibeTimers.forEach(t => clearTimeout(t)); this._vibeTimers = []; }
+            try { this.autoRefreshWheelIfNeeded && this.autoRefreshWheelIfNeeded(); } catch(_) {}
             console.warn(`[${ts()}] 获取${nameForUrl}的HTTPS链接失败，使用云端placeholder(同步)`);
           });
         } catch (_) {
@@ -1296,7 +1569,7 @@ Page({
         console.error(`[${ts()}] 转盘数据异常`, e);
         this.setData({ isSpinning: false });
       }
-    }, 3400);
+    }, this.data.spinDurationMs);
 
   },
 
@@ -1757,6 +2030,43 @@ Page({
     });
   },
 
+  // 备选区图片错误处理：回退占位图
+  onShortImgError: function(e) {
+    try {
+      const id = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id) ? e.currentTarget.dataset.id : '';
+      console.warn('[备选区图片] 加载失败，回退占位图:', id, e && e.detail);
+      const shortlist = Array.isArray(this.data.shortlist) ? [...this.data.shortlist] : [];
+      const idx = shortlist.findIndex(s => String(s.id) === String(id));
+      if (idx >= 0) {
+        shortlist[idx].icon = this.data.placeholderImageUrl || cloudImageManager.getCloudImageUrlSync('placeholder', 'png');
+        this.setData({ shortlist });
+      }
+    } catch (err) {
+      console.error('[备选区图片] 错误处理失败:', err);
+    }
+  },
+
+  // AMap外链图片优化：尽可能降质以加速渲染（仅对疑似AMap/Autonavi/阿里CDN域名追加质量参数）
+  optimizeAmapPhotoUrl: function(url) {
+    try {
+      if (!url || typeof url !== 'string') return url;
+      const lower = url.toLowerCase();
+      const isAmap = lower.includes('amap.com') || lower.includes('autonavi.com');
+      const isAliCdn = lower.includes('alicdn') || lower.includes('oss-');
+      if (!isAmap && !isAliCdn) return url;
+      // 若已有查询参数，则追加；否则新增
+      const sep = url.includes('?') ? '&' : '?';
+      // 尽量使用通用quality参数，部分OSS支持x-oss-process；均为幂等追加，后端若不识别将忽略
+      const withQuality = `${url}${sep}quality=60`;
+      // 针对阿里OSS尝试追加图像处理参数（若无效将被忽略）
+      const withOss = `${withQuality}&x-oss-process=image/auto-orient,1/quality,q_60`;
+      return withOss;
+    } catch (e) {
+      console.warn('[AMap图片优化] 处理失败，使用原始URL', e);
+      return url;
+    }
+  },
+
   // 添加更多餐厅按钮点击事件
   onAddMoreRestaurants: function() {
     // 显示带动画效果的输入弹窗
@@ -1858,7 +2168,7 @@ Page({
       duration: 1500
     });
 
-    // 立即刷新转盘：重新生成12家推荐并重置到第1名
+    // 立即刷新转盘：重新生成一批推荐并重置到第1名
     try {
       this.initWheel(false);
     } catch (e) {
@@ -1950,19 +2260,199 @@ Page({
     }
 
     try {
+      // 微信隐私授权检查：如需授权则弹出官方隐私协议
+      console.log('[隐私授权] 开始检查隐私设置');
+      await new Promise((resolve, reject) => {
+        wx.getPrivacySetting({
+          success: (res) => {
+            console.log('[隐私授权] getPrivacySetting 成功:', res);
+            if (res.needAuthorization) {
+              console.log('[隐私授权] 需要用户授权，弹出隐私协议');
+              wx.openPrivacyContract({
+                success: () => {
+                  console.log('[隐私授权] 用户同意隐私协议');
+                  resolve();
+                },
+                fail: (err) => {
+                  console.log('[隐私授权] 用户取消隐私授权:', err);
+                  reject(new Error('用户取消隐私授权'));
+                }
+              });
+            } else {
+              console.log('[隐私授权] 用户已授权，无需弹窗');
+              resolve();
+            }
+          },
+          fail: (err) => {
+            console.error('[隐私授权] getPrivacySetting 失败:', err);
+            reject(err);
+          }
+        });
+      });
+
       this.setData({
         locationStatus: 'loading',
         locationText: '选择位置中'
       });
 
       // 直接使用wx.chooseLocation让用户选择位置，无需权限检查
-      const { location, restaurants } = await locationService.getNearbyRestaurants();
+      const { location } = await locationService.getNearbyRestaurants();
       console.log('[定位] 用户选择的位置:', location);
-      console.log('[定位] 获取到附近餐厅:', restaurants);
 
-      // 获取基于位置的推荐
-      const locationBasedRecommendations = await restaurantPriorityService.getLocationBasedRecommendations(location);
-      console.log('[定位] 基于位置的推荐:', locationBasedRecommendations);
+      // 实例化高德SDK并调用 getPoiAround 获取 POI 数据
+      const amap = new AMapWX({ key: '183ebcbcecc78388d3c07eca1d58fe10' });
+      const centerStr = `${location.longitude},${location.latitude}`;
+      const poiRestaurants = await new Promise((resolve, reject) => {
+        amap.getPoiAround({
+          location: centerStr,
+          querytypes: AMAP_TYPES,
+          // 高德微信SDK包内部使用 v3 接口，此处半径通过 keywords/过滤不一定生效；
+          // 为保证与你提供的 v5 REST 一致，我们同时给出手写 v5 请求（见下方），并以 v5 为准。
+          success: (res) => {
+            try {
+              const pois = (res && res.markers) ? res.markers : [];
+              console.log('[高德SDK v3] getPoiAround 返回 markers 数量:', pois.length);
+            } catch (e) { /* 忽略解析错误 */ }
+            resolve(res && res.markers ? res.markers : []);
+          },
+          fail: (err) => {
+            console.error('[高德SDK v3] getPoiAround 失败:', err);
+            resolve([]); // 不中断流程，使用 v5 结果或回退
+          }
+        });
+      });
+
+      // 直接调用你指定的 v5 REST API，使用 radius=20000 与 sortrule=weight，types 列表保持不变
+      const v5Url = `https://restapi.amap.com/v5/place/around?location=${centerStr}&radius=20000&types=${encodeURIComponent(AMAP_TYPES)}&extensions=all&sortrule=weight&key=181d090075117c4211b8402639cd68fe`;
+      let v5Pois = [];
+      try {
+        const v5Res = await new Promise((resolve) => {
+          wx.request({
+            url: v5Url,
+            method: 'GET',
+            success: (res) => resolve(res),
+            fail: (err) => resolve({ data: null, err })
+          })
+        });
+        const data = v5Res && v5Res.data ? v5Res.data : null;
+        const status = data && (data.status || data.statusCode);
+        const info = data && data.info;
+        console.log('[高德REST v5] status:', status, 'info:', info);
+        if (data && Array.isArray(data.pois)) {
+          v5Pois = data.pois;
+          console.log('[高德REST v5] POI数量:', v5Pois.length);
+          // 输出前5条POI的扩展字段示例，便于核对photos/biz_ext.rating/cost
+          try {
+            const sample = v5Pois.slice(0, 5).map(p => ({ name: p.name, photos: p.photos, biz_ext: p.biz_ext }));
+            console.log('[高德REST v5] 示例POI扩展字段(photos/biz_ext):', sample);
+          } catch (logErr) {
+            console.warn('[高德REST v5] 示例扩展字段日志失败:', logErr);
+          }
+        } else {
+          console.warn('[高德REST v5] 返回无pois字段或格式异常:', data);
+        }
+      } catch (e) {
+        console.error('[高德REST v5] 请求失败:', e);
+      }
+
+      // 统一将 POI 映射到转盘使用的数据结构（优先使用 v5，v3 作为补充），并限制Amap前60用于排序与缓存
+      const v5PoisLimited = (v5Pois && v5Pois.length) ? v5Pois.slice(0, 60) : [];
+      const combinePois = (v5PoisLimited || []).concat(poiRestaurants || []);
+      const restaurants = (combinePois || []).map((p, idx) => {
+        // v5字段：name, distance, category, location(经纬度字符串), address; v3(markers)可能有 id/title/longitude/latitude
+        const rawName = p.name || p.title || `餐厅${idx+1}`;
+        const name = this.cleanRestaurantName(rawName);
+        const category = p.category || (p.desc || '餐饮');
+        const address = p.address || '';
+        let latitude = p.latitude; let longitude = p.longitude; let distance = p.distance;
+        if (p.location && typeof p.location === 'string' && p.location.includes(',')) {
+          const [lngStr, latStr] = p.location.split(',');
+          longitude = parseFloat(lngStr);
+          latitude = parseFloat(latStr);
+        }
+        if (typeof distance !== 'number' || isNaN(distance)) {
+          distance = locationService.calculateDistance(location.latitude, location.longitude, latitude, longitude);
+        }
+        // 提取扩展字段：照片、评分、人均
+        const photos = Array.isArray(p.photos) ? p.photos : [];
+        let photoUrl = '';
+        if (photos.length) {
+          const first = photos[0] || {};
+          photoUrl = first.url || first.photoUrl || '';
+        }
+        // 强制HTTPS，避免http资源在小程序受限
+        let photoUrlHttps = (typeof photoUrl === 'string' && photoUrl.startsWith('http://')) ? ('https://' + photoUrl.slice(7)) : photoUrl;
+        const biz = p.biz_ext || {};
+        let ratingNum = undefined;
+        if (biz && biz.rating != null) {
+          const rStr = String(biz.rating).trim();
+          const rVal = parseFloat(rStr);
+          if (!isNaN(rVal)) ratingNum = rVal;
+        }
+        let costNum = undefined;
+        if (biz && biz.cost != null) {
+          if (typeof biz.cost === 'string') {
+            const cVal = parseFloat(biz.cost);
+            if (!isNaN(cVal)) costNum = cVal;
+          } else if (Array.isArray(biz.cost) && biz.cost.length) {
+            const cVal = parseFloat(biz.cost[0]);
+            if (!isNaN(cVal)) costNum = cVal;
+          }
+        }
+        // 对AMap外链图片进行质量优化
+        const optimizedPhotoUrl = this.optimizeAmapPhotoUrl(photoUrlHttps);
+        const icon = optimizedPhotoUrl || this.getRestaurantIconPath(name);
+        console.log('[定位] POI字段检查:', { name, photosCount: photos.length, ratingRaw: biz && biz.rating, costRaw: biz && biz.cost, iconSource: optimizedPhotoUrl ? 'photos[0]+optimized' : 'fallback' });
+        return {
+          id: p.id || p.poiId || `amap_${idx}`,
+          name,
+          distance: distance || 0,
+          category,
+          latitude,
+          longitude,
+          address,
+          // 业务展示字段
+          icon,
+          rating: ratingNum,
+          cost: costNum,
+          // 保留原始Amap数据用于后续日志与导航
+          amapData: { latitude, longitude, address, original: p }
+        };
+      });
+
+      console.log('[定位] 合并POI得到附近餐厅:', restaurants);
+
+      // 获取基于位置的推荐（前60作为优先级基准，展示数量随轮盘类型变化）
+      const basePriority = ranking.prioritizeRestaurants(restaurants, 60) || [];
+      const topN = this.data.wheelType === 'restaurant' ? 20 : 12;
+      const locationBasedRecommendations = basePriority.slice(0, topN);
+      console.log(`[定位] 基于位置的推荐(展示TOP${topN}):`, locationBasedRecommendations);
+      // 输出TOPN的高德扩展字段（rating/cost）与照片URL（若存在）
+      try {
+        const topNList = locationBasedRecommendations.slice(0, topN).map(r => {
+          const orig = r && r.amapData && r.amapData.original ? r.amapData.original : null;
+          const photos = orig && Array.isArray(orig.photos) ? orig.photos : [];
+          const photoUrls = photos
+            .map(ph => ph && (ph.url || ph.photoUrl || ''))
+            .filter(u => typeof u === 'string' && u.length)
+            .map(u => (u.startsWith('http://') ? ('https://' + u.slice(7)) : u));
+          const biz = orig && orig.biz_ext ? orig.biz_ext : {};
+          const ratingRaw = biz && biz.rating != null ? biz.rating : null;
+          const costRaw = biz && biz.cost != null ? biz.cost : null;
+          return {
+            id: String(r.id),
+            name: r.name,
+            ratingRaw,
+            costRaw,
+            ratingNormalized: r.rating,
+            costNormalized: r.cost,
+            photoUrls
+          };
+        });
+        console.log(`[定位] TOP${topN} 验证字段（id/name/ratingRaw/costRaw/photoUrls）:`, topNList);
+      } catch (e) {
+        console.warn(`[定位] TOP${topN} 字段输出失败:`, e);
+      }
 
       const displayName = this.truncateLocationName(location.name);
       this.setData({
@@ -1975,7 +2465,9 @@ Page({
       // 使用基于位置的推荐更新轮盘
       this.updateWheelWithLocationData(locationBasedRecommendations);
 
-      // 缓存定位推荐数据，供initWheel使用
+      // 缓存定位推荐数据与优先级基准，用于initWheel与窗口顺延
+      this._basePriorityList = basePriority;
+      this._priorityOffset = 0; // 定位后重置窗口偏移
       this._cachedLocationRecommendations = locationBasedRecommendations;
 
       // 显示成功提示
@@ -2009,16 +2501,18 @@ Page({
     }
 
     // 取前12个推荐餐厅
-    const recs = locationBasedRecommendations.slice(0, 12);
+    const recs = locationBasedRecommendations.slice(0, this.data.wheelType === 'restaurant' ? 20 : 12);
     
-    const count = 12;
+    const count = this.data.wheelType === 'restaurant' ? 20 : 12;
     const step = 360 / count;
     const { wheelRadius, labelOuterMargin, labelInnerMargin, labelMinStep, labelMaxStep } = this.data;
 
     const segments = Array.from({ length: count }, (_, idx) => {
       const r = recs[idx] || { name: '', id: `empty_${idx}`, type: 'restaurant' };
-      const name = r.name || '';
-      const nameChars = String(name).split('');
+      const rawName = r.name || '';
+      const name = this.cleanRestaurantName(rawName);
+      const labelName = this.truncateRestaurantLabel(name, 12);
+      const nameChars = String(labelName).split('');
       const outer = Math.max(0, wheelRadius - labelOuterMargin);
       const inner = Math.max(0, labelInnerMargin);
       const available = Math.max(0, outer - inner);
@@ -2044,8 +2538,20 @@ Page({
         // 位置相关信息
         distance: r.distance,
         priority: r.priority,
-        isFromAmap: r.isFromAmap,
-        isPreselected: r.isPreselected,
+        isFromAmap: !!(r && r.isFromAmap),
+        isPreselected: !!(r && r.isPreselected),
+        isUserAdded: !!(r && (r.isUserAdded || (typeof r.id === 'string' && r.id.startsWith('user_added_')))),
+        // 业务字段透传与展示
+        tags: (function(){const base=Array.isArray(r && r.tags)? r.tags: []; const bt=(r && r.businessTag) || (r && r.category); return bt ? [...base, bt] : base; })(),
+        rating: (r && typeof r.rating === 'number') ? r.rating : undefined,
+        cost: (r && typeof r.cost === 'number') ? r.cost : undefined,
+        ratingDisplay: (r && typeof r.rating === 'number' && r.rating>0) ? (Number(r.rating).toFixed(1) + '分') : '',
+        costDisplay: (r && typeof r.cost === 'number' && r.cost>0) ? ('¥' + Number(r.cost).toFixed(0)) : '',
+        // 透传经纬度与地址（优先 amapData），供导航使用
+        latitude: (r && r.amapData && r.amapData.latitude != null) ? r.amapData.latitude : r.latitude,
+        longitude: (r && r.amapData && r.amapData.longitude != null) ? r.amapData.longitude : r.longitude,
+        address: (r && r.amapData && r.amapData.address) ? r.amapData.address : r.address,
+        amapData: (r && r.amapData && (r.amapData.latitude != null) && (r.amapData.longitude != null)) ? { latitude: r.amapData.latitude, longitude: r.amapData.longitude, address: r.amapData.address, original: r.amapData.original } : ((r && r.latitude != null && r.longitude != null) ? { latitude: r.latitude, longitude: r.longitude, address: r.address } : undefined),
         chars
       };
     });
@@ -2077,6 +2583,41 @@ Page({
     }
     
     return truncatedName === name ? name : truncatedName + '...';
+  },
+
+  // 新增：餐厅名称清洗（去括号及其内容；若中英混合，仅保留中文部分）
+  cleanRestaurantName(name) {
+    if (!name) return '';
+    let s = String(name).trim();
+    // 去除各类括号及其内容：()、（）、[]、【】
+    s = s.replace(/（[^）]*）/g, '')
+         .replace(/\([^)]*\)/g, '')
+         .replace(/【[^】]*】/g, '')
+         .replace(/\[[^\]]*\]/g, '');
+    s = s.replace(/\s+/g, ' ').trim();
+
+    const hasCn = /[\u4e00-\u9fa5]/.test(s);
+    const hasEn = /[A-Za-z]/.test(s);
+    if (hasCn && hasEn) {
+      const parts = s.match(/[\u4e00-\u9fa5·•]+/g);
+      const onlyCn = parts ? parts.join('') : '';
+      if (onlyCn) s = onlyCn;
+    }
+    return s || String(name).trim();
+  },
+
+  // 新增：转盘标签仅展示前12个字节（中文按2字节、英文按1字节）
+  truncateRestaurantLabel(name, maxBytes = 12) {
+    if (!name) return '';
+    let bytes = 0;
+    let out = '';
+    for (const ch of String(name)) {
+      const cost = /[\u4e00-\u9fa5]/.test(ch) ? 2 : 1;
+      if (bytes + cost > maxBytes) break;
+      bytes += cost;
+      out += ch;
+    }
+    return out;
   },
 
   // 恢复位置信息显示

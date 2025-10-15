@@ -1267,29 +1267,6 @@ const data =
       "basePreferenceScore": 5
     },
     {
-      "id": "sh_059",
-      "name": "CoCo都可",
-      "type": "茶饮",
-      "description": "",
-      "priceLevel": 1,
-      "tags": ["甜", "小吃", "一人食", "外卖优选"],
-      "location": {
-        "city": ["上海"],
-        "businessDistrict": ["南京东路", "静安寺", "五角场", "徐家汇", "中山公园"]
-      },
-      "dynamicPromotions": [
-        {
-          "type": "weekly",
-          "dayOfWeek": 6,
-          "promoText": "奶茶买一送一"
-        }
-      ],
-      "popularityScore": 0.83,
-      "healthScore": 0.2,
-      "spicyScore": 0.0,
-      "basePreferenceScore": 5
-    },
-    {
       "id": "sh_064",
       "name": "新白鹿",
       "type": "浙菜",

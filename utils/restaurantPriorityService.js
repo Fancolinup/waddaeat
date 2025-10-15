@@ -94,6 +94,31 @@ function calculateRestaurantPriority(restaurant, isFromAmap, preselectedIds) {
 }
 
 /**
+ * 生成基于餐厅名称和地址的稳定哈希ID
+ * @param {string} name 餐厅名称
+ * @param {string} address 餐厅地址
+ * @returns {string} 稳定的哈希ID
+ */
+function generateStableAmapId(name, address = '') {
+  if (!name) return `amap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  // 结合名称和地址生成更唯一的标识
+  const uniqueKey = `${name}_${address || ''}`;
+  
+  // 简单哈希函数，为同一餐厅名称+地址生成相同的ID
+  let hash = 0;
+  for (let i = 0; i < uniqueKey.length; i++) {
+    const char = uniqueKey.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // 转换为32位整数
+  }
+  
+  // 确保哈希值为正数并转换为36进制
+  const hashStr = Math.abs(hash).toString(36);
+  return `amap_${hashStr}`;
+}
+
+/**
  * 将高德API餐厅转换为标准餐厅格式
  * @param {Object} amapRestaurant 高德API餐厅数据
  * @param {Object} matchedRestaurant 匹配的现有餐厅数据
@@ -101,7 +126,7 @@ function calculateRestaurantPriority(restaurant, isFromAmap, preselectedIds) {
  */
 function convertAmapRestaurant(amapRestaurant, matchedRestaurant) {
   return {
-    id: matchedRestaurant ? matchedRestaurant.id : `amap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: matchedRestaurant ? matchedRestaurant.id : generateStableAmapId(amapRestaurant.name, amapRestaurant.address),
     name: amapRestaurant.name,
     brand: matchedRestaurant ? matchedRestaurant.brand : null,
     category: amapRestaurant.category || (matchedRestaurant ? matchedRestaurant.category : '餐厅'),

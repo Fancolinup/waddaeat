@@ -10,6 +10,20 @@ App({
       });
     }
     
+    // 仅记录隐私协议状态，不在启动时弹窗，避免影响用户体验
+    wx.getPrivacySetting({
+      success: (res) => {
+        if (res.needAuthorization) {
+          console.log('隐私协议需要用户授权，将在用户点击定位按钮时触发弹窗');
+        } else {
+          console.log('用户已同意过隐私协议');
+        }
+      },
+      fail: (err) => {
+        console.warn('隐私设置查询失败', err);
+      }
+    });
+    
     // 展示本地存储能力
     const logs = wx.getStorageSync('logs') || []
     logs.unshift(Date.now())

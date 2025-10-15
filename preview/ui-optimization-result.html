@@ -248,7 +248,11 @@
             
             <p style="color: #6b7280; margin-bottom: 16px;">优化了今日选择页面决策浮层的三个按钮样式，采用现代渐变风格，提升视觉吸引力和用户体验。</p>
             
-            <div class="decision-layer">
+            <div class="decision-layer" style="position: relative;">
+                <!-- 右上角美团入口（预览模拟） -->
+                <div style="position:absolute; right:8px; top:8px;">
+                    <img src="cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/meituan.png" alt="美团搜索" title="跳转美团" style="width:48px;height:48px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.12);cursor:pointer" onclick="alert('预览环境不支持 wx.navigateToMiniProgram，仅用于UI位置与样式校验。')" />
+                </div>
                 <div style="text-align: center; margin-bottom: 20px;">
                     <h3 style="color: #1f2937; margin-bottom: 8px;">🎯 今日推荐</h3>
                     <p style="color: #6b7280; font-size: 18px; font-weight: 600;">海底捞火锅</p>

@@ -1,5 +1,10 @@
 {
   "usingComponents": {},
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于搜索附近餐厅推荐"
+    }
+  },
   "navigationBarTitleText": "就决定吃你了",
   "enablePullDownRefresh": true,
   "onReachBottomDistance": 50,

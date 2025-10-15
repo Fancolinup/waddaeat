@@ -36,5 +36,45 @@
     </div>
     <div class="note">说明：此为轻量级HTML预览页面，用于校验文案与数据展示。实际样式与布局以小程序内为准。</div>
   </div>
+
+  <!-- 新增：标签截断预览（12字节） -->
+  <div class="preview-card" style="margin-top:16px">
+    <h2>标签截断预览（12字节）</h2>
+    <div class="sub">验证：中文最多约6字符；英文按1字节计；中英混合按中文2字节、英文1字节截断</div>
+    <div class="brands-list" id="labels-preview"></div>
+  </div>
+
+  <script>
+    function truncateRestaurantLabel(name, maxBytes = 12) {
+      if (!name) return '';
+      let bytes = 0;
+      let out = '';
+      for (const ch of String(name)) {
+        const cost = /[\u4e00-\u9fa5]/.test(ch) ? 2 : 1;
+        if (bytes + cost > maxBytes) break;
+        bytes += cost;
+        out += ch;
+      }
+      return out;
+    }
+
+    const samples = [
+      '海底捞火锅股份有限公司旗舰店',
+      '星巴克上海外滩旗舰店',
+      '麦当劳世纪大道店',
+      'Burger King Downtown Plaza',
+      'KFC 肯德基 南京路店',
+      '西贝莜面村 纳斯达克',
+      'CoCo都可奶茶人民广场店'
+    ];
+
+    const container = document.getElementById('labels-preview');
+    samples.forEach(name => {
+      const div = document.createElement('div');
+      div.className = 'brand-item';
+      div.textContent = truncateRestaurantLabel(name, 12);
+      container.appendChild(div);
+    });
+  </script>
 </body>
 </html>

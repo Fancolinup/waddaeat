@@ -5,10 +5,11 @@
     <text wx:if="{{locationStatus === 'loading'}}" class="loading-dot">...</text>
   </view>
 
+
   <!-- 轮盘容器：指针向下，轮盘本身旋转，按钮保持固定 -->
   <view class="hero-area">
     <view class="roulette-wheel-container">
-      <view class="roulette-wheel palette-{{currentPaletteKey}} {{spinClass}}" style="transform: rotate({{rouletteRotation}}deg);">
+      <view class="roulette-wheel palette-{{currentPaletteKey}} wt-{{wheelType}} {{spinClass}}" style="transform: rotate({{rouletteRotation}}deg); transition: transform {{spinDurationMs}}ms cubic-bezier(.24,.8,.26,1);">
         <block wx:for="{{segments}}" wx:for-index="sidx" wx:key="sidx">
            <view class="roulette-item" style="transform: rotate({{item.angle}}deg)">
              <!-- 扇区内径向排版文本：从外向内排列 -->
@@ -27,8 +28,8 @@
       <!-- 右下角操作按钮：配色切换 + 刷新推荐（仅改变纵坐标） -->
       <view class="top-actions">
         <view class="palette-switch" bindtap="onTogglePalette">
-          <view class="palette-wheel"></view>
-        </view>
+    <view class="palette-wheel palette-{{currentPaletteKey}} wt-{{wheelType}}"></view>
+  </view>
       </view>
   
       <!-- 固定在中心的开始按钮与手型（手型独立覆盖，不影响按钮尺寸） -->
@@ -38,7 +39,7 @@
       </view>
 
       <!-- 轮盘右下角扩展操作：添加更多餐厅（相对轮盘容器绝对定位） -->
-      <view wx:if="{{wheelType === 'restaurant'}}" class="roulette-extra-actions">
+      <view wx:if="{{wheelType === 'restaurant' && !(nearbyRestaurants && nearbyRestaurants.length > 0)}}" class="roulette-extra-actions">
         <button class="add-restaurant-btn" bindtap="onAddMoreRestaurants">添加餐厅</button>
       </view>
     </view>
@@ -55,10 +56,15 @@
     <scroll-view class="dl-content" scroll-y="true">
       <view class="dl-body">
         <!-- 根据转盘类型切换logo呈现方式：餐厅/茶饮/外卖统一使用云端图片 -->
-        <image class="dl-logo" src="{{selected ? selected.icon : placeholderImageUrl}}" mode="aspectFill" binderror="onSelectedLogoError" />
+        <image class="dl-logo" src="{{selected ? selected.icon : placeholderImageUrl}}" mode="aspectFill" binderror="onSelectedLogoError" lazy-load="true" />
         <view class="dl-info">
           <view class="dl-name">{{selected && selected.name}}</view>
           <view class="dl-type" wx:if="{{wheelType !== 'beverage'}}">{{selected && (selected.type || '餐厅')}}</view>
+          <view class="dl-meta" wx:if="{{wheelType !== 'beverage'}}">
+            <text class="dl-rating" wx:if="{{selected && selected.ratingDisplay}}">{{selected.ratingDisplay}}</text>
+            <text class="dl-sep" wx:if="{{selected && selected.ratingDisplay && selected.costDisplay}}">·</text>
+            <text class="dl-cost" wx:if="{{selected && selected.costDisplay}}">人均 {{selected.costDisplay}}</text>
+          </view>
           <view class="dl-promo">{{selected && (selected.promoText || '优惠信息：敬请期待')}}</view>
           <view class="beverage-tags" wx:if="{{wheelType !== 'beverage' && selected && selected.tags && selected.tags.length}}">
             <text class="tag-item" wx:for="{{selected.tags}}" wx:key="*this">{{item}}</text>
@@ -87,13 +93,18 @@
         </view>
       </view>
     </scroll-view>
-    
+
+    <!-- 美团跳转按钮：餐厅/外卖/茶饮转盘显示，位于结果浮层右上角 -->
+    <view class="meituan-entry" wx:if="{{(wheelType === 'takeout' || wheelType === 'beverage' || wheelType === 'restaurant') && selected}}">
+      <image class="meituan-btn" src="cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/meituan.png" mode="aspectFit" catchtap="onJumpToMeituan"></image>
+    </view>
+
     <!-- 导航按钮：图片直接作为按钮 -->
-    <view class="dl-navigation" wx:if="{{selected}}">
+    <view class="dl-navigation" wx:if="{{selected && selected.isFromAmap}}">
       <image class="nav-icon-button" src="cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/mapdirection.png" bindtap="onNavigateToRestaurant" mode="aspectFill"></image>
       <text class="nav-text" bindtap="onNavigateToRestaurant">导航去这里</text>
     </view>
-    
+
     <view class="dl-actions">
       <button class="dl-btn dl-primary" bindtap="onAccept">就它</button>
       <button class="dl-btn dl-secondary" bindtap="onReroll">再转一次</button>
@@ -125,17 +136,17 @@
   <view class="shortlist">
     <view class="short-title">备选清单</view>
     <view class="short-grid short-grid-3">
-      <block wx:for="{{shortlist}}" wx:key="id">
-        <view class="short-slot filled {{activeShortlistId === item.id ? 'selected' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onTapShortlistCard">
-          <image class="short-img" src="{{item.icon}}" mode="scaleToFill" />
+      <block wx:for="{{shortlist}}" wx:key="index" wx:for-index="idx">
+        <view class="short-slot filled {{activeShortlistIndex === idx ? 'selected' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" bindtap="onTapShortlistCard">
+          <image class="short-img" src="{{item.icon}}" mode="scaleToFill" lazy-load="true" data-id="{{item.id}}" binderror="onShortImgError" />
           <view class="short-caption">{{item.name}}</view>
-          <view class="short-confirm" wx:if="{{activeShortlistId === item.id}}" data-id="{{item.id}}" data-name="{{item.name}}" catchtap="onShortConfirm">就它</view>
+          <view class="short-confirm" wx:if="{{activeShortlistIndex === idx}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" catchtap="onShortConfirm">就它</view>
           <text class="short-remove" data-id="{{item.id}}" catchtap="onRemoveShort">×</text>
         </view>
       </block>
-      <block wx:for="{{placeholderSlots}}" wx:key="*this">
-        <view class="short-slot placeholder"></view>
-      </block>
+        <block wx:for="{{placeholderSlots}}" wx:key="*this">
+          <view class="short-slot placeholder"></view>
+        </block>
     </view>
   </view>
 

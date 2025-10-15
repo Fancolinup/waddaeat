@@ -1,4 +1,5 @@
-[
+// 预设分享文案模板（支持占位符 {restaurant}）
+const wordings = [
   "有没有人一起去{restaurant}，我觉得不错～",
   "要不要试试{restaurant}，今天感觉很合适！",
   "我提议{restaurant}，大家意下如何？",
@@ -49,4 +50,15 @@
   "{restaurant}走啊走啊！",
   "别浪费时间选了，冲{restaurant}。",
   "今天投我一票，{restaurant}！"
-]
+];
+
+// 兼容导出（微信小程序 CommonJS + 浏览器预览）
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.shareWording = factory();
+  }
+})(typeof self !== 'undefined' ? self : this, function () {
+  return wordings;
+});

@@ -33,6 +33,14 @@
   pointer-events: none;
 }
 
+/* POI 预览列表（调试用） */
+.poi-preview { padding: 12rpx 20rpx; background: #fff; border-bottom: 1px solid #eee; }
+.poi-item { display: flex; flex-wrap: wrap; gap: 12rpx; font-size: 24rpx; color: #333; padding: 8rpx 0; }
+.poi-name { font-weight: 600; }
+.poi-type { color: #666; }
+.poi-distance { color: #999; }
+.poi-location { color: #999; }
+
 /* 转盘切换区域容器：提供独立占位，避免与短清单互相影响 */
 .wheel-type-switcher-area {
   height: 100rpx;               /* 固定占位高度 */
@@ -478,6 +486,19 @@
   -webkit-backdrop-filter: blur(20rpx); 
   z-index: 10; 
 }
+/* 美团跳转按钮样式（结果浮层右上角） */
+.meituan-entry {
+  position: absolute;
+  right: 16rpx;
+  top: 16rpx;
+  z-index: 999;
+}
+.meituan-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 8rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.12);
+}
 .dl-header { font-size: 24rpx; letter-spacing: 2rpx; color: #6b7280; margin-bottom: 16rpx; font-weight: 600; }
 .dl-body { display: flex; align-items: center; gap: 20rpx; }
 .dl-logo { width: 96rpx; height: 96rpx; border-radius: 16rpx; background: #f2f2f2; display: block; object-fit: cover; overflow: hidden; }
@@ -487,24 +508,28 @@
 .dl-name { font-size: 40rpx; font-weight: 800; color: #111827; line-height: 1.2; }
 .dl-type { margin-top: 6rpx; font-size: 26rpx; color: #6b7280; }
 .dl-promo { margin-top: 6rpx; font-size: 26rpx; color: #374151; display: none; }
+.dl-meta { margin-top: 6rpx; font-size: 26rpx; color: #4b5563; display: flex; align-items: center; gap: 8rpx; }
+.dl-rating { color: #f59e0b; font-weight: 600; }
+.dl-sep { color: #9ca3af; }
+.dl-cost { color: #374151; }
 .dl-actions { 
   margin-top: 20rpx; 
   display: flex; 
   gap: 20rpx; 
   position: relative;
-  z-index: 5;
+  z-index: 50; /* 提高层级，确保操作按钮在导航区域之上 */
 }
 
 /* 导航按钮区域 */
 .dl-navigation {
   margin-bottom: 110rpx;
-  margin-top: -26rpx;
+  margin-top: 0; /* 移除负外边距，避免与操作区发生重叠 */
   display: flex;
   align-items: center;
   gap: 0; /* 兼容低版本：不依赖 gap */
   justify-content: flex-start;
   position: relative;
-  z-index: 15;
+  z-index: 4; /* 降低层级，避免覆盖操作按钮 */
 }
 
 /* 图片直接作为按钮 */
@@ -568,6 +593,56 @@
 .decision-actions { display: flex; gap: 16rpx; }
 .btn-primary { background: #111; color: #fff; padding: 12rpx 24rpx; border-radius: 12rpx; }
  .btn-ghost { background: #f4f4f4; color: #333; padding: 12rpx 24rpx; border-radius: 12rpx; }
+
+/* === Restaurant 20-slice palette variants === */
+.roulette-wheel.palette-b.wt-restaurant {
+  background: conic-gradient(
+    #ff6b35 0 18deg, #f7931e 18deg 36deg, #ffd23f 36deg 54deg, #06ffa5 54deg 72deg,
+    #00d4ff 72deg 90deg, #7b68ee 90deg 108deg, #ff1493 108deg 126deg, #ff69b4 126deg 144deg,
+    #ff4500 144deg 162deg, #ffa500 162deg 180deg, #32cd32 180deg 198deg, #1e90ff 198deg 216deg,
+    #ff6b35 216deg 234deg, #f7931e 234deg 252deg, #ffd23f 252deg 270deg, #06ffa5 270deg 288deg,
+    #00d4ff 288deg 306deg, #7b68ee 306deg 324deg, #ff1493 324deg 342deg, #ff69b4 342deg 360deg
+  );
+}
+.roulette-wheel.palette-a.wt-restaurant {
+  background: conic-gradient(
+    #0f172a 0 18deg, #1f2937 18deg 36deg, #374151 36deg 54deg, #4b5563 54deg 72deg,
+    #6b7280 72deg 90deg, #94a3b8 90deg 108deg, #cbd5e1 108deg 126deg, #e2e8f0 126deg 144deg,
+    #9ca3af 144deg 162deg, #64748b 162deg 180deg, #475569 180deg 198deg, #334155 198deg 216deg,
+    #0f172a 216deg 234deg, #1f2937 234deg 252deg, #374151 252deg 270deg, #4b5563 270deg 288deg,
+    #6b7280 288deg 306deg, #94a3b8 306deg 324deg, #cbd5e1 324deg 342deg, #e2e8f0 342deg 360deg
+  );
+}
+.roulette-wheel.palette-f.wt-restaurant {
+  background: conic-gradient(
+    #ffe4e6 0 18deg, #fecdd3 18deg 36deg, #fbcfe8 36deg 54deg, #e9d5ff 54deg 72deg,
+    #dbeafe 72deg 90deg, #bae6fd 90deg 108deg, #bbf7d0 108deg 126deg, #dcfce7 126deg 144deg,
+    #fef9c3 144deg 162deg, #ffedd5 162deg 180deg, #fde68a 180deg 198deg, #c7d2fe 198deg 216deg,
+    #ffe4e6 216deg 234deg, #fecdd3 234deg 252deg, #fbcfe8 252deg 270deg, #e9d5ff 270deg 288deg,
+    #dbeafe 288deg 306deg, #bae6fd 306deg 324deg, #bbf7d0 324deg 342deg, #dcfce7 342deg 360deg
+  );
+}
+.roulette-wheel.palette-g.wt-restaurant {
+  background: conic-gradient(
+    #111827 0 18deg, #f59e0b 18deg 36deg, #0ea5e9 36deg 54deg, #ef4444 54deg 72deg,
+    #10b981 72deg 90deg, #a855f7 90deg 108deg, #f43f5e 108deg 126deg, #22c55e 126deg 144deg,
+    #eab308 144deg 162deg, #3b82f6 162deg 180deg, #fb7185 180deg 198deg, #9333ea 198deg 216deg,
+    #111827 216deg 234deg, #f59e0b 234deg 252deg, #0ea5e9 252deg 270deg, #ef4444 270deg 288deg,
+    #10b981 288deg 306deg, #a855f7 306deg 324deg, #f43f5e 324deg 342deg, #22c55e 342deg 360deg
+  );
+}
+
+/* Palette wheel icon adapts to wheelType (20-slice when restaurant) */
+.palette-wheel.wt-restaurant {
+  background: conic-gradient(
+    #ff4d4f 0 18deg, #ff7a45 18deg 36deg, #ffa940 36deg 54deg, #fadb14 54deg 72deg,
+    #52c41a 72deg 90deg, #13c2c2 90deg 108deg, #1890ff 108deg 126deg, #2f54eb 126deg 144deg,
+    #722ed1 144deg 162deg, #eb2f96 162deg 180deg, #ff4d4f 180deg 198deg, #ff7a45 198deg 216deg,
+    #ffa940 216deg 234deg, #fadb14 234deg 252deg, #52c41a 252deg 270deg, #13c2c2 270deg 288deg,
+    #1890ff 288deg 306deg, #2f54eb 306deg 324deg, #722ed1 324deg 342deg, #eb2f96 342deg 360deg
+  );
+}
+
 
 /* 备选卡片名称：在备选logo底部显示（所有商家） */
 .short-caption {

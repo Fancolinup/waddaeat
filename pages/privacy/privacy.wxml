@@ -1,0 +1,8 @@
+<view class="container">
+  <view class="title">小程序隐私保护指引</view>
+  <view class="content">
+    <text>感谢您使用本小程序。我们将根据《个人信息保护法》等法律法规，保护您的隐私与数据安全。</text>
+    <text>我们会在您授权后使用您的地理位置，仅用于为您推荐附近的餐厅。</text>
+    <text>更多详情请阅读完整隐私指引。</text>
+  </view>
+</view>

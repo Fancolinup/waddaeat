@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Wheel Preview - 今日选择</title>
+  <script src="../shareWording.js"></script>
   <style>
     :root { --rpx: 1px; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background: #f7f8fa; }
@@ -261,10 +262,21 @@
 
     let rotateDeg = 0;
     function pickShareText(restaurant) {
+      try {
+        const list = (typeof shareWording !== 'undefined' && Array.isArray(shareWording)) ? shareWording : [];
+        if (Array.isArray(list) && list.length) {
+          const tpl = list[Math.floor(Math.random()*list.length)] || '';
+          shareTextEl.textContent = tpl.replace('{restaurant}', restaurant || '它');
+          return;
+        }
+      } catch (_) {}
+      // 回退：尝试 JSON 文件或默认文案
       fetch('/shareWording.json').then(r => r.json()).then(list => {
         if (Array.isArray(list) && list.length) {
           const tpl = list[Math.floor(Math.random()*list.length)] || '';
           shareTextEl.textContent = tpl.replace('{restaurant}', restaurant || '它');
+        } else {
+          shareTextEl.textContent = '今天吃什么？';
         }
       }).catch(() => {
         shareTextEl.textContent = '今天吃什么？';
