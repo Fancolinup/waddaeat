@@ -1077,21 +1077,27 @@
 .dl-type { margin-top: 6rpx; font-size: 26rpx; color: #6b7280; }
 .dl-promo { margin-top: 6rpx; font-size: 26rpx; color: #374151; display: none; }
 .dl-actions { margin-top: 20rpx; display: flex; gap: 20rpx; }
-.dl-btn { 
-  flex: 1; 
-  height: 80rpx; 
-  border-radius: 16rpx; 
-  font-size: 28rpx; 
-  font-weight: 700; 
-  border: none;
-  transition: all 0.2s ease;
-}
+ .dl-btn { 
+   flex: 1; 
+   height: 80rpx; 
+   border-radius: 16rpx; 
+   font-size: 28rpx; 
+   font-weight: 700; 
+   border: none;
+   transition: all 0.2s ease;
+ }
+ .dl-meituan-inline { 
+   width: 32rpx; 
+   height: 32rpx; 
+   margin-left: 12rpx; 
+   vertical-align: middle; 
+ }
 
-.dl-primary { 
-  background: linear-gradient(135deg, #667eea, #764ba2); 
-  color: #fff; 
-  box-shadow: 0 6rpx 20rpx rgba(102,126,234,0.4); 
-}
+ .dl-primary { 
+   background: linear-gradient(135deg, #667eea, #764ba2); 
+   color: #fff; 
+   box-shadow: 0 6rpx 20rpx rgba(102,126,234,0.4); 
+ }
 
 .dl-secondary { 
   background: #f8fafc; 

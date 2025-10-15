@@ -818,6 +818,12 @@ Page({
     wx.showToast({ title: '已记录，就它了', icon: 'success' });
     // 接受后清除待刷新标记，避免误触发特殊刷新
     this._pendingAutoRefresh = false;
+
+    // 外卖/茶饮：在记录“就它”后，继续执行美团跳转
+    if (this.data.wheelType === 'takeout' || this.data.wheelType === 'beverage') {
+      const name = String(sel.name || '').trim();
+      if (name) { this._doMeituanJump(name); }
+    }
   },
 
   // 自动刷新：若连续旋转4次未接受/确认，则设置待刷新标记（不对外卖转盘生效，不立即刷新，不隐藏浮层）
@@ -933,37 +939,26 @@ Page({
       wx.showToast({ title: '请先选择餐厅', icon: 'none' });
       return;
     }
-    // 复制餐厅名称到剪贴板并提示
+    this._doMeituanJump(name);
+  },
+
+  // 统一的美团跳转逻辑：复制关键词并跳转到对应短链
+  _doMeituanJump(name) {
+    const { wheelType } = this.data;
+    const keyword = name ? String(name).trim() : '';
+    if (!keyword) { return; }
     wx.setClipboardData({
-      data: name,
+      data: keyword,
       success: () => {
-        wx.showToast({
-          title: '跳转后直接粘贴并搜索即可',
-          icon: 'none',
-          duration: 1200
-        });
+        wx.showToast({ title: '已复制，跳转后粘贴搜索', icon: 'none', duration: 1200 });
         setTimeout(() => {
-          // 根据转盘类型选择不同的美团短链
           const shortLink = (wheelType === 'restaurant')
             ? '#小程序://美团丨外卖团购特价美食酒店电影/ZXIVCj5kDqYPVny'
             : '#小程序://美团丨外卖团购特价美食酒店电影/i7P3M0N3oLzsFAB';
-          // 使用页面短链跳转美团小程序
-          wx.navigateToMiniProgram({
-            shortLink,
-            success: () => {
-              console.log(`[跳转美团] 成功，已复制关键词：${name}`);
-            },
-            fail: (err) => {
-              console.warn('[跳转美团] 失败', err);
-              wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' });
-            }
-          });
+          wx.navigateToMiniProgram({ shortLink, fail: (err) => { console.warn('[跳转美团] 失败', err); wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' }); } });
         }, 1200);
       },
-      fail: (err) => {
-        console.warn('[剪贴板] 复制失败', err);
-        wx.showToast({ title: '复制失败，请稍后重试', icon: 'none' });
-      }
+      fail: (err) => { console.warn('[剪贴板] 复制失败', err); wx.showToast({ title: '复制失败，请稍后重试', icon: 'none' }); }
     });
   },
 
@@ -1115,6 +1110,12 @@ Page({
     this._pendingAutoRefresh = false;
     this.loadShareText();
     wx.showToast({ title: '已记录，就它了', icon: 'success' });
+
+    // 外卖/茶饮：快捷“就它”后继续跳转美团
+    if (this.data.wheelType === 'takeout' || this.data.wheelType === 'beverage') {
+      const nameToJump = String(sel.name || '').trim();
+      if (nameToJump) { this._doMeituanJump(nameToJump); }
+    }
   },
 
   onCopyShare() {

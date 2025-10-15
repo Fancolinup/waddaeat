@@ -106,10 +106,10 @@
     </view>
 
     <view class="dl-actions">
-      <button class="dl-btn dl-primary" bindtap="onAccept">就它</button>
-      <button class="dl-btn dl-secondary" bindtap="onReroll">再转一次</button>
-      <button class="dl-btn dl-tertiary" bindtap="onAddShortlist">加入备选</button>
-    </view>
+    <button class="dl-btn dl-primary" bindtap="onAccept">就它<image class="dl-meituan-inline" wx:if="{{wheelType === 'takeout' || wheelType === 'beverage'}}" src="cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/meituan.png" mode="aspectFit"></image></button>
+    <button class="dl-btn dl-secondary" bindtap="onReroll">再转一次</button>
+    <button class="dl-btn dl-tertiary" bindtap="onAddShortlist">加入备选</button>
+  </view>
   </view>
 
   <!-- 转盘切换按钮区域容器：提供固定占位，避免与其他元素相互影响 -->
@@ -140,7 +140,7 @@
         <view class="short-slot filled {{activeShortlistIndex === idx ? 'selected' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" bindtap="onTapShortlistCard">
           <image class="short-img" src="{{item.icon}}" mode="scaleToFill" lazy-load="true" data-id="{{item.id}}" binderror="onShortImgError" />
           <view class="short-caption">{{item.name}}</view>
-          <view class="short-confirm" wx:if="{{activeShortlistIndex === idx}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" catchtap="onShortConfirm">就它</view>
+          <view class="short-confirm" wx:if="{{activeShortlistIndex === idx}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" catchtap="onShortConfirm">就它<text wx:if="{{wheelType === 'takeout' || wheelType === 'beverage'}}">(去下单)</text></view>
           <text class="short-remove" data-id="{{item.id}}" catchtap="onRemoveShort">×</text>
         </view>
       </block>
