@@ -118,6 +118,13 @@ Page({
       this.getTabBar().setData({ selected: 0 });
     }
     
+    // 从本地存储恢复位置信息（双向同步）
+    let cachedLoc = null;
+    try { cachedLoc = wx.getStorageSync('userLocation'); } catch(e) {}
+    if (cachedLoc && cachedLoc.name) {
+      this.setData({ userLocation: cachedLoc });
+    }
+    
     // 恢复位置信息显示
     this.restoreLocationDisplay();
   },
@@ -2462,6 +2469,9 @@ Page({
         userLocation: location,
         nearbyRestaurants: restaurants
       });
+
+      // 缓存用户选择的位置到本地存储（双向同步）
+      try { wx.setStorageSync('userLocation', location); } catch(e) {}
 
       // 使用基于位置的推荐更新轮盘
       this.updateWheelWithLocationData(locationBasedRecommendations);

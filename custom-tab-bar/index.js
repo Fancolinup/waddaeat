@@ -2,7 +2,7 @@ Component({
   data: {
     selected: 0,
     color: '#7A7E83',
-    selectedColor: '#3cc51f',
+    selectedColor: '#E74C3C',
     list: [
       {
         pagePath: '/pages/index/index',
@@ -11,10 +11,10 @@ Component({
         text: '今日选择'
       },
       {
-        pagePath: '/pages/voice/index',
+        pagePath: '/pages/coupon/index',
         iconPath: '/images/icon_voice.png',
         selectedIconPath: '/images/icon_voice_selected.png',
-        text: '职场嘴替'
+        text: '领券中心'
       },
       {
         pagePath: '/pages/profile/profile',

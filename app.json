@@ -2,6 +2,8 @@
   "pages": [
     "pages/loading/loading",
     "pages/index/index",
+    "pages/coupon/index",
+    "pages/brand/detail",
     "pages/voice/index",
     "pages/test-voice/index",
     "pages/profile/profile",
@@ -38,7 +40,7 @@
   "tabBar": {
     "custom": true,
     "color": "#7A7E83",
-    "selectedColor": "#3cc51f",
+    "selectedColor": "#E74C3C",
     "borderStyle": "black",
     "backgroundColor": "#ffffff",
     "list": [
@@ -49,10 +51,10 @@
         "text": "今日选择"
       },
       {
-        "pagePath": "pages/voice/index",
+        "pagePath": "pages/coupon/index",
         "iconPath": "images/icon_voice.png",
         "selectedIconPath": "images/icon_voice_selected.png",
-        "text": "职场嘴替"
+        "text": "领券中心"
       },
       {
         "pagePath": "pages/profile/profile",
@@ -71,5 +73,8 @@
   },
   "debug": true,
   "sitemapLocation": "sitemap.json",
-  "lazyCodeLoading": "requiredComponents"
+  "lazyCodeLoading": "requiredComponents",
+  "navigateToMiniProgramAppIdList": [
+    "wxde8ac0a21135c07d"
+  ]
 }

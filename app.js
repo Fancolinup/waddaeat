@@ -5,7 +5,7 @@ App({
     if (wx.cloud) {
       wx.cloud.init({
         // 替换为你的云环境 ID，可以在云控制台查看
-        env: 'cloud1-4gw154ajfc4d5163',
+        env: 'cloud1-0gbk9yujb9937f30',
         traceUser: true, // 可选，是否记录用户访问
       });
     }

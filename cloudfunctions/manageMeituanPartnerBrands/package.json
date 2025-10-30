@@ -1,0 +1,10 @@
+{
+  "name": "manageMeituanPartnerBrands",
+  "version": "1.0.0",
+  "description": "预筛选并排序有券品牌的云函数，供前端快速展示",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "wx-server-sdk": "~3.0.1"
+  }
+}

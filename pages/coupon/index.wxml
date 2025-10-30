@@ -1,0 +1,106 @@
+<!-- pages/coupon/index.wxml -->
+<view class="coupon-page">
+  <!-- 顶部合作品牌圆标 -->
+  <scroll-view class="brand-scroll" scroll-x="true" enable-flex="true" show-scrollbar="false">
+    <view class="brand-item" wx:for="{{partnerBrands}}" wx:key="name" data-name="{{item.name}}" data-logo="{{item.logo}}" bindtap="onPartnerBrandTap">
+      <view class="brand-logo-wrap">
+        <image class="brand-logo" src="{{item.logo}}" mode="aspectFill" lazy-load="true" data-name="{{item.name}}" binderror="onBrandLogoError" />
+      </view>
+      <view class="brand-name">{{item.name}}</view>
+    </view>
+  </scroll-view>
+
+  <!-- 活动Banner（保持原有样式类名），使用 CSS translateY 在 wxss 中微调上移 -->
+  <view class="banner-section">
+    <image class="banner-bg" src="{{activityBanner.image}}" mode="aspectFill" />
+    <view class="banner-overlay">
+      <view class="banner-title">{{activityBanner.title}}</view>
+      <view class="banner-desc">{{activityBanner.desc}}</view>
+      <button class="banner-btn" bindtap="onBannerTap">立即参与</button>
+    </view>
+  </view>
+
+  <!-- 平台活动 Banner 轮播 -->
+  <view wx:if="{{platformBanners.length}}" class="banner-section">
+    <swiper class="coupon-swiper" autoplay="true" interval="3500" circular="true">
+      <swiper-item wx:for="{{platformBanners}}" wx:key="actId" wx:for-item="b" wx:for-index="bi">
+        <view class="grid-card" data-idx="{{bi}}" bindtap="onTapPlatformBanner">
+          <image class="grid-bg" src="{{b.headUrl}}" mode="aspectFill" />
+          <view class="grid-overlay">
+            <view class="grid-title">平台活动</view>
+            <view class="grid-sub">活动ID：{{b.actId}}</view>
+            <view class="grid-tag">限时</view>
+            <button class="grid-btn" size="mini">点击参与</button>
+          </view>
+        </view>
+      </swiper-item>
+    </swiper>
+  </view>
+
+  <!-- 分类导航（保留原有结构与样式） -->
+  <view class="category-nav">
+    <view class="category-item {{selectedCategory==='coupon'?'active':''}}" data-key="coupon" bindtap="onCategoryTap">
+      <text class="category-text">红包领券</text>
+    </view>
+    <view class="category-item {{selectedCategory==='instore'?'active':''}}" data-key="instore" bindtap="onCategoryTap">
+      <text class="category-text">到店优惠</text>
+    </view>
+    <view class="category-item {{selectedCategory==='flash'?'active':''}}" data-key="flash" bindtap="onCategoryTap">
+      <text class="category-text">限时秒杀</text>
+    </view>
+  </view>
+
+  <!-- 优惠领券区（分页：2x2 网格，每屏4张） -->
+  <view class="coupon-section">
+    <swiper class="coupon-swiper" current="{{couponSwiperCurrent}}" bindchange="onCouponSwiperChange">
+      <swiper-item wx:for="{{couponPages}}" wx:key="pi" wx:for-index="pi" wx:for-item="page">
+        <view class="grid">
+          <view class="grid-card" wx:for="{{page}}" wx:key="id" wx:for-item="c">
+            <image class="grid-bg" src="{{c.image}}" mode="aspectFill" />
+            <view class="grid-overlay">
+              <view class="grid-title">{{c.title}}</view>
+              <view class="grid-sub">{{c.subTitle}}</view>
+              <view class="grid-tag">{{c.tag}}</view>
+              <button class="grid-btn" size="mini" data-id="{{c.id}}" bindtap="onReceiveCoupon">立即领取</button>
+            </view>
+          </view>
+        </view>
+      </swiper-item>
+    </swiper>
+    <!-- 自定义导航圆点，位于优惠领券区底部，不与卡片重叠 -->
+    <view class="coupon-indicators">
+      <block wx:for="{{couponPages}}" wx:key="pi" wx:for-index="pi">
+        <view class="indicator-dot {{couponSwiperCurrent === pi ? 'active' : ''}}"></view>
+      </block>
+    </view>
+  </view>
+
+  <!-- 附近优惠区：固定标题 + 位置选择模块；未定位时显示提示 -->
+  <view class="nearby-section">
+    <view class="nearby-header">
+      <text class="nearby-title">附近优惠</text>
+      <view class="banner-location {{locationStatus === 'loading' ? 'loading' : ''}}" bindtap="onLocationTap">
+        <image class="icon" src="/images/map.svg" mode="widthFix" />
+        <text class="msg">{{locationText}}</text>
+        <text wx:if="{{locationStatus === 'loading'}}" class="loading-dot">...</text>
+      </view>
+    </view>
+
+    <!-- 未获取到位置时的提示占位 -->
+    <view wx:if="{{!userLocation}}" class="nearby-placeholder">选择位置后查看附近优惠</view>
+
+    <!-- 获取到位置后，展示商品横滑列表 -->
+    <scroll-view wx:else class="horizontal-list" scroll-x="true" enable-flex="true">
+      <view class="h-card" wx:for="{{nearbyOffersLoop.length ? nearbyOffersLoop : nearbyOffers}}" wx:key="id">
+        <image class="h-bg" src="{{item.image}}" mode="aspectFill" />
+        <view class="h-overlay">
+          <view class="h-title">{{item.name}}</view>
+          <view class="h-sub">{{item.distance}}m · {{item.category}}</view>
+          <button class="h-btn" size="mini" data-id="{{item.id}}" bindtap="onReceiveNearbyCoupon">去享受</button>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="page-bottom-spacer"></view>
+</view>

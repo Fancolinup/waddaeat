@@ -30,7 +30,8 @@
     "ignore": [],
     "include": []
   },
-  "appid": "wx34355d1805e168e9",
+  "appid": "wx3501f562c5d839e6",
   "editorSetting": {},
-  "libVersion": "3.10.0"
+  "libVersion": "3.10.0",
+  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/"
 }

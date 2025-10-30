@@ -1,0 +1,14 @@
+{
+  "name": "scheduleMeituanBrandDaily",
+  "version": "1.0.0",
+  "description": "Daily job to fetch Meituan brand coupons and referral links, store into cloud DB collections",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "wx-server-sdk": "~3.0.1"
+  }
+}

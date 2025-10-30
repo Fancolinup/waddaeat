@@ -1,0 +1,24 @@
+<!-- pages/brand/detail.wxml -->
+<view class="brand-detail-page">
+  <view class="brand-header">
+    <image class="brand-logo" src="{{brandLogo}}" mode="aspectFill" />
+    <text class="brand-title">{{brandName}}</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+  <view wx:elif="{{error}}" class="error">{{error}}</view>
+
+  <scroll-view wx:else class="product-list" scroll-y="true" show-scrollbar="false">
+    <view class="product-card" wx:for="{{products}}" wx:key="skuViewId" data-index="{{index}}" bindtap="onProductTap">
+      <image class="product-image" src="{{item.headUrl}}" mode="aspectFill" />
+      <view class="product-info">
+        <view class="product-name">{{item.name}}</view>
+        <view class="product-prices">
+          <text class="sell-price">¥{{item.sellPrice}}</text>
+          <text class="original-price">¥{{item.originalPrice}}</text>
+        </view>
+        <view class="product-expire" wx:if="{{item.couponValidETime}}">截止：{{item.couponValidETime}}</view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

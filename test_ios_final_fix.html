@@ -189,6 +189,12 @@
             font-size: 14px;
             opacity: 0.9;
         }
+        /* 顶部品牌圆框模拟样式 */
+        .brand-scroll { display: flex; gap: 12px; overflow-x: auto; padding: 8px 4px; }
+        .brand-item { display: inline-flex; flex-direction: column; align-items: center; justify-content: flex-start; margin-right: 16px; }
+        .brand-logo-wrap { width: 80px; height: 80px; border-radius: 40px; background: rgba(255,255,255,0.08); border: 2px solid rgba(212,175,55,0.5); box-shadow: 0 6px 16px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .brand-logo { width: 100%; height: 100%; border-radius: 40px; object-fit: cover; }
+        .brand-name { margin-top: 8px; font-size: 12px; font-weight: 700; color: #333; }
     </style>
 </head>
 <body>
@@ -229,6 +235,12 @@
             <div class="test-grid" id="welcomePageTests">
                 <!-- 动态生成 -->
             </div>
+        </div>
+
+        <!-- 顶部品牌圆框模拟 -->
+        <div class="section">
+            <div class="section-title">顶部品牌圆框模拟</div>
+            <div class="brand-scroll" id="brandCircle"></div>
         </div>
 
         <div class="log-section" id="logSection">
@@ -325,6 +337,14 @@
         function log(message) {
             const logSection = document.getElementById('logSection');
             const timestamp = new Date().toLocaleTimeString();
+            logSection.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logSection.scrollTop = logSection.scrollHeight;
+        }
+        // 兼容 addLog 调用
+        function addLog() {
+            const logSection = document.getElementById('logSection');
+            const timestamp = new Date().toLocaleTimeString();
+            const message = Array.from(arguments).join(' ');
             logSection.innerHTML += `<div>[${timestamp}] ${message}</div>`;
             logSection.scrollTop = logSection.scrollHeight;
         }
@@ -428,6 +448,40 @@
 
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', initTests);
+        // 页面加载时显示修复摘要
+        window.addEventListener('load', () => {
+            addLog('iOS图片加载修复验证页面已加载');
+            addLog('主要修复文件: utils/cloudImageManager.js');
+            addLog('修复方法: retryGetTempUrl, preloadImages');
+            addLog('点击"运行模拟测试"查看修复效果');
+            displayDeviceInfo();
+            // 顶部品牌圆框模拟填充
+            const brands = [
+                { name: '星巴克', logo: 'https://picsum.photos/seed/starbucks/120/120' },
+                { name: '喜茶', logo: 'https://picsum.photos/seed/heyt/120/120' },
+                { name: '奈雪', logo: 'https://picsum.photos/seed/naixue/120/120' },
+                { name: '蜜雪冰城', logo: 'https://picsum.photos/seed/mixue/120/120' },
+                { name: '瑞幸咖啡', logo: 'https://picsum.photos/seed/luckin/120/120' }
+            ];
+            const circle = document.getElementById('brandCircle');
+            brands.forEach(b => {
+                const item = document.createElement('div');
+                item.className = 'brand-item';
+                const wrap = document.createElement('div');
+                wrap.className = 'brand-logo-wrap';
+                const img = document.createElement('img');
+                img.className = 'brand-logo';
+                img.src = b.logo;
+                img.alt = b.name;
+                const name = document.createElement('div');
+                name.className = 'brand-name';
+                name.textContent = b.name;
+                wrap.appendChild(img);
+                item.appendChild(wrap);
+                item.appendChild(name);
+                circle.appendChild(item);
+            });
+        });
     </script>
 </body>
 </html>
