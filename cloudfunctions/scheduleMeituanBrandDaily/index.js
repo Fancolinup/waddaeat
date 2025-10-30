@@ -19,9 +19,19 @@ try {
 
 // 兜底品牌名称（避免依赖项目根目录的文件导致云端打包缺失）
 const SEED_BRANDS = [
-  '星巴克', '喜茶', '奈雪', '蜜雪冰城', '瑞幸咖啡',
-  '肯德基', '麦当劳', '必胜客', '汉堡王', '塔斯汀',
-  '茶颜悦色', '沪上阿姨', '古茗', '库迪咖啡', 'CoCo都可'
+  "肯德基", "汉堡王", "Baker&Spice", "超级碗", "陈香贵", "马记永", "沃歌斯", "海底捞", "呷哺呷哺", "莆田餐厅", "蓝蛙",
+  "星巴克", "喜茶", "奈雪的茶", "和府捞面", "味千拉面", "一风堂", "鼎泰丰", "小杨生煎", "南翔馒头店", "新元素", "云海肴",
+  "西贝莜面村", "绿茶餐厅", "外婆家", "南京大牌档", "望湘园", "蜀都丰", "太二酸菜鱼", "江边城外", "耶里夏丽", "度小月",
+  "鹿港小镇", "避风塘", "唐宫", "点都德", "食其家", "吉野家", "松屋", "丸龟制面", "萨莉亚", "必胜客", "达美乐",
+  "棒约翰", "麻辣诱惑", "辛香汇", "小南国", "老盛昌", "吉祥馄饨", "阿香米线", "过桥米线", "汤先生", "谷田稻香",
+  "大米先生", "真功夫", "永和大王", "大娘水饺", "CoCo都可", "一点点", "乐乐茶", "7分甜", "桂满陇", "新白鹿",
+  "苏小柳", "蔡澜港式点心", "添好运", "很久以前羊肉串", "丰茂烤串", "木屋烧烤", "胡大饭店", "哥老官", "左庭右院",
+  "湊湊火锅", "巴奴毛肚火锅", "大龙燚", "电台巷火锅", "小龙坎", "谭鸭血", "蜀大侠", "麦当劳",
+  // 茶饮与咖啡
+  "瑞幸咖啡", "蜜雪冰城", "库迪咖啡", "幸运咖", "Manner Coffee", "茶颜悦色", "霸王茶姬", "古茗", "茶百道",
+  "书亦烧仙草", "沪上阿姨", "Tims天好咖啡", "挪瓦咖啡", "益禾堂", "Seesaw Coffee", "M Stand", "% Arabica",
+  "皮爷咖啡", "LAVAZZA", "甜啦啦", "贡茶", "悸动烧仙草", "快乐柠檬", "吾饮良品", "巡茶", "桂源铺", "茉酸奶",
+  "卡旺卡", "伏小桃", "注春", "Grid Coffee"
 ];
 
 // 简单的 https 规范化
@@ -176,10 +186,8 @@ exports.main = async (event, context) => {
   await ensureCollection(db, 'MeituanBrandCoupon');
   await ensureCollection(db, 'MeituanBrandCouponURL');
 
-  // 品牌列表来源：优先使用本地数据源，否则使用兜底 SEED_BRANDS
-  const list = (brandSeed && Array.isArray(brandSeed.BRANDS))
-    ? brandSeed.BRANDS.map(b => ({ name: b.name, logoUrl: b.logoUrl || '' }))
-    : ((restaurantData && restaurantData.restaurants) ? restaurantData.restaurants : SEED_BRANDS.map(n => ({ name: n, logoUrl: '' })));
+  // 品牌列表来源：直接使用 SEED_BRANDS（内联，避免 require 开销）
+  const list = SEED_BRANDS.map(n => ({ name: n, logoUrl: '' }));
   const brandsAll = list.map(r => ({
     brandName: r.name,
     brandLogo: normalizeHttps(r.logoUrl || ''),
@@ -189,6 +197,10 @@ exports.main = async (event, context) => {
   const brands = brandsAll.slice(0, Math.min(brandsAll.length, limitBrandCount));
 
   const couponResults = [];
+  const metrics = {
+    stage1: { brandsProcessed: 0, rawItemCount: 0, keptItemCount: 0, stats: [] },
+    stage2: { brandsProcessed: 0, linkedItemCount: 0, prunedBrands: 0, stats: [] },
+  };
 
   // 阶段1：以 brandSeed 品牌名调用 getMeituanCoupon，过滤并落库标准化 items（runMode !== 'linksOnly' 时执行）
   if (runMode !== 'linksOnly') {
@@ -224,18 +236,26 @@ exports.main = async (event, context) => {
           };
           await upsertToCollection(db, 'MeituanBrandCoupon', { brandName: b.brandName }, payload);
           couponResults.push(payload);
+          metrics.stage1.brandsProcessed += 1;
+          metrics.stage1.rawItemCount += arr.length;
+          metrics.stage1.keptItemCount += items.length;
+          metrics.stage1.stats.push({ brandName: b.brandName, rawCount: arr.length, keptCount: items.length });
           console.log('[Schedule] 券集合写入：', b.brandName, { keptItemCount: items.length, rawCount: arr.length });
         } else {
           console.warn('[Schedule] 品牌无券或拉取失败：', b.brandName, rr && rr.error && rr.error.message);
           const payload = { brandName: b.brandName, brandLogo: b.brandLogo, items: [], updatedAt: new Date(), source: 'schedule-seed' };
           await upsertToCollection(db, 'MeituanBrandCoupon', { brandName: b.brandName }, payload);
           couponResults.push(payload);
+          metrics.stage1.brandsProcessed += 1;
+          metrics.stage1.stats.push({ brandName: b.brandName, rawCount: 0, keptCount: 0 });
         }
       } catch (e) {
         console.warn('[Schedule] 拉取券异常：', b && b.brandName, e);
         const payload = { brandName: b.brandName, brandLogo: b.brandLogo, items: [], updatedAt: new Date(), source: 'schedule-seed' };
         await upsertToCollection(db, 'MeituanBrandCoupon', { brandName: b.brandName }, payload);
         couponResults.push(payload);
+        metrics.stage1.brandsProcessed += 1;
+        metrics.stage1.stats.push({ brandName: b.brandName, rawCount: 0, keptCount: 0 });
       }
       return null;
     });
@@ -325,6 +345,7 @@ exports.main = async (event, context) => {
           } catch (eUp) {
             console.warn('[Schedule] 券集合回写失败（空）：', entry.brandName, eUp);
           }
+          metrics.stage2.prunedBrands += 1;
           return null;
         }
 
@@ -348,10 +369,13 @@ exports.main = async (event, context) => {
           };
           await upsertToCollection(db, 'MeituanBrandCoupon', { brandName: entry.brandName }, payloadCoupon);
           console.log('[Schedule] 券集合裁剪：', entry.brandName, { keptAfterUrl: filteredItems.length });
+          metrics.stage2.linkedItemCount += filteredItems.length;
         } catch (eUp2) {
           console.warn('[Schedule] 券集合回写失败：', entry.brandName, eUp2);
         }
 
+        metrics.stage2.brandsProcessed += 1;
+        metrics.stage2.stats.push({ brandName: entry.brandName, linkedItemCount: Object.keys(urlMap).length });
         return payloadUrl;
       } catch (e) {
         console.warn('[Schedule] referralLink 阶段异常：', entry && entry.brandName, e);
@@ -364,6 +388,9 @@ exports.main = async (event, context) => {
     ok: true,
     runMode,
     brandCount: couponResults.length,
+    processedBrandCount: runMode === 'stage1Only' ? metrics.stage1.brandsProcessed : (runMode === 'linksOnly' ? metrics.stage2.brandsProcessed : (metrics.stage2.brandsProcessed || metrics.stage1.brandsProcessed)),
+    stage1: metrics.stage1,
+    stage2: metrics.stage2,
     message: runMode === 'stage1Only' ? 'Stage1 completed' : (runMode === 'linksOnly' ? 'Stage2 completed' : 'Daily job completed'),
   };
 };
