@@ -49,6 +49,9 @@ exports.main = async (event, context) => {
   const appKey = process.env.MEITUAN_APPKEY || event.appKey || '';
   const secret = process.env.MEITUAN_SECRET || event.secret || '';
 
+  if (!appKey || !secret) {
+    return { ok: false, error: { message: 'Missing MEITUAN_APPKEY/MEITUAN_SECRET' } };
+  }
   const url = 'https://media.meituan.com/cps_open/common/api/v1/get_referral_link';
   const urlPath = '/cps_open/common/api/v1/get_referral_link';
 
@@ -101,11 +104,11 @@ exports.main = async (event, context) => {
   console.log('[Meituan][Referral] Request Body:', reqBody);
 
   // 自动重试：每10s一次，共5次（支持入参覆盖）
-  const maxRetries = typeof event?.maxRetries === 'number' ? event.maxRetries : 10;
-  const delayMs = typeof event?.delayMs === 'number' ? event.delayMs : 10000;
+  const maxRetries = typeof event?.maxRetries === 'number' ? event.maxRetries : 3;
+  const delayMs = typeof event?.delayMs === 'number' ? event.delayMs : 2000;
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   // 请求超时（支持入参覆盖）
-  const reqTimeoutMs = typeof event?.timeoutMs === 'number' ? event.timeoutMs : 8000;
+  const reqTimeoutMs = typeof event?.timeoutMs === 'number' ? event.timeoutMs : 5000;
 
   try {
     let lastErr = null;

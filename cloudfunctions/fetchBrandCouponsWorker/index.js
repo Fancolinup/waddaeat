@@ -3,8 +3,10 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 function normalizeHttps(url) {
-  if (typeof url === 'string' && url.startsWith('http://')) return 'https://' + url.slice(7);
-  return url;
+  if (typeof url !== 'string') return '';
+  let u = url.replace(/`/g, '').trim();
+  if (u.startsWith('http://')) u = 'https://' + u.slice(7);
+  return u;
 }
 
 async function ensureCollection(db, name) {
@@ -16,31 +18,90 @@ async function ensureCollection(db, name) {
   }
 }
 
-// 将 query_coupon 返回的产品列表尽量抽取必要字段，避免过多加工以保障3s内完成
-function pickItems(rawList) {
-  const list = Array.isArray(rawList) ? rawList : [];
-  return list.map(p => {
-    const skuViewId = p?.skuViewId || p?.skuId || p?.couponPackDetail?.skuViewId || '';
-    const title = p?.title || p?.productTitle || p?.skuName || p?.couponPackDetail?.name || '';
-    const brandLogoRaw = p?.brandLogoUrl || p?.logoUrl || p?.brandInfo?.brandLogoUrl || '';
-    return {
-      skuViewId,
-      title,
-      brandLogoUrl: normalizeHttps(brandLogoRaw),
-      raw: p
-    };
-  }).filter(x => x.skuViewId);
+function toArrayMaybe(objOrArr) {
+  if (Array.isArray(objOrArr)) return objOrArr;
+  if (objOrArr && typeof objOrArr === 'object') {
+    const keys = Object.keys(objOrArr).filter(k => /^\d+$/.test(k)).sort((a,b)=>Number(a)-Number(b));
+    return keys.map(k => objOrArr[k]);
+  }
+  return [];
+}
+
+function extractLabels(raw) {
+  const labels = [];
+  const seen = new Set();
+  try {
+    const pl = raw?.couponPackDetail?.productLabel ?? raw?.productLabel;
+    // 1) productLabel 字段本身若为字符串，直接作为标签
+    if (typeof pl === 'string') {
+      const s = pl.trim();
+      if (s && !seen.has(s)) { labels.push(s); seen.add(s); }
+    }
+    const plObj = (pl && typeof pl === 'object') ? pl : {};
+
+    // 2) 按用户给定顺序依次提取：dianPingRankLabel、pricePowerLabel（字符串）、beatMTLabel、historyPriceLabel、productRankLabel
+    const v1 = plObj?.dianPingRankLabel;
+    if (typeof v1 === 'string' && v1.trim() && !seen.has(v1.trim())) { labels.push(v1.trim()); seen.add(v1.trim()); }
+
+    const ppl = plObj?.pricePowerLabel;
+    if (typeof ppl === 'string' && ppl.trim() && !seen.has(ppl.trim())) { labels.push(ppl.trim()); seen.add(ppl.trim()); }
+
+    const bmt = (ppl && typeof ppl === 'object') ? ppl.beatMTLabel : plObj?.beatMTLabel;
+    if (typeof bmt === 'string' && bmt.trim() && !seen.has(bmt.trim())) { labels.push(bmt.trim()); seen.add(bmt.trim()); }
+
+    const hist = (ppl && typeof ppl === 'object') ? ppl.historyPriceLabel : plObj?.historyPriceLabel;
+    if (typeof hist === 'string' && hist.trim() && !seen.has(hist.trim())) { labels.push(hist.trim()); seen.add(hist.trim()); }
+
+    const pr = plObj?.productRankLabel;
+    if (typeof pr === 'string' && pr.trim() && !seen.has(pr.trim())) { labels.push(pr.trim()); seen.add(pr.trim()); }
+  } catch (e) {}
+  return labels;
+}
+
+function normalizeItem(brandName, it) {
+  const raw = it?.raw || it || {};
+  const skuViewId = it?.skuViewId || raw?.couponPackDetail?.skuViewId || '';
+  if (!skuViewId) return null;
+  const title = it?.title || raw?.couponPackDetail?.name || '';
+  const name = raw?.couponPackDetail?.name || title || '';
+  const headUrl = normalizeHttps(raw?.couponPackDetail?.headUrl || it?.headUrl || '');
+  const brandLogoUrl = normalizeHttps(it?.brandLogoUrl || raw?.brandInfo?.brandLogoUrl || '');
+  const originalPrice = Number(raw?.couponPackDetail?.originalPrice || it?.originalPrice || 0) || 0;
+  const sellPrice = Number(raw?.couponPackDetail?.sellPrice || it?.sellPrice || 0) || 0;
+  const commission = Number(raw?.commissionInfo?.commission || it?.commission || 0) || 0;
+  const commissionPercent = Number(raw?.commissionInfo?.commissionPercent || it?.commissionPercent || 0) || 0;
+  const eSec = Number(raw?.couponValidTimeInfo?.couponValidETime || raw?.couponPackDetail?.endTime || it?.couponValidETime || it?.endTime || 0) || 0;
+  const couponValidETime = eSec > 0 ? eSec * 1000 : 0;
+  const expireAt = couponValidETime || (Date.now() + 24 * 60 * 60 * 1000);
+  const labels = extractLabels(raw);
+  const label1 = labels[0] || '';
+  const label2 = labels[1] || '';
+  return {
+    brandName,
+    skuViewId,
+    title,
+    name,
+    headUrl,
+    brandLogoUrl,
+    originalPrice,
+    sellPrice,
+    commission,
+    commissionPercent,
+    couponValidETime,
+    expireAt,
+    label1,
+    label2,
+    raw
+  };
 }
 
 exports.main = async (event, context) => {
-  const wxContext = cloud.getWXContext();
   const db = cloud.database();
   const collection = db.collection('MeituanBrandCoupon');
 
-  const appKey = process.env.MEITUAN_APPKEY || event?.appKey || '';
-  const secret = process.env.MEITUAN_SECRET || event?.secret || '';
   const brandName = (event?.brandName || '').trim();
-  const limitSkuCount = (typeof event?.limitSkuCount === 'number' && event.limitSkuCount > 0) ? event.limitSkuCount : 5;
+  // 默认处理全部SKU；可通过 limitSkuCount 控制最大处理条数
+  const limitSkuCount = (typeof event?.limitSkuCount === 'number' && event.limitSkuCount > 0) ? event.limitSkuCount : Infinity;
 
   if (!brandName) {
     return { ok: false, error: { code: 'INVALID_BRAND', message: '缺少 brandName' } };
@@ -49,88 +110,41 @@ exports.main = async (event, context) => {
   await ensureCollection(db, 'MeituanBrandCoupon');
 
   try {
-    const res = await cloud.callFunction({
-      name: 'getMeituanCoupon',
-      data: {
-        platform: 1,
-        searchText: brandName,
-        // 经纬度默认即可，必要时可在调用处传入
-        appKey,
-        secret
-      }
-    });
-    const result = res && res.result;
-    if (!result || !result.ok) {
-      console.warn('[fetchBrandCouponsWorker] getMeituanCoupon 失败：', result && result.error);
-      return { ok: false, brandName, error: result && result.error || { code: 'UPSTREAM_FAIL', message: '上游返回失败' } };
-    }
-
-    // 调试日志：观察返回结构
-    try {
-      console.log('[fetchBrandCouponsWorker] upstream ok, typeof result.data =', typeof result.data);
-      console.log('[fetchBrandCouponsWorker] upstream keys =', result.data && Object.keys(result.data));
-      if (Array.isArray(result.data?.data)) {
-        console.log('[fetchBrandCouponsWorker] upstream data[] length =', result.data.data.length);
-      } else {
-        console.log('[fetchBrandCouponsWorker] upstream data.productList length =', (result.data?.data?.productList || result.data?.productList || result.data?.list || []).length);
-      }
-    } catch (e) {}
-
-    // 兼容不同层级的数据结构
-    const dataRoot = result.data || {};
-    let products = [];
-    if (Array.isArray(dataRoot?.data)) {
-      // 形态：{ code, message, data: [ {...}, {...} ] }
-      products = dataRoot.data;
-    } else if (Array.isArray(dataRoot?.list)) {
-      // 形态：{ list: [ ... ] }
-      products = dataRoot.list;
-    } else if (Array.isArray(dataRoot?.data?.productList)) {
-      // 形态：{ data: { productList: [...] } }
-      products = dataRoot.data.productList;
-    } else if (Array.isArray(dataRoot?.productList)) {
-      // 形态：{ productList: [...] }
-      products = dataRoot.productList;
-    } else if (Array.isArray(dataRoot)) {
-      // 形态：直接是数组
-      products = dataRoot;
-    } else {
-      products = [];
-    }
-
-    // 调试日志：产品列表与抽取结果
-    try {
-      console.log('[fetchBrandCouponsWorker] products length =', Array.isArray(products) ? products.length : -1);
-      if (Array.isArray(products) && products.length > 0) {
-        console.log('[fetchBrandCouponsWorker] sample product keys =', Object.keys(products[0] || {}));
-      }
-    } catch (e) {}
-
-    let items = pickItems(products);
-    try {
-      console.log('[fetchBrandCouponsWorker] picked items length =', items.length);
-      if (items.length > 0) {
-        console.log('[fetchBrandCouponsWorker] sample item =', items[0]);
-      }
-    } catch (e) {}
-
-    if (items.length > limitSkuCount) items = items.slice(0, limitSkuCount);
-
-    // Upsert 按品牌
     const { data: existed } = await collection.where({ brandName }).get();
-    const doc = {
+    const doc = Array.isArray(existed) && existed.length > 0 ? existed[0] : null;
+    if (!doc) {
+      return { ok: false, brandName, error: { code: 'NO_SOURCE', message: '该品牌在数据集中不存在源文档' } };
+    }
+
+    const rawItems = toArrayMaybe(doc.items);
+    const seen = new Set();
+    let normalized = [];
+    for (const it of rawItems) {
+      const n = normalizeItem(brandName, it);
+      if (!n) continue;
+      if (seen.has(n.skuViewId)) continue;
+      seen.add(n.skuViewId);
+      normalized.push(n);
+    }
+
+    // 过滤已过期
+    const nowTs = Date.now();
+    normalized = normalized.filter(x => Number(x.expireAt || 0) > nowTs);
+
+    if (Number.isFinite(limitSkuCount) && normalized.length > limitSkuCount) {
+      normalized = normalized.slice(0, limitSkuCount);
+    }
+
+    const payload = {
       brandName,
-      items,
+      items: normalized,
       updatedAt: Date.now()
     };
-    if (Array.isArray(existed) && existed.length > 0) {
-      await collection.doc(existed[0]._id).update({ data: doc });
-    } else {
-      await collection.add({ data: doc });
-    }
 
-    const metrics = { brandName, rawItemCount: Array.isArray(products) ? products.length : 0, keptItemCount: items.length };
-    console.log('[fetchBrandCouponsWorker] 完成：', metrics);
+    await collection.doc(doc._id).update({ data: payload });
+
+    const metrics = { brandName, keptItemCount: normalized.length };
+    console.log('[fetchBrandCouponsWorker] 完成增强：', metrics);
     return { ok: true, brandName, metrics };
   } catch (e) {
     console.error('[fetchBrandCouponsWorker] 异常：', e);

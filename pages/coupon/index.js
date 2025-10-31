@@ -69,9 +69,7 @@ Page({
 
   onLoad() {
     this.initPartnerBrands();
-    this.initCoupons();
-    this.refreshDisplay();
-    this.buildCouponPages();
+    this.loadRedPacketCouponsList(); // 接入云端红包领券列表
     // 进入领券中心不触发位置选择：去掉自动加载附近优惠的强制选择，改为只有已有位置时才加载
     const cachedLoc = wx.getStorageSync('userLocation');
     if (cachedLoc && cachedLoc.latitude && cachedLoc.longitude) {
@@ -295,8 +293,67 @@ Page({
   },
 
   onReceiveCoupon(e) {
-    const id = e.currentTarget.dataset.id;
-    wx.showToast({ title: '已领取优惠券', icon: 'success' });
+    try {
+      const id = e?.currentTarget?.dataset?.id || e?.target?.dataset?.id;
+      const item = (this.data.coupons || []).find(c => c.id === id);
+      const map = item?.referralLinkMap || {};
+      const weapp = map['4'] || map[4] || map['3'] || map[3];
+      if (!weapp) {
+        wx.showToast({ title: '暂无可用链接', icon: 'none' });
+        return;
+      }
+      // 对象类型：包含 appId/path，优先使用对象内 appId，缺省回退至美团官方 appId
+      if (wx?.navigateToMiniProgram && typeof weapp === 'object') {
+        const info = weapp || {};
+        const appId = info.appId || 'wxde8ac0a21135c07d';
+        wx.navigateToMiniProgram({
+          appId,
+          path: info.path || '',
+          envVersion: 'release',
+          success: () => {},
+          fail: (err) => {
+            console.warn('[coupon] 以对象跳转失败：', err);
+            wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' });
+          }
+        });
+        return;
+      }
+      // 字符串类型：内部页面路径或小程序短链
+      if (typeof weapp === 'string') {
+        const s = weapp.trim();
+        // 内部页面路径：带上美团官方 appId
+        if (s.startsWith('/')) {
+          wx.navigateToMiniProgram({
+            appId: 'wxde8ac0a21135c07d',
+            path: s,
+            envVersion: 'release',
+            success: () => {},
+            fail: (err) => {
+              console.warn('[coupon] 以内部 path 跳转失败：', err);
+              wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' });
+            }
+          });
+          return;
+        }
+        // 小程序短链
+        if (wx?.navigateToMiniProgram) {
+          wx.navigateToMiniProgram({
+            shortLink: s,
+            envVersion: 'release',
+            success: () => {},
+            fail: (err) => {
+              console.warn('[coupon] 以短链跳转失败：', err);
+              wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' });
+            }
+          });
+          return;
+        }
+      }
+      wx.showToast({ title: '暂无可用链接', icon: 'none' });
+    } catch (err) {
+      console.warn('[coupon] 跳转美团小程序失败：', err);
+      wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' });
+    }
   },
 
   onReceiveNearbyCoupon(e) {
@@ -588,5 +645,50 @@ Page({
     }
     // 无 deeplink 回退，提示不可跳转
     wx.showToast({ title: '暂无可用小程序链接', icon: 'none' });
+  },
+  // 从云函数读取红包领券列表，并映射为 UI 卡片
+  async loadRedPacketCouponsList() {
+    try {
+      const res = await wx.cloud.callFunction({
+        name: 'getRedPacketCouponsList',
+        data: { page: 1, pageSize: 40 }
+      });
+      const result = res && res.result;
+      const list = Array.isArray(result?.list) ? result.list : [];
+      if (!list.length) {
+        // 云端无数据或异常：使用本地占位数据作为回退
+        this.initCoupons();
+        this.buildCouponPages();
+        return;
+      }
+      const mapped = list.map(it => {
+        const brand = typeof it.brandName === 'string' ? it.brandName.trim() : (it.brandName || '');
+        const brandTitle = brand || '品牌';
+        const subTitle = typeof it.name === 'string' ? it.name.trim() : (typeof it.title === 'string' ? it.title.trim() : '优惠券');
+        const image = (typeof it.headUrl === 'string' && it.headUrl.indexOf('http') === 0) ? it.headUrl : '/images/placeholder.png';
+        const tag1 = typeof it.label1 === 'string' ? it.label1.trim() : '';
+        const tag2 = typeof it.label2 === 'string' ? it.label2.trim() : '';
+        const tag = tag2 || tag1 || '';
+        const sellPrice = Number(it.sellPrice || 0);
+        const originalPrice = Number(it.originalPrice || 0);
+        return {
+          id: it.skuViewId,
+          title: brandTitle,
+          subTitle,
+          tag,
+          image,
+          sellPrice,
+          originalPrice,
+          referralLinkMap: it.referralLinkMap || {}
+        };
+      });
+      const pages = this.paginateCoupons(mapped, 4);
+      const pages10 = pages.slice(0, 10);
+      this.setData({ coupons: mapped, couponPages: pages10, couponSwiperCurrent: 0 });
+    } catch (err) {
+      console.warn('[coupon] 读取红包领券列表失败，使用本地占位：', err);
+      this.initCoupons();
+      this.buildCouponPages();
+    }
   }
 });

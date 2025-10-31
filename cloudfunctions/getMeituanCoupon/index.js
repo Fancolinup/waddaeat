@@ -49,6 +49,9 @@ exports.main = async (event, context) => {
   const appKey = process.env.MEITUAN_APPKEY || event.appKey || '';
   const secret = process.env.MEITUAN_SECRET || event.secret || '';
 
+  if (!appKey || !secret) {
+    return { ok: false, error: { message: 'Missing MEITUAN_APPKEY/MEITUAN_SECRET' } };
+  }
   const platform = Number(event.platform ?? 1);
   const bizLine = (event.bizLine ?? '');
   const searchText = (event.searchText ?? '麦当劳');
@@ -112,15 +115,15 @@ exports.main = async (event, context) => {
   console.log('[Meituan] Request Body:', reqBody);
 
   // 自动重试：每10秒一次，最多5次（支持入参覆盖）
-  const maxRetries = typeof event?.maxRetries === 'number' ? event.maxRetries : 10;
-  const delayMs = typeof event?.delayMs === 'number' ? event.delayMs : 10000;
+  const maxRetries = typeof event?.maxRetries === 'number' ? event.maxRetries : 3;
+  const delayMs = typeof event?.delayMs === 'number' ? event.delayMs : 2000;
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   try {
     let lastErr = null;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const resp = await axios.post(url, bodyStr, { headers, timeout: 8000 });
+        const resp = await axios.post(url, bodyStr, { headers, timeout: 5000 });
         console.log('[Meituan] Response Status:', resp.status, 'attempt=', attempt);
         console.log('[Meituan] Response Headers:', resp.headers);
         console.log('[Meituan] Response Data:', resp.data);

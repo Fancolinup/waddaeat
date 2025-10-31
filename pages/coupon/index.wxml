@@ -48,13 +48,21 @@
     <swiper class="coupon-swiper" current="{{couponSwiperCurrent}}" bindchange="onCouponSwiperChange">
       <swiper-item wx:for="{{couponPages}}" wx:key="pi" wx:for-index="pi" wx:for-item="page">
         <view class="grid">
-          <view class="grid-card" wx:for="{{page}}" wx:key="id" wx:for-item="c">
+          <view class="grid-card" wx:for="{{page}}" wx:key="id" wx:for-item="c" data-id="{{c.id}}" bindtap="onReceiveCoupon" hover-class="none">
             <image class="grid-bg" src="{{c.image}}" mode="aspectFill" />
+            <!-- 主标题：品牌名（粗体中括号），卡片左上角 -->
+            <view class="grid-title brand-title">{{c.title}}</view>
+            <!-- 标签：移动到卡片右上角 -->
+            <view wx:if="{{c.tag}}" class="grid-tag tag-top-right">{{c.tag}}</view>
             <view class="grid-overlay">
-              <view class="grid-title">{{c.title}}</view>
+              <!-- 副标题：商品名称（增大字号） -->
               <view class="grid-sub">{{c.subTitle}}</view>
-              <view class="grid-tag">{{c.tag}}</view>
-              <button class="grid-btn" size="mini" data-id="{{c.id}}" bindtap="onReceiveCoupon">立即领取</button>
+              <!-- 价格区：优惠价高亮，原价灰色划线 -->
+              <view class="grid-price">
+                <text class="price-sale">¥{{c.sellPrice}}</text>
+                <text wx:if="{{c.originalPrice}}" class="price-original">¥{{c.originalPrice}}</text>
+              </view>
+              <!-- 移除按钮，改为整卡可点击跳转 -->
             </view>
           </view>
         </view>
