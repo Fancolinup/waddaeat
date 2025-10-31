@@ -4,34 +4,27 @@
   <scroll-view class="brand-scroll" scroll-x="true" enable-flex="true" show-scrollbar="false">
     <view class="brand-item" wx:for="{{partnerBrands}}" wx:key="name" data-name="{{item.name}}" data-logo="{{item.logo}}" bindtap="onPartnerBrandTap">
       <view class="brand-logo-wrap">
-        <image class="brand-logo" src="{{item.logo}}" mode="aspectFill" lazy-load="true" data-name="{{item.name}}" binderror="onBrandLogoError" />
+        <image class="brand-logo" src="{{item.logo || '/images/placeholder.png'}}" mode="aspectFill" lazy-load="true" data-name="{{item.name}}" data-logo="{{item.logo}}" binderror="onBrandLogoError" />
       </view>
       <view class="brand-name">{{item.name}}</view>
     </view>
   </scroll-view>
 
   <!-- 活动Banner（保持原有样式类名），使用 CSS translateY 在 wxss 中微调上移 -->
-  <view class="banner-section">
+  <view class="banner-section" wx:if="{{false}}" bindtap="onBannerTap" hover-class="none" hover-stop-propagation="true">
     <image class="banner-bg" src="{{activityBanner.image}}" mode="aspectFill" />
     <view class="banner-overlay">
       <view class="banner-title">{{activityBanner.title}}</view>
       <view class="banner-desc">{{activityBanner.desc}}</view>
-      <button class="banner-btn" bindtap="onBannerTap">立即参与</button>
     </view>
   </view>
 
   <!-- 平台活动 Banner 轮播 -->
   <view wx:if="{{platformBanners.length}}" class="banner-section">
-    <swiper class="coupon-swiper" autoplay="true" interval="3500" circular="true">
+    <swiper class="banner-swiper" autoplay="true" interval="3500" circular="true">
       <swiper-item wx:for="{{platformBanners}}" wx:key="actId" wx:for-item="b" wx:for-index="bi">
-        <view class="grid-card" data-idx="{{bi}}" bindtap="onTapPlatformBanner">
-          <image class="grid-bg" src="{{b.headUrl}}" mode="aspectFill" />
-          <view class="grid-overlay">
-            <view class="grid-title">平台活动</view>
-            <view class="grid-sub">活动ID：{{b.actId}}</view>
-            <view class="grid-tag">限时</view>
-            <button class="grid-btn" size="mini">点击参与</button>
-          </view>
+        <view class="grid-card" hover-class="none">
+          <image class="banner-bg" src="{{b.headUrl}}" mode="aspectFill" data-idx="{{bi}}" binderror="onPlatformBannerImageError" bindtap="onTapPlatformBanner" />
         </view>
       </swiper-item>
     </swiper>

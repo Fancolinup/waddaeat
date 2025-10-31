@@ -40,6 +40,11 @@ exports.main = async (event, context) => {
   const defaultActIds = [689, 701, 648, 645, 638, 569];
   let actIds = Array.isArray(event?.actIds) ? event.actIds : null;
   if (!actIds) {
+    if (actSeed && Array.isArray(actSeed.actIds) && actSeed.actIds.length) {
+      actIds = actSeed.actIds.map(v => Number(v)).filter(v => !Number.isNaN(v));
+    }
+  }
+  if (!actIds) {
     const envStr = process.env.MEITUAN_ACTIDS || '';
     if (envStr) {
       let parsed = null;
@@ -82,7 +87,8 @@ exports.main = async (event, context) => {
   const nowTs = Date.now();
 
   // 运行模式：refresh=刷新并写入；否则仅读取未过期数据
-  const doRefresh = !!event?.refresh;
+  // 当 event 为空或未提供 refresh 字段时，默认执行刷新（用于定时触发）
+  const doRefresh = (event && Object.keys(event).length > 0) ? !!event.refresh : true;
 
   if (doRefresh) {
     console.log('[PlatformBanner] 刷新模式：开始拉取 actIds=', actIds);
@@ -102,10 +108,12 @@ exports.main = async (event, context) => {
         // 推广链接映射
         const referral = (dataRoot?.referralLinkMap && typeof dataRoot.referralLinkMap === 'object') ? dataRoot.referralLinkMap : {};
 
-        // 尝试从推广链接返回中提取 banner 图与截止时间（如果提供）
-        const headUrlRaw = dataRoot?.headUrl || '';
+        // 兼容两处 banner 图与截止时间字段
+        const coupon = dataRoot?.couponPackDetail || {};
+        const headUrlRaw = dataRoot?.headUrl || coupon?.headUrl || '';
         const headUrl = normalizeHttps(headUrlRaw || '');
-        const endTimeStr = dataRoot?.couponValidETime || '';
+        const timeInfo = dataRoot?.couponValidTimeInfo || {};
+        const endTimeStr = dataRoot?.couponValidETime || timeInfo?.couponValidETime || '';
         const endTimeTs = endTimeStr ? (new Date(endTimeStr)).getTime() : 0;
 
         const payload = {
@@ -144,3 +152,11 @@ exports.main = async (event, context) => {
     return { ok: false, error: { message: e && e.message } };
   }
 };
+
+// 优先读取本地 actSeed.js（若存在）
+let actSeed = null;
+try {
+  actSeed = require('./actSeed.js');
+} catch (e) {
+  actSeed = null;
+}

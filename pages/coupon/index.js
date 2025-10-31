@@ -305,9 +305,38 @@ Page({
   },
 
   onBannerTap() {
-    wx.showToast({ title: '活动参与成功', icon: 'success' });
-    // 触发一次美团 query_coupon 接口云函数调用，并将返回打在前端日志里
-    this.callMeituanCoupon();
+    // 直接复用平台 banner 的点击行为：根据链接进行跳转，不展示 toast
+    try {
+      const first = (this.data.platformBanners || [])[0];
+      if (!first) return;
+      const map = first.referralLinkMap || {};
+      const weapp = map['4'] || map[4];
+      if (weapp) {
+        if (wx?.navigateToMiniProgram && typeof weapp === 'object') {
+          const info = weapp || {};
+          if (info.appId) {
+            wx.navigateToMiniProgram({ appId: info.appId, path: info.path || '', envVersion: 'release' });
+            return;
+          }
+        }
+        if (typeof weapp === 'string') {
+          // 字符串类型：内部页面路径或短链。优先内部路径
+          if (weapp.startsWith('/')) {
+            wx.navigateTo({ url: weapp });
+            return;
+          }
+          // 小程序短链
+          if (wx?.navigateToMiniProgram) {
+            wx.navigateToMiniProgram({ shortLink: weapp, envVersion: 'release' });
+            return;
+          }
+        }
+      }
+      // 无可用小程序链接时给出轻提示
+      wx.showToast({ title: '暂无可用小程序链接', icon: 'none' });
+    } catch (err) {
+      console.warn('[coupon] 顶部活动 banner 跳转失败:', err);
+    }
   },
 
   // 前端触发云函数：调用美团 CPS Open API 的 query_coupon
@@ -358,7 +387,8 @@ Page({
   },
   onBrandLogoError(e) {
     const name = e.currentTarget.dataset.name;
-    console.warn('[品牌区] 品牌logo加载失败，回退占位图：', name);
+    const failingUrl = e.currentTarget.dataset.logo;
+    console.warn('[品牌区] 品牌logo加载失败，回退占位图：', name, 'src=', failingUrl);
     const list = (this.data.partnerBrands || []).slice();
     const idx = list.findIndex(x => x.name === name);
     if (idx >= 0) {
@@ -368,33 +398,167 @@ Page({
   },
   async loadPlatformBanners() {
     try {
-      const res = await wx.cloud.callFunction({
-        name: 'manageMeituanPlatformBanner',
-        data: { refresh: false }
+      const db = wx.cloud.database();
+      const now = Date.now();
+      const { data } = await db.collection('MeituanPlatformBanner').get();
+      // 过滤过期，保留有效（无字段视为有效）
+      let list = (Array.isArray(data) ? data : []).filter(b => {
+        const t = Number(b && b.couponValidETimestamp);
+        return !t || t > now;
       });
-      const result = res?.result || {};
-      const list = Array.isArray(result.banners) ? result.banners : [];
-      const normalized = list.map(b => ({
-        ...b,
-        headUrl: (typeof b.headUrl === 'string' && b.headUrl.startsWith('http://')) ? ('https://' + b.headUrl.slice(7)) : b.headUrl
-      }));
+
+      console.log('[coupon] 平台banner从云端读取数量:', list.length);
+      // 如果云端没有有效数据，使用本地种子 actId 作为回退
+      if (!list.length) {
+        const fallbackActIds = [689, 701, 648, 645, 638, 569];
+        list = fallbackActIds.map(actId => ({ actId, couponValidETimestamp: now + 7 * 24 * 3600 * 1000 }));
+        console.log('[coupon] 使用回退 actId 列表:', fallbackActIds);
+      }
+
+      // 使用云端自有图片：cloud://.../Waddaeat/platform_actions/${actId}.png
+      const fileIds = [];
+      let normalized = list.map(b => {
+        const actId = String(b && b.actId ? b.actId : '');
+        const fileId = actId
+          ? `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${actId}.png`
+          : '';
+        if (fileId) fileIds.push(fileId);
+        return { ...b, headUrl: fileId };
+      });
+
+      console.log('[coupon] 平台banner fileIds:', fileIds);
+
+      // 将 cloud:// 文件ID 转为临时HTTPS链接
+      try {
+        if (fileIds.length && wx.cloud && wx.cloud.getTempFileURL) {
+          const res = await wx.cloud.getTempFileURL({ fileList: fileIds });
+          const map = {};
+          const list2 = (res && res.fileList) || [];
+          for (const item of list2) {
+            if (item && item.fileID) {
+              map[item.fileID] = item.tempFileURL || '';
+            }
+          }
+          normalized = normalized.map(x => {
+            const fid = x.headUrl;
+            const temp = fid ? map[fid] : '';
+            return { ...x, headUrl: (temp && temp.indexOf('http') === 0) ? temp : '/images/placeholder.png' };
+          });
+          console.log('[coupon] 平台banner云图转HTTPS结果:', normalized.map(x => ({ actId: x.actId, url: x.headUrl })));
+        }
+      } catch (eUrl) {
+        console.warn('[coupon] 平台banner云图转HTTPS失败：', eUrl);
+        normalized = normalized.map(x => ({ ...x, headUrl: '/images/placeholder.png' }));
+      }
+
+      // 输出平台banner图片路径日志以便排查
+      try {
+        const urls = (normalized || []).map(x => ({ actId: x.actId, url: x.headUrl }));
+        console.log('[coupon] 平台banner图片路径（actId->url）：', urls);
+      } catch (eLog) {}
       this.setData({ platformBanners: normalized });
     } catch (e) {
-      console.warn('[coupon] loadPlatformBanners error', e);
+      console.warn('[coupon] 读取平台banner失败：', e);
+      this.setData({ platformBanners: [] });
+    }
+  },
+  onPlatformBannerImageError(e) {
+    const idx = Number(e?.currentTarget?.dataset?.idx || -1);
+    const list = (this.data.platformBanners || []).slice();
+    if (idx >= 0 && idx < list.length) {
+      console.warn('[coupon] 平台banner图片加载失败，使用占位图。actId=', list[idx]?.actId, 'url=', list[idx]?.headUrl);
+      list[idx].headUrl = '/images/placeholder.png';
+      this.setData({ platformBanners: list });
     }
   },
   async loadPartnerBrandsFromCloud() {
     try {
-      const res = await wx.cloud.callFunction({ name: 'manageMeituanPartnerBrands', data: { refresh: false } });
-      const result = res?.result || {};
-      const brands = Array.isArray(result.brands) ? result.brands : [];
-      if (brands.length) {
-        this.setData({ partnerBrands: brands });
-        return true;
+      const db = wx.cloud.database();
+      const coll = db.collection('MeituanPartnerBrandsSorted');
+
+      // 分页读取全部品牌：默认每次 get 返回最多20条
+      let total = 0;
+      try {
+        const cntRes = await coll.count();
+        total = (cntRes && typeof cntRes.total === 'number') ? cntRes.total : 0;
+      } catch (eCnt) {
+        console.warn('[品牌区] 统计云端品牌总数失败，回退单次读取：', eCnt);
       }
-      return false;
+
+      let dataAll = [];
+      if (total > 0) {
+        for (let offset = 0; offset < total; offset += 20) {
+          try {
+            const res = await coll.skip(offset).get();
+            const batch = (res && Array.isArray(res.data)) ? res.data : [];
+            if (batch.length) dataAll = dataAll.concat(batch);
+          } catch (ePage) {
+            console.warn('[品牌区] 分页读取失败，offset=', offset, ePage);
+          }
+        }
+      } else {
+        // 无法获得总数时，至少读取一页
+        try {
+          const res = await coll.get();
+          dataAll = (res && Array.isArray(res.data)) ? res.data : [];
+        } catch (eGet) {
+          console.warn('[品牌区] 读取云端品牌失败：', eGet);
+          dataAll = [];
+        }
+      }
+
+      let brands = (Array.isArray(dataAll) ? dataAll : []).map(b => {
+        const name = b.name || b.brandName || (b.raw && (b.raw.brandName || (b.raw.brandInfo && b.raw.brandInfo.brandName))) || '';
+        const candidates = [
+          b.brandLogoUrl,
+          b.brandInfo && b.brandInfo.brandLogoUrl,
+          b.logo,
+          b.brandLogo,
+          b.raw && (b.raw.brandLogoUrl || (b.raw.brandInfo && b.raw.brandInfo.brandLogoUrl) || b.raw.logo)
+        ];
+        let logo = '/images/placeholder.png';
+        for (const c of candidates) {
+          if (typeof c === 'string' && c.trim()) { logo = c; break; }
+        }
+        if (typeof logo === 'string') {
+          logo = logo.replace(/`/g, '').trim();
+          if (logo.startsWith('http://')) logo = 'https://' + logo.slice(7);
+        }
+        return { name, logo };
+      }).filter(x => !!x.name);
+
+      console.log('[品牌区] 从云端读取的品牌原始列表（name->logo，总数=', brands.length, '）：', brands.map(x => ({ name: x.name, logo: x.logo })));
+
+      // 兼容云存储 logo：将 cloud:// 路径转换为临时 HTTPS 链接，确保在 iOS 真机也可显示
+      try {
+        const cloudLogos = brands.filter(x => typeof x.logo === 'string' && x.logo.indexOf('cloud://') === 0).map(x => x.logo);
+        if (cloudLogos.length && wx.cloud && wx.cloud.getTempFileURL) {
+          const res = await wx.cloud.getTempFileURL({ fileList: cloudLogos });
+          const map = {};
+          const list = (res && res.fileList) || [];
+          for (const item of list) {
+            if (item && item.fileID) {
+              map[item.fileID] = item.tempFileURL || '';
+            }
+          }
+          brands = brands.map(x => {
+            if (typeof x.logo === 'string' && x.logo.indexOf('cloud://') === 0) {
+              const temp = map[x.logo];
+              return { ...x, logo: (temp && temp.indexOf('http') === 0) ? temp : '/images/placeholder.png' };
+            }
+            return x;
+          });
+          console.log('[品牌区] 云logo转HTTPS结果：', brands.map(x => ({ name: x.name, logo: x.logo })));
+        }
+      } catch (eLogo) {
+        console.warn('[品牌区] 云logo转HTTPS失败：', eLogo);
+      }
+
+      this.setData({ partnerBrands: brands });
+      return brands.length > 0;
     } catch (e) {
-      console.warn('[品牌区] 读取云端已排序品牌失败：', e);
+      console.warn('[品牌区] 直接读取云端已排序品牌失败：', e);
+      this.setData({ partnerBrands: [] });
       return false;
     }
   },
@@ -402,26 +566,27 @@ Page({
     const idx = Number(e?.currentTarget?.dataset?.idx || 0);
     const b = this.data.platformBanners[idx] || {};
     const map = b.referralLinkMap || {};
-    const deeplink = map['3'] || map[3];
     const weapp = map['4'] || map[4];
-    if (deeplink) {
-      if (wx && wx.navigateTo && wx.navigateToMiniProgram) {
-        wx.setClipboardData({ data: deeplink });
-        wx.showToast({ title: '已复制深链，请在浏览器或美团APP打开', icon: 'none' });
-      } else {
-        window.location.href = deeplink;
-      }
-    } else if (weapp && wx?.navigateToMiniProgram) {
-      const info = typeof weapp === 'object' ? weapp : {};
+    // 优先跳转：小程序内跳转 (对象包含 appId)
+    if (weapp && wx?.navigateToMiniProgram && typeof weapp === 'object') {
+      const info = weapp || {};
       if (info.appId) {
         wx.navigateToMiniProgram({ appId: info.appId, path: info.path || '', envVersion: 'release' });
-      } else if (typeof weapp === 'string') {
-        wx.navigateTo({ url: '/pages/webview/index?url=' + encodeURIComponent(weapp) });
-      } else {
-        wx.showToast({ title: '暂无法跳转', icon: 'none' });
+        return;
       }
-    } else {
-      wx.showToast({ title: '暂无可用链接', icon: 'none' });
     }
+    // 其次：字符串类型 weapp -> 内部页面 或 小程序短链
+    if (typeof weapp === 'string') {
+      if (weapp.startsWith('/')) {
+        wx.navigateTo({ url: weapp });
+        return;
+      }
+      if (wx?.navigateToMiniProgram) {
+        wx.navigateToMiniProgram({ shortLink: weapp, envVersion: 'release' });
+        return;
+      }
+    }
+    // 无 deeplink 回退，提示不可跳转
+    wx.showToast({ title: '暂无可用小程序链接', icon: 'none' });
   }
 });

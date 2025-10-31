@@ -59,7 +59,8 @@ exports.main = async (event, context) => {
 
   // 品牌名称来源：优先 event.brandNames -> SEED_BRANDS
   const brandNames = (event && Array.isArray(event.brandNames) && event.brandNames.length) ? event.brandNames : SEED_BRANDS;
-  const doRefresh = !!(event && event.refresh);
+  // 当 event 为空或未提供 refresh 字段时，默认执行刷新（用于定时触发）
+  const doRefresh = event && Object.keys(event).length > 0 ? !!event.refresh : true;
   const nowTs = Date.now();
 
   if (doRefresh) {
@@ -76,26 +77,69 @@ exports.main = async (event, context) => {
         // 仅当该品牌在 URL 集合中存在有效商品（urlMap 非空）时才允许写入
         const collUrl = db.collection('MeituanBrandCouponURL');
         const urlFound = await collUrl.where({ brandName: name }).get();
-        const hasValidUrl = !!(urlFound && urlFound.data && urlFound.data.length && urlFound.data[0] && urlFound.data[0].urlMap && Object.keys(urlFound.data[0].urlMap || {}).length > 0);
+        const urlDocs = Array.isArray(urlFound?.data) ? urlFound.data : [];
+        // 修复：同一品牌可能存在多个 URL 文档，过去仅取第一个，导致误判为空
+        const mergedLinkMap = {};
+        urlDocs.forEach(doc => {
+          const candidate = doc.urlMap || doc.linkMap || doc.referralLinkMap || {};
+          if (candidate && typeof candidate === 'object') {
+            Object.keys(candidate).forEach(k => { mergedLinkMap[k] = candidate[k]; });
+          }
+        });
+        const hasValidUrl = Object.keys(mergedLinkMap).length > 0;
+        console.log('[PartnerBrands] URL文档数：', name, urlDocs.length, '有效sku数=', Object.keys(mergedLinkMap).length);
 
-        if (arr.length > 0 && hasValidUrl) {
-          const first = arr[0] || {};
-          let candidate = first.brandLogoUrl || (first.brandInfo && first.brandInfo.brandLogoUrl) || '';
-          if (typeof candidate === 'string' && candidate.startsWith('http://')) {
-            candidate = 'https://' + candidate.slice(7);
+        // 修改：不再主动依赖实时 getMeituanCoupon 来判定，只要 URL 集合有有效链接就写入品牌排序集合
+        if (hasValidUrl) {
+          // 兼容 logo：优先使用上次存储的品牌券文档中的 brandLogo
+          let candidate = '';
+          let candidateUrl = '';
+          try {
+            const collCoupon = db.collection('MeituanBrandCoupon');
+            const cFound = await collCoupon.where({ brandName: name }).get();
+            const couponDoc = Array.isArray(cFound?.data) && cFound.data.length ? cFound.data[0] : null;
+            candidate = couponDoc?.brandLogo || '';
+            if (typeof candidate === 'string') {
+              candidate = candidate.replace(/`/g, '').trim();
+              if (candidate.startsWith('http://')) {
+                candidate = 'https://' + candidate.slice(7);
+              }
+            }
+            // 追加：从券 items 中抽取品牌级 brandLogoUrl
+            const firstItem = Array.isArray(couponDoc?.items) && couponDoc.items.length ? couponDoc.items[0] : null;
+            candidateUrl = (firstItem && typeof firstItem.brandLogoUrl === 'string') ? firstItem.brandLogoUrl : '';
+            if (typeof candidateUrl === 'string') {
+              candidateUrl = candidateUrl.replace(/`/g, '').trim();
+              if (candidateUrl.startsWith('http://')) {
+                candidateUrl = 'https://' + candidateUrl.slice(7);
+              }
+            }
+            // 兼容：若 items[0].brandLogoUrl 为空，则回退到 raw.brandInfo.brandLogoUrl
+            let rawLogo = (firstItem && firstItem.raw && typeof firstItem.raw.brandInfo?.brandLogoUrl === 'string') ? firstItem.raw.brandInfo.brandLogoUrl : '';
+            if (typeof rawLogo === 'string') {
+              rawLogo = rawLogo.replace(/`/g, '').trim();
+              if (rawLogo.startsWith('http://')) {
+                rawLogo = 'https://' + rawLogo.slice(7);
+              }
+            }
+            if (!candidateUrl && rawLogo) {
+              candidateUrl = rawLogo;
+            }
+          } catch (eLogo) {
+            // 忽略 logo 读取异常，使用空或占位
           }
           const payload = {
             brandName: name,
             brandLogo: candidate || '',
-            // 不再使用排序：保留但不依赖 orderIndex 字段
+            brandLogoUrl: candidateUrl || '',
             orderIndex: brandNames.indexOf(name),
             updatedAt: new Date(),
             source: 'partner-brands-refresh'
           };
           await upsertToCollection(db, 'MeituanPartnerBrandsSorted', { brandName: name }, payload);
-          console.log('[PartnerBrands] 写入（有效商品存在）：', name);
+          console.log('[PartnerBrands] 写入（URL有效）：', name);
         } else {
-          // 无券或无有效商品：删除旧记录，避免前端展示
+          // 无有效链接：删除旧记录
           const coll = db.collection('MeituanPartnerBrandsSorted');
           const found = await coll.where({ brandName: name }).get();
           if (found && found.data && found.data.length) {
@@ -125,7 +169,8 @@ exports.main = async (event, context) => {
       const batch = await collUrl.skip(skip).limit(limit).get();
       const urlDocs = (batch && batch.data) || [];
       urlDocs.forEach(u => {
-        const ok = (u && u.brandName) && (u && u.urlMap) && Object.keys(u.urlMap || {}).length > 0;
+        const linkMapCandidate = (u?.urlMap || u?.linkMap || u?.referralLinkMap || {});
+        const ok = (u && u.brandName) && Object.keys(linkMapCandidate).length > 0;
         if (ok) validBrandSet.add(u.brandName);
       });
       if (urlDocs.length < limit) break;
@@ -134,7 +179,7 @@ exports.main = async (event, context) => {
 
     const brands = docsSorted
       .filter(d => validBrandSet.has(d.brandName))
-      .map(d => ({ name: d.brandName, logo: d.brandLogo || '/images/placeholder.png' }));
+      .map(d => ({ name: d.brandName, logo: (d.brandLogoUrl || d.brandLogo || '/images/placeholder.png') }));
     return { ok: true, brands, total: brands.length, refreshed: doRefresh };
   } catch (e) {
     console.warn('[PartnerBrands] 读取品牌列表失败：', e && e.message);

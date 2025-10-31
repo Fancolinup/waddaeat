@@ -19,12 +19,17 @@ async function ensureCollection(db, name) {
 // 将 query_coupon 返回的产品列表尽量抽取必要字段，避免过多加工以保障3s内完成
 function pickItems(rawList) {
   const list = Array.isArray(rawList) ? rawList : [];
-  return list.map(p => ({
-    skuViewId: p?.skuViewId || p?.skuId || '',
-    title: p?.title || p?.productTitle || p?.skuName || '',
-    brandLogoUrl: normalizeHttps(p?.brandLogoUrl || p?.logoUrl || ''),
-    raw: p // 保留原始以便后续需要更多字段时可用
-  })).filter(x => x.skuViewId);
+  return list.map(p => {
+    const skuViewId = p?.skuViewId || p?.skuId || p?.couponPackDetail?.skuViewId || '';
+    const title = p?.title || p?.productTitle || p?.skuName || p?.couponPackDetail?.name || '';
+    const brandLogoRaw = p?.brandLogoUrl || p?.logoUrl || p?.brandInfo?.brandLogoUrl || '';
+    return {
+      skuViewId,
+      title,
+      brandLogoUrl: normalizeHttps(brandLogoRaw),
+      raw: p
+    };
+  }).filter(x => x.skuViewId);
 }
 
 exports.main = async (event, context) => {
@@ -60,10 +65,55 @@ exports.main = async (event, context) => {
       return { ok: false, brandName, error: result && result.error || { code: 'UPSTREAM_FAIL', message: '上游返回失败' } };
     }
 
+    // 调试日志：观察返回结构
+    try {
+      console.log('[fetchBrandCouponsWorker] upstream ok, typeof result.data =', typeof result.data);
+      console.log('[fetchBrandCouponsWorker] upstream keys =', result.data && Object.keys(result.data));
+      if (Array.isArray(result.data?.data)) {
+        console.log('[fetchBrandCouponsWorker] upstream data[] length =', result.data.data.length);
+      } else {
+        console.log('[fetchBrandCouponsWorker] upstream data.productList length =', (result.data?.data?.productList || result.data?.productList || result.data?.list || []).length);
+      }
+    } catch (e) {}
+
     // 兼容不同层级的数据结构
     const dataRoot = result.data || {};
-    const products = dataRoot.data?.productList || dataRoot.productList || dataRoot.list || [];
+    let products = [];
+    if (Array.isArray(dataRoot?.data)) {
+      // 形态：{ code, message, data: [ {...}, {...} ] }
+      products = dataRoot.data;
+    } else if (Array.isArray(dataRoot?.list)) {
+      // 形态：{ list: [ ... ] }
+      products = dataRoot.list;
+    } else if (Array.isArray(dataRoot?.data?.productList)) {
+      // 形态：{ data: { productList: [...] } }
+      products = dataRoot.data.productList;
+    } else if (Array.isArray(dataRoot?.productList)) {
+      // 形态：{ productList: [...] }
+      products = dataRoot.productList;
+    } else if (Array.isArray(dataRoot)) {
+      // 形态：直接是数组
+      products = dataRoot;
+    } else {
+      products = [];
+    }
+
+    // 调试日志：产品列表与抽取结果
+    try {
+      console.log('[fetchBrandCouponsWorker] products length =', Array.isArray(products) ? products.length : -1);
+      if (Array.isArray(products) && products.length > 0) {
+        console.log('[fetchBrandCouponsWorker] sample product keys =', Object.keys(products[0] || {}));
+      }
+    } catch (e) {}
+
     let items = pickItems(products);
+    try {
+      console.log('[fetchBrandCouponsWorker] picked items length =', items.length);
+      if (items.length > 0) {
+        console.log('[fetchBrandCouponsWorker] sample item =', items[0]);
+      }
+    } catch (e) {}
+
     if (items.length > limitSkuCount) items = items.slice(0, limitSkuCount);
 
     // Upsert 按品牌

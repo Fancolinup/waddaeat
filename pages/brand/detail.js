@@ -51,35 +51,141 @@ Page({
   async fetchProducts() {
     const name = this.data.brandName;
     if (!name) { this.setData({ loading: false, error: '无品牌名' }); return; }
-    const loc = this.data.userLocation || {};
     try {
-      const res = await wx.cloud.callFunction({
-        name: 'getMeituanCoupon',
-        data: {
-          platform: 1,
-          searchText: name,
-          latitude: typeof loc.latitude === 'number' ? loc.latitude : undefined,
-          longitude: typeof loc.longitude === 'number' ? loc.longitude : undefined
+      const db = wx.cloud.database();
+      const { data } = await db.collection('MeituanBrandCoupon').where({ brandName: name }).get();
+      const doc = Array.isArray(data) && data.length > 0 ? data[0] : null;
+      const items = Array.isArray(doc?.items) ? doc.items : [];
+      const list = items.map(it => {
+        const raw = it && it.raw ? it.raw : null;
+        const brandInfo = raw && raw.brandInfo ? raw.brandInfo : null;
+        const detail = raw && raw.couponPackDetail ? raw.couponPackDetail : null;
+        const timeInfo = raw && raw.couponValidTimeInfo ? raw.couponValidTimeInfo : null;
+
+        // 统一的数值解析（支持字符串数字）
+        const parseNum = (v) => {
+          const n = (typeof v === 'string') ? parseFloat(v) : (typeof v === 'number' ? v : NaN);
+          return isFinite(n) ? n : 0;
+        };
+
+        let skuViewId = it?.skuViewId || (detail && detail.skuViewId) || '';
+        let name1 = (detail && detail.name) || it?.title || '';
+        let headUrl = (detail && detail.headUrl) || it?.imgUrl || '';
+        let originalPrice = parseNum((detail && detail.originalPrice) || it?.originalPrice || it?.originPrice);
+        let sellPrice = parseNum((detail && detail.sellPrice) || it?.sellPrice || it?.price || it?.currentPrice);
+        let endStr = timeInfo && timeInfo.couponValidETime ? timeInfo.couponValidETime : '';
+
+        if (typeof headUrl === 'string' && headUrl.startsWith('http://')) {
+          headUrl = 'https://' + headUrl.slice(7);
         }
-      });
-      const result = res && res.result;
-      if (!result || !result.ok) {
-        this.setData({ loading: false, error: (result && result.error && result.error.message) || '请求失败' });
-        return;
+        const itemObj = {
+          skuViewId,
+          name: name1,
+          headUrl,
+          originalPrice,
+          sellPrice
+          // 不再显示截止日期
+        };
+        // 若原始数据包含品牌名，回填一次（不覆盖用户手动传入）
+        if (brandInfo && typeof brandInfo.brandName === 'string' && brandInfo.brandName.length) {
+          try {
+            this.setData({ brandName: brandInfo.brandName });
+          } catch (e) {}
+        }
+        return itemObj;
+      }).filter(x => !!x.skuViewId);
+
+      // 当数据库没有商品时，回退实时拉取
+      if (!list.length) {
+        try {
+          const res = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: name } });
+          const result = res && res.result;
+          let realtime = this.transformProducts(result);
+          // 批量转换 cloud:// 头图为临时HTTPS
+          try {
+            const fileIds2 = realtime.filter(x => typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0).map(x => x.headUrl);
+            if (fileIds2.length && wx.cloud && wx.cloud.getTempFileURL) {
+              const r3 = await wx.cloud.getTempFileURL({ fileList: fileIds2 });
+              const m3 = {};
+              const fl3 = (r3 && r3.fileList) || [];
+              for (const item of fl3) { if (item && item.fileID) m3[item.fileID] = item.tempFileURL || ''; }
+              realtime = realtime.map(x => {
+                if (typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0) {
+                  const tmp3 = m3[x.headUrl];
+                  return { ...x, headUrl: (tmp3 && tmp3.indexOf('http') === 0) ? tmp3 : '/images/placeholder.png' };
+                }
+                return x;
+              });
+            }
+          } catch (e3) {
+            console.warn('[品牌详情] 实时商品云图转HTTPS失败', e3);
+            realtime = realtime.map(x => (typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0) ? { ...x, headUrl: '/images/placeholder.png' } : x);
+          }
+          this.setData({ products: realtime });
+          // 尝试用实时结果设置品牌logo
+          const logoCandidate2 = realtime.length ? realtime[0].brandLogoUrl : '';
+          if (typeof logoCandidate2 === 'string' && logoCandidate2.length) {
+            const cleaned2 = logoCandidate2.startsWith('http://') ? ('https://' + logoCandidate2.slice(7)) : logoCandidate2;
+            this.setData({ brandLogo: cleaned2.replace(/`/g, '').trim() });
+          }
+        } catch (eRT) {
+          console.warn('[品牌详情] DB无商品，调用云函数实时拉取失败：', eRT);
+        }
       }
-      const list = this.transformProducts(result.data);
-      const headerLogo = list && list.length > 0 ? (list[0].brandLogoUrl || '') : '';
-      if (headerLogo) { this.setData({ brandLogo: headerLogo }); }
-      this.setData({ products: list, loading: false });
-      // 获取到商品数据后，自动调用一次 getMeituanURL 以产生云函数日志（网络连通性校验）
+
+      // 批量转换 cloud:// 头图为临时HTTPS（数据库已有商品时）
       try {
-        await wx.cloud.callFunction({ name: 'getMeituanURL', data: { url: 'https://www.meituan.com/' } });
-        console.info('[品牌详情] 已自动调用 getMeituanURL 进行网络校验');
-      } catch (e) {
-        console.warn('[品牌详情] 自动调用 getMeituanURL 失败：', e);
+        const fileIds = list.filter(x => typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0).map(x => x.headUrl);
+        if (fileIds.length && wx.cloud && wx.cloud.getTempFileURL) {
+          const res2 = await wx.cloud.getTempFileURL({ fileList: fileIds });
+          const map2 = {};
+          const fl = (res2 && res2.fileList) || [];
+          for (const item of fl) { if (item && item.fileID) map2[item.fileID] = item.tempFileURL || ''; }
+          const patched = list.map(x => {
+            if (typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0) {
+              const tmp = map2[x.headUrl];
+              return { ...x, headUrl: (tmp && tmp.indexOf('http') === 0) ? tmp : '/images/placeholder.png' };
+            }
+            return x;
+          });
+          // 若上面实时回退已设置 products，这里只在 products 仍为空时设置
+          if (!Array.isArray(this.data.products) || !this.data.products.length) {
+            this.setData({ products: patched });
+          }
+        } else {
+          if (!Array.isArray(this.data.products) || !this.data.products.length) {
+            this.setData({ products: list });
+          }
+        }
+      } catch (e2) {
+        console.warn('[品牌详情] 头图云链接转换失败，使用占位图替换cloud://', e2);
+        const patched = list.map(x => (typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0) ? { ...x, headUrl: '/images/placeholder.png' } : x);
+        if (!Array.isArray(this.data.products) || !this.data.products.length) {
+          this.setData({ products: patched });
+        }
       }
+
+      // 尝试从文档或首个商品的brandInfo设置品牌logo
+      let logo = this.data.brandLogo;
+      if (doc && typeof doc.brandLogo === 'string' && doc.brandLogo) {
+        let cleaned = doc.brandLogo.startsWith('http://') ? ('https://' + doc.brandLogo.slice(7)) : doc.brandLogo;
+        cleaned = cleaned.replace(/`/g, '').trim();
+        logo = cleaned || logo;
+      } else if (items.length) {
+        const raw0 = items[0] && items[0].raw ? items[0].raw : null;
+        let logoCandidate = raw0 && raw0.brandInfo && raw0.brandInfo.brandLogoUrl;
+        if (typeof logoCandidate === 'string' && logoCandidate.length) {
+          if (logoCandidate.startsWith('http://')) logoCandidate = 'https://' + logoCandidate.slice(7);
+          logoCandidate = logoCandidate.replace(/`/g, '').trim();
+          logo = logoCandidate || logo;
+        }
+      }
+      this.setData({ brandLogo: logo });
+
+      this.setData({ loading: false, error: (this.data.products && this.data.products.length) ? '' : '暂无可用商品' });
     } catch (err) {
-      this.setData({ loading: false, error: err.message || '网络错误' });
+      console.warn('[品牌详情] 读取云端商品失败：', err);
+      this.setData({ loading: false, error: err.message || '读取失败' });
     }
   },
 
@@ -125,80 +231,100 @@ Page({
     const idx = e.currentTarget.dataset.index;
     const item = this.data.products[idx];
     if (!item || !item.skuViewId) return;
+    const skuViewId = String(item.skuViewId).trim();
+    const brandName = this.data.brandName;
+    console.info('[品牌详情][调试] 点击商品', { idx, skuViewId, brandName });
     try {
-      const res = await wx.cloud.callFunction({
-        name: 'getMeituanReferralLink',
-        data: { skuViewId: item.skuViewId, linkTypeList: '3,4' }
-      });
-      const result = res && res.result;
-      if (!result || !result.ok) {
-        // FUNCTION_NOT_FOUND 或未部署：降级提示，并尝试仅调用 getMeituanURL 产生日志
-        console.warn('[品牌详情] 推广链接云函数不可用或失败：', result && result.error);
-        try {
-          const fallback = 'https://www.meituan.com/';
-          await wx.cloud.callFunction({ name: 'getMeituanURL', data: { url: fallback } });
-        } catch (e1) {}
-        wx.showToast({ title: '推广服务暂不可用', icon: 'none' });
-        return;
-      }
-      const map = result.data && result.data.data && result.data.data.referralLinkMap ? result.data.data.referralLinkMap : {};
-      const deeplink = map['3'];
-      const mini = map['4'];
-      console.info('[品牌详情] 卡片点击：skuViewId=', item.skuViewId, '\n deeplink=', deeplink, '\n miniLink=', mini);
-      // 优先尝试 deeplink：由于微信小程序无法直接打开外部App，我们采用复制到剪贴板+引导策略
-      if (deeplink && typeof deeplink === 'string') {
-        try {
-          await wx.setClipboardData({ data: deeplink });
-          wx.showModal({
-            title: '已复制推广链接',
-            content: '美团App推广链接已复制到剪贴板，请切换到美团App打开。若无法打开，请使用小程序链接重试。',
-            showCancel: true,
-            cancelText: '用小程序跳转',
-            confirmText: '我知道了',
-            success: async (dlg) => {
-              if (dlg.cancel && mini && typeof mini === 'string') {
-                try {
-                  await wx.navigateToMiniProgram({
-                    shortLink: mini
-                  });
-                } catch (err) {
-                  console.warn('[品牌详情] 由弹窗引导跳转小程序失败', err);
-                  wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' });
-                }
-              }
-            }
-          });
-        } catch (e2) {
-          console.warn('[品牌详情] 复制deeplink失败，尝试使用小程序短链：', e2);
-          if (mini && typeof mini === 'string') {
-            wx.navigateToMiniProgram({
-              shortLink: mini,
-              fail: (err) => { console.warn('[品牌详情] 跳转美团小程序失败', err); wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' }); }
-            });
-            return;
-          }
-          wx.showToast({ title: '暂无可用推广链接', icon: 'none' });
-        }
-        // 无论复制是否成功，都不继续执行后续逻辑（优先策略为deeplink）
-        return;
-      }
-
-      // 若无 deeplink，则使用小程序短链跳转
-      if (mini && typeof mini === 'string') {
-        wx.navigateToMiniProgram({
-          shortLink: mini,
-          fail: (err) => { console.warn('[品牌详情] 跳转美团小程序失败', err); wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' }); }
-        });
-        return;
-      }
-
-      wx.showToast({ title: '暂无可用推广链接', icon: 'none' });
-    } catch (err) {
-      // 捕获 FUNCTION_NOT_FOUND 等 SDK 层异常
-      console.warn('[品牌详情] 获取推广链接异常：', err);
+      const db = wx.cloud.database();
+      // 优先读取品牌聚合文档中的精确匹配（遍历同品牌所有文档，避免只取第一条导致漏匹配）
+      let map = null;
+      let matchMeta = null;
       try {
-        await wx.cloud.callFunction({ name: 'getMeituanURL', data: { url: 'https://www.meituan.com/' } });
-      } catch (e3) {}
+        const { data: brandDocs } = await db.collection('MeituanBrandCouponURL').where({ brandName }).get();
+        const docs = Array.isArray(brandDocs) ? brandDocs : [];
+        // 1) 先从每条文档的 linkMap/referralLinkMap，按文档的 skuViewId 精确匹配
+        for (const d of docs) {
+          const dSku = String((d && d.skuViewId) ? d.skuViewId : '').trim();
+          const candidate = (d && typeof d.linkMap === 'object') ? d.linkMap : ((d && typeof d.referralLinkMap === 'object') ? d.referralLinkMap : null);
+          if (candidate && dSku && dSku === skuViewId) { 
+            map = candidate; 
+            matchMeta = { source: (d && typeof d.linkMap === 'object') ? 'linkMap' : 'referralLinkMap', docId: d && d._id };
+            console.info('[品牌详情][调试] 命中文档（精确）', matchMeta);
+            break; 
+          }
+        }
+        // 2) 再从品牌聚合 urlMap 中按 skuViewId 命中（若存在）
+        if (!map) {
+          for (const d of docs) {
+            const urlMap = d && typeof d.urlMap === 'object' ? d.urlMap : null;
+            if (urlMap && urlMap[skuViewId]) { 
+              map = urlMap[skuViewId]; 
+              matchMeta = { source: 'urlMap', docId: d && d._id, key: skuViewId };
+              console.info('[品牌详情][调试] 命中文档（urlMap）', matchMeta);
+              break; 
+            }
+          }
+        }
+        // 3) 仍未命中：不再使用品牌级回退
+      } catch (e0) {}
+      // 兼容每个 skuViewId 一条记录的写法（单独按 skuViewId 查询）
+      if (!map) {
+        try {
+          const { data: skuDocs } = await db.collection('MeituanBrandCouponURL').where({ skuViewId }).get();
+          const skuDoc = Array.isArray(skuDocs) && skuDocs.length > 0 ? skuDocs[0] : null;
+          const linkMap = skuDoc && typeof skuDoc.linkMap === 'object' ? skuDoc.linkMap : null;
+          if (linkMap) { 
+            map = linkMap; 
+            matchMeta = { source: 'direct_by_skuViewId', docId: skuDoc && skuDoc._id };
+            console.info('[品牌详情][调试] 命中文档（直接按 skuViewId）', matchMeta);
+          }
+        } catch (e1) {}
+      }
+
+      // 默认并仅使用美团小程序链接（linkType=4）进行跳转
+      const weapp = map && (map['4'] || map[4]);
+      if (weapp) {
+        console.info('[品牌详情][调试] 准备跳转', { matchMeta, weappType: typeof weapp, weappPreview: (typeof weapp === 'object') ? { appId: (weapp.appId || 'wxde8ac0a21135c07d'), path: weapp.path || '' } : (typeof weapp === 'string' ? weapp.trim() : weapp) });
+        // 对象类型：包含 appId/path，直接以对象参数跳转；若缺少 appId 则使用美团固定 appId
+        if (wx?.navigateToMiniProgram && typeof weapp === 'object') {
+          const info = weapp || {};
+          const appId = info.appId || 'wxde8ac0a21135c07d';
+          console.info('[品牌详情][调试] 以对象跳转', { appId, path: info.path || '' });
+          wx.navigateToMiniProgram({ appId, path: info.path || '', envVersion: 'release',
+            fail: (err) => { console.warn('[品牌详情] 跳转美团小程序失败', err); wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' }); }
+          });
+          return;
+        }
+        // 字符串类型：内部路径或短链
+        if (typeof weapp === 'string') {
+          const s = weapp.trim();
+          if (s.startsWith('/')) {
+            // 视为美团小程序内部页面路径，带 appId 跳转
+            if (wx?.navigateToMiniProgram) {
+              console.info('[品牌详情][调试] 以内部 path 跳转', { appId: 'wxde8ac0a21135c07d', path: s });
+              wx.navigateToMiniProgram({ appId: 'wxde8ac0a21135c07d', path: s, envVersion: 'release',
+                fail: (err) => { console.warn('[品牌详情] 跳转美团小程序失败', err); wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' }); }
+              });
+              return;
+            }
+          } else {
+            // 视为短链
+            if (wx?.navigateToMiniProgram) {
+              console.info('[品牌详情][调试] 以 shortLink 跳转', { shortLink: s });
+              wx.navigateToMiniProgram({ shortLink: s, envVersion: 'release',
+                fail: (err) => { console.warn('[品牌详情] 跳转美团小程序失败', err); wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' }); }
+              });
+              return;
+            }
+          }
+        }
+      }
+
+      console.warn('[品牌详情][调试] 未找到 linkType=4 小程序链接', { skuViewId, brandName, matchMeta });
+      // 无可用小程序链接时提示，不再使用/引导 deeplink
+      wx.showToast({ title: '暂无可用小程序链接', icon: 'none' });
+    } catch (err) {
+      console.warn('[品牌详情] 读取推广链接失败：', err);
       wx.showToast({ title: '推广服务暂不可用', icon: 'none' });
     }
   },

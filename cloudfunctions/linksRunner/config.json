@@ -1,5 +1,5 @@
 {
   "triggers": [
-    { "name": "links_every_minute", "type": "timer", "config": "0 */1 * * * * *" }
+    { "name": "links_every_5_minutes", "type": "timer", "config": "0 */5 * * * * *" }
   ]
 }

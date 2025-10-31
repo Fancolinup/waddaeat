@@ -111,7 +111,13 @@ function normalizeCouponItem(it, nowTs = Date.now()) {
   const subtitle = it?.subtitle || it?.couponSubTitle || it?.item?.subtitle || '';
   const price = it?.price || it?.payAmount || it?.finalPrice || 0;
   const imgUrl = normalizeHttps(it?.picUrl || it?.imageUrl || it?.couponImgUrl || it?.item?.picUrl || '');
-  return { skuViewId, title, subtitle, expireAt, beginAt, price, imgUrl };
+  // 新增：品牌logo（兼容多字段，规范化为 https，并移除可能的反引号）
+  let brandLogoRaw = it?.brandLogoUrl || it?.item?.brandLogoUrl || (it?.brandInfo && it.brandInfo.brandLogoUrl) || it?.logoUrl || '';
+  if (typeof brandLogoRaw === 'string') {
+    brandLogoRaw = brandLogoRaw.replace(/`/g, '').trim();
+  }
+  const brandLogoUrl = normalizeHttps(brandLogoRaw);
+  return { skuViewId, title, subtitle, expireAt, beginAt, price, imgUrl, brandLogoUrl };
 }
 // 从 DB 读取已有品牌券（用于 runMode=linksOnly）
 async function loadCouponsFromDB(db, limitBrandCount) {
@@ -185,6 +191,8 @@ exports.main = async (event, context) => {
 
   await ensureCollection(db, 'MeituanBrandCoupon');
   await ensureCollection(db, 'MeituanBrandCouponURL');
+  // 新增：确保品牌排序集合存在，用于链接阶段即时写入/删除
+  await ensureCollection(db, 'MeituanPartnerBrandsSorted');
 
   // 品牌列表来源：直接使用 SEED_BRANDS（内联，避免 require 开销）
   const list = SEED_BRANDS.map(n => ({ name: n, logoUrl: '' }));
@@ -357,6 +365,20 @@ exports.main = async (event, context) => {
         };
         const resUpsert = await upsertToCollection(db, 'MeituanBrandCouponURL', { brandName: entry.brandName }, payloadUrl);
         console.log('[Schedule] URL集合写入：', entry.brandName, { id: resUpsert._id, created: !!resUpsert.created, updated: !!resUpsert.updated, urlCount: Object.keys(urlMap).length });
+
+        // 新增：有有效链接时，立即 upsert 到 MeituanPartnerBrandsSorted，保证前端可展示
+        try {
+          const payloadSorted = {
+            brandName: entry.brandName,
+            brandLogo: normalizeHttps(entry.brandLogo || ''),
+            updatedAt: new Date(),
+            source: 'schedule-links'
+          };
+          await upsertToCollection(db, 'MeituanPartnerBrandsSorted', { brandName: entry.brandName }, payloadSorted);
+          console.log('[Schedule] PartnerBrandsSorted 写入：', entry.brandName);
+        } catch (eSorted) {
+          console.warn('[Schedule] PartnerBrandsSorted 写入失败：', entry.brandName, eSorted);
+        }
 
         try {
           const filteredItems = (Array.isArray(entry.items) ? entry.items : []).filter(it => it && urlMap[it.skuViewId]);
