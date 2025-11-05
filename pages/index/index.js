@@ -47,6 +47,8 @@ Page({
     locationText: '选择位置',
     userLocation: null,
     nearbyRestaurants: [],
+    nearbyOffers: [],
+    nearbyLoading: false,
     
     // 云图片占位符
     placeholderImageUrl: cloudImageManager.getCloudImageUrlSync('placeholder', 'png'),
@@ -85,7 +87,17 @@ Page({
     // 随机化转动时长（ms），默认 3200ms
     spinDurationMs: 3200,
     // 旋转次数计数器（接受或确认后重置）
-    spinCounter: 0
+    spinCounter: 0,
+
+    // === 统一位置微调（仅此一处） ===
+    // 使用 transform: translate(Xrpx, Yrpx) 字符串进行微调，避免影响其他模块布局
+    wheelTransform: 'translate(0rpx, 0rpx)',           // 还原旧的负内边距效果
+    paletteTransform: 'translate(-8rpx, -28rpx)',         // 还原旧的右上角偏移
+    addBtnTransform: 'translate(60rpx, 10rpx)',         // 还原旧的右下角偏移
+    switcherTransform: 'translate(0rpx, -30rpx)',         // 还原旧的上移 35rpx
+    shortlistTransform: 'translate(-20rpx, -10rpx)',         // 还原旧的 margin-top:12rpx
+    shareTransform: 'translate(-30rpx, -10rpx)',              // 默认不偏移
+    nearbyTransform: 'translate(0rpx, 8rpx)',                   // 保持位置稳定，避免上移挤占上方模块
   },
 
   onLoad() {
@@ -808,7 +820,7 @@ Page({
     try { wx.nextTick(() => setTimeout(trySpin, 0)); } catch (_) { setTimeout(trySpin, 0); }
   },
 
-  onAccept() {
+  async onAccept() {
     const sel = this.data.selected;
     if (!sel) return;
     const userData = getUserData();
@@ -822,15 +834,86 @@ Page({
     // 锁定分享餐厅，生成文案并展示分享区，隐藏结果浮层，同时重置旋转计数
     this.setData({ shareTargetName: sel.name, showShareArea: true, showDecisionLayer: false, spinCounter: 0 });
     this.loadShareText();
-    wx.showToast({ title: '已记录，就它了', icon: 'success' });
+    try { wx.showLoading({ title: '查询优惠中...' }); } catch (e) { wx.showToast({ title: '查询优惠中...', icon: 'loading', duration: 60000 }); }
     // 接受后清除待刷新标记，避免误触发特殊刷新
     this._pendingAutoRefresh = false;
 
-    // 外卖/茶饮：在记录“就它”后，继续执行美团跳转
-    if (this.data.wheelType === 'takeout' || this.data.wheelType === 'beverage') {
+    // 新“领券”流程：根据餐厅名拉取 platform 1 和 platform 2(bizLine:1) 商品并合并展示
+    try {
       const name = String(sel.name || '').trim();
-      if (name) { this._doMeituanJump(name); }
+      const logo = sel.icon || '';
+      if (!name) return;
+      const wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: name } });
+      const osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, searchText: name } });
+      const list1 = this._mapMeituanItemsToProducts(wmRes && wmRes.result);
+      const list2 = this._mapMeituanItemsToProducts(osRes && osRes.result);
+      // 合并并按 skuViewId 去重
+      const seen = new Set();
+      let merged = ([]).concat(list1 || [], list2 || []).filter(it => {
+        const id = String(it && it.skuViewId || '').trim();
+        if (!id) return false;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+      // 将 cloud:// 头图转换为临时 HTTPS
+      try {
+        const fileIds = merged.filter(x => typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0).map(x => x.headUrl);
+        if (fileIds.length && wx.cloud && wx.cloud.getTempFileURL) {
+          const r = await wx.cloud.getTempFileURL({ fileList: fileIds });
+          const map = {};
+          const fl = (r && r.fileList) || [];
+          for (const item of fl) { if (item && item.fileID) map[item.fileID] = item.tempFileURL || ''; }
+          merged = merged.map(x => {
+            if (typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0) {
+              const t = map[x.headUrl];
+              return { ...x, headUrl: (t && t.indexOf('http') === 0) ? t : '/images/placeholder.png' };
+            }
+            return x;
+          });
+        }
+      } catch (eUrl) { console.warn('[Index][领券] 临时URL转换失败', eUrl); }
+
+      // 若无任何商品，则提示并不跳转
+      if (!merged || !merged.length) {
+        try { wx.hideLoading(); } catch (_) {}
+        wx.showToast({ title: '该餐厅目前无优惠。', icon: 'none' });
+        return;
+      }
+
+      // 跳转品牌详情页并通过 eventChannel 传入合并商品列表
+      wx.navigateTo({
+        url: `/pages/brand/detail?name=${encodeURIComponent(name)}${logo ? `&logo=${encodeURIComponent(logo)}` : ''}`,
+        success: (res) => { try { res.eventChannel.emit('initData', { products: merged }); } catch(e) {} },
+        fail: (err) => { console.warn('[Index][领券] 跳转品牌详情失败', err); wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' }); }
+      });
+      try { wx.hideLoading(); } catch (_) {}
+    } catch (e) {
+      console.warn('[Index][领券] 拉取商品失败', e);
+      try { wx.hideLoading(); } catch (_) {}
+      wx.showToast({ title: '领券服务暂不可用', icon: 'none' });
     }
+  },
+
+  // 将美团云函数返回的数据映射为品牌详情页可用的商品对象
+  _mapMeituanItemsToProducts(res) {
+    const root = res && (res.data || res);
+    const arr = Array.isArray(root && root.data)
+      ? root.data
+      : (Array.isArray(root && root.list)
+        ? root.list
+        : (Array.isArray(root && root.items) ? root.items : []));
+    const parseNum = (v) => { const n = (typeof v === 'string') ? parseFloat(v) : (typeof v === 'number' ? v : NaN); return isFinite(n) ? n : 0; };
+    return (arr || []).map(it => {
+      const skuViewId = String(it?.couponPackDetail?.skuViewId || it?.skuViewId || '').trim();
+      const brandName = it?.brandInfo?.brandName || it?.brandName || this.data.shareTargetName || '';
+      const name = it?.couponPackDetail?.name || it?.name || it?.title || '';
+      let headUrl = it?.couponPackDetail?.headUrl || it?.headUrl || it?.imgUrl || it?.image || it?.picUrl || '';
+      if (typeof headUrl === 'string' && headUrl.startsWith('http://')) headUrl = 'https://' + headUrl.slice(7);
+      const originalPrice = parseNum(it?.couponPackDetail?.originalPrice || it?.originalPrice || it?.originPrice);
+      const sellPrice = parseNum(it?.couponPackDetail?.sellPrice || it?.sellPrice || it?.price || it?.currentPrice);
+      return { skuViewId, brandName, name, headUrl, originalPrice, sellPrice };
+    }).filter(x => !!x.skuViewId);
   },
 
   // 自动刷新：若连续旋转4次未接受/确认，则设置待刷新标记（不对外卖转盘生效，不立即刷新，不隐藏浮层）
@@ -2219,24 +2302,43 @@ Page({
   // 初始化转盘切换按钮图标
   async initSwitchIcons() {
     try {
-      cloudImageManager.preloadImages(['canteen', 'takeout', 'beverage']);
-      const names = ['canteen', 'takeout', 'beverage'];
+      // 使用用户提供的云端文件ID
+      const canteenId = 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png';
+      const takeoutId = 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/takeout.png';
+      const beverageId = 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/beverage.png';
       const nextIcons = { ...this.data.switchIcons };
-      
-      for (const name of names) {
-        if (cloudImageManager.isIOS) {
-          // iOS设备使用HTTPS临时链接
-          nextIcons[name] = await this.getImageWithFallback(name);
+
+      if (cloudImageManager.isIOS) {
+        // iOS 设备需要通过临时 HTTPS 链接
+        if (wx.cloud && wx.cloud.getTempFileURL) {
+          const res = await wx.cloud.getTempFileURL({ fileList: [canteenId, takeoutId, beverageId] });
+          const list = (res && (res.fileList || res.file_list)) || [];
+          const map = {};
+          list.forEach(item => {
+            const fid = item.fileID || item.fileId || item.file_id;
+            const url = item.tempFileURL || item.tempFileUrl;
+            if (fid && url) map[fid] = url;
+          });
+          nextIcons.canteen = map[canteenId] || this.data.placeholderImageUrl;
+          nextIcons.takeout = map[takeoutId] || this.data.placeholderImageUrl;
+          nextIcons.beverage = map[beverageId] || this.data.placeholderImageUrl;
         } else {
-          // 非iOS设备使用cloud://协议
-          nextIcons[name] = cloudImageManager.getCloudImageUrl(name, 'png');
+          // 无法获取临时链接时兜底为占位图
+          nextIcons.canteen = this.data.placeholderImageUrl;
+          nextIcons.takeout = this.data.placeholderImageUrl;
+          nextIcons.beverage = this.data.placeholderImageUrl;
         }
+      } else {
+        // 非 iOS 设备直接使用 cloud:// 文件ID
+        nextIcons.canteen = canteenId;
+        nextIcons.takeout = takeoutId;
+        nextIcons.beverage = beverageId;
       }
-      
+
       this.setData({ switchIcons: nextIcons });
-      console.log('[转盘图标] 初始化完成:', nextIcons);
-    } catch (e) { 
-      console.error('[转盘图标初始化] 失败:', e); 
+      console.log('[转盘图标] 使用指定云路径初始化完成:', nextIcons);
+    } catch (e) {
+      console.error('[转盘图标初始化] 失败:', e);
     }
   },
 
@@ -2300,7 +2402,8 @@ Page({
 
       this.setData({
         locationStatus: 'loading',
-        locationText: '选择位置中'
+        locationText: '选择位置中',
+        nearbyLoading: true
       });
 
       // 直接使用wx.chooseLocation让用户选择位置，无需权限检查
@@ -2467,8 +2570,12 @@ Page({
         locationStatus: 'success',
         locationText: displayName,
         userLocation: location,
-        nearbyRestaurants: restaurants
+        nearbyRestaurants: restaurants,
+        nearbyLoading: false
       });
+
+      // 定位成功后加载今日选择页“附近优惠”数据（与领券中心一致）
+      this.loadNearbyOffers();
 
       // 缓存用户选择的位置到本地存储（双向同步）
       try { wx.setStorageSync('userLocation', location); } catch(e) {}
@@ -2640,6 +2747,113 @@ Page({
         locationStatus: 'success',
         locationText: displayName
       });
+    }
+  },
+
+  // 首页：加载附近优惠（与领券中心逻辑一致）
+  async loadNearbyOffers() {
+    try {
+      this.setData({ nearbyLoading: true });
+      const loc = this.data.userLocation;
+      if (!loc || typeof loc.latitude !== 'number' || typeof loc.longitude !== 'number') {
+        this.setData({ nearbyOffers: [], nearbyLoading: false });
+        return;
+      }
+      const targetCount = 40;
+      const radiusSteps = [1500, 2500, 3500, 5000, 7000];
+      let collected = [];
+      let usedRadius = radiusSteps[0];
+      for (const r of radiusSteps) {
+        usedRadius = r;
+        const res = await locationService.searchNearbyRestaurants({ latitude: loc.latitude, longitude: loc.longitude }, r);
+        const arr = Array.isArray(res) ? res : [];
+        // 按 id/name 去重聚合
+        const map = new Map(collected.map(x => [String(x.id || x.name || ''), x]));
+        for (const it of arr) {
+          const key = String(it.id || it.name || '');
+          if (!map.has(key)) { map.set(key, it); }
+        }
+        collected = Array.from(map.values());
+        if (collected.length >= targetCount) break;
+      }
+      const nearbyArr = collected.slice(0, targetCount);
+      console.info('[附近优惠][首页] 采集附近餐厅数:', nearbyArr.length, '使用半径:', usedRadius);
+      const restaurantCards = [];
+
+      const parseNum = (x) => { const n = Number(x); return isNaN(n) ? null : n; };
+
+      for (const r of nearbyArr) {
+        const rName = r && (r.name || r.brandName || r.title) || '';
+        if (!rName) continue;
+        let wmRes = null, osRes = null;
+        let itemsWithLink = [];
+        try { wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: rName } }); } catch(e) {}
+        try { osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, searchText: rName } }); } catch(e) {}
+        const collect = (resp, source) => {
+          const root = resp && (resp.result && (resp.result.data || resp.result) || resp) || {};
+          const arr = Array.isArray(root.data) ? root.data : (Array.isArray(root.list) ? root.list : (Array.isArray(root.items) ? root.items : []));
+          const out = [];
+          for (const it of arr) {
+            const skuViewId = String(it?.couponPackDetail?.skuViewId || it?.skuViewId || '').trim();
+            if (!skuViewId) continue;
+            const brandName = it?.brandInfo?.brandName || it?.brandName || rName;
+            const name = it?.couponPackDetail?.name || it?.name || it?.title || '';
+            let headUrl = it?.couponPackDetail?.headUrl || it?.headUrl || it?.imgUrl || it?.image || it?.picUrl || '';
+            if (typeof headUrl === 'string' && headUrl.startsWith('http://')) headUrl = 'https://' + headUrl.slice(7);
+            const originalPrice = parseNum(it?.couponPackDetail?.originalPrice || it?.originalPrice || it?.originPrice);
+            const sellPrice = parseNum(it?.couponPackDetail?.sellPrice || it?.sellPrice || it?.price || it?.currentPrice);
+            out.push({ skuViewId, brandName, name, headUrl, source, bizLine: Number(it?.bizLine ?? (source === 'onsite' ? 1 : 0)), originalPrice, sellPrice });
+          }
+          return out;
+        };
+        const wmItems = wmRes ? collect(wmRes, 'waimai') : [];
+        const osItems = osRes ? collect(osRes, 'onsite') : [];
+        itemsWithLink = wmItems.concat(osItems);
+        const extractBrandLogoUrl = (resp) => {
+          try {
+            const root = resp?.result?.data || resp?.result || {};
+            const arr = Array.isArray(root?.data) ? root.data : (Array.isArray(root?.list) ? root.list : (Array.isArray(root?.items) ? root.items : []));
+            let c = '';
+            for (const it of arr) { c = it?.brandInfo?.brandLogoUrl || it?.brandLogoUrl || ''; if (c) break; }
+            if (typeof c === 'string' && c.startsWith('http://')) c = 'https://' + c.slice(7);
+            return c;
+          } catch (e) { return ''; }
+        };
+        const logoCandidate = extractBrandLogoUrl(wmRes) || extractBrandLogoUrl(osRes) || '';
+        const logoUrl = logoCandidate || (r.icon || (r.photoUrls && r.photoUrls[0]) || this.data.placeholderImageUrl);
+        restaurantCards.push({ id: r.id || (rName + '_' + (r.distance || '')), name: rName, distance: typeof r.distance === 'number' ? r.distance : null, logoUrl: logoUrl || '/images/placeholder.png', products: itemsWithLink });
+      }
+      const nearbyOffers = restaurantCards;
+      const nearbyOffersLoop = [];
+      this.setData({ nearbyOffers, nearbyOffersLoop, nearbyLoading: false });
+    } catch (err) {
+      console.warn('[附近优惠][首页] 加载失败', err);
+      this.setData({ nearbyLoading: false });
+    }
+  },
+
+  // 底部附近优惠卡片点击跳转到品牌详情（与领券中心对齐）
+  onNearbyRestaurantTap(e) {
+    try {
+      const id = e.currentTarget.dataset.id;
+      const list = Array.isArray(this.data.nearbyOffers) ? this.data.nearbyOffers : [];
+      const restaurant = list.find(r => String(r.id) === String(id));
+      if (!restaurant) return;
+      const name = restaurant.name || '';
+      const logo = restaurant.logoUrl || '/images/placeholder.png';
+      const products = Array.isArray(restaurant.products) ? restaurant.products : [];
+      const url = `/pages/brand/detail?name=${encodeURIComponent(name)}&logo=${encodeURIComponent(logo)}`;
+      wx.navigateTo({
+        url,
+        success: (res) => {
+          try {
+            res.eventChannel.emit('initData', { products });
+          } catch (e) { console.warn('[附近优惠][跳转] 事件通道传递失败', e); }
+        },
+        fail: (err) => { console.warn('[附近优惠][跳转] 失败', err); }
+      });
+    } catch (err) {
+      console.warn('[附近优惠][点击] 处理失败', err);
     }
   }
 });

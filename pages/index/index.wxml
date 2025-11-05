@@ -7,7 +7,7 @@
 
 
   <!-- 轮盘容器：指针向下，轮盘本身旋转，按钮保持固定 -->
-  <view class="hero-area">
+  <view class="hero-area" style="transform: {{wheelTransform}};">
     <view class="roulette-wheel-container">
       <view class="roulette-wheel palette-{{currentPaletteKey}} wt-{{wheelType}} {{spinClass}}" style="transform: rotate({{rouletteRotation}}deg); transition: transform {{spinDurationMs}}ms cubic-bezier(.24,.8,.26,1);">
         <block wx:for="{{segments}}" wx:for-index="sidx" wx:key="sidx">
@@ -26,7 +26,7 @@
       <view class="pointer"></view>
   
       <!-- 右下角操作按钮：配色切换 + 刷新推荐（仅改变纵坐标） -->
-      <view class="top-actions">
+      <view class="top-actions" style="transform: {{paletteTransform}};">
         <view class="palette-switch" bindtap="onTogglePalette">
     <view class="palette-wheel palette-{{currentPaletteKey}} wt-{{wheelType}}"></view>
   </view>
@@ -39,7 +39,7 @@
       </view>
 
       <!-- 轮盘右下角扩展操作：添加更多餐厅（相对轮盘容器绝对定位） -->
-      <view wx:if="{{wheelType === 'restaurant' && !(nearbyRestaurants && nearbyRestaurants.length > 0)}}" class="roulette-extra-actions">
+      <view wx:if="{{wheelType === 'restaurant' && !(nearbyRestaurants && nearbyRestaurants.length > 0)}}" class="roulette-extra-actions" style="transform: {{addBtnTransform}};">
         <button class="add-restaurant-btn" bindtap="onAddMoreRestaurants">添加餐厅</button>
       </view>
     </view>
@@ -94,10 +94,6 @@
       </view>
     </scroll-view>
 
-    <!-- 美团跳转按钮：餐厅/外卖/茶饮转盘显示，位于结果浮层右上角 -->
-    <view class="meituan-entry" wx:if="{{(wheelType === 'takeout' || wheelType === 'beverage' || wheelType === 'restaurant') && selected}}">
-      <image class="meituan-btn" src="cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/meituan.png" mode="aspectFit" catchtap="onJumpToMeituan"></image>
-    </view>
 
     <!-- 导航按钮：图片直接作为按钮 -->
     <view class="dl-navigation" wx:if="{{selected && selected.isFromAmap}}">
@@ -106,14 +102,14 @@
     </view>
 
     <view class="dl-actions">
-    <button class="dl-btn dl-primary" bindtap="onAccept">就它<image class="dl-meituan-inline" wx:if="{{wheelType === 'takeout' || wheelType === 'beverage'}}" src="cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/meituan.png" mode="aspectFit"></image></button>
-    <button class="dl-btn dl-secondary" bindtap="onReroll">再转一次</button>
-    <button class="dl-btn dl-tertiary" bindtap="onAddShortlist">加入备选</button>
-  </view>
+      <button class="dl-btn dl-primary" bindtap="onAccept">就它，帮我领券</button>
+      <button class="dl-btn dl-secondary" bindtap="onReroll">再转一次</button>
+      <button class="dl-btn dl-tertiary" bindtap="onAddShortlist">加入备选</button>
+    </view>
   </view>
 
   <!-- 转盘切换按钮区域容器：提供固定占位，避免与其他元素相互影响 -->
-  <view class="wheel-type-switcher-area">
+  <view class="wheel-type-switcher-area" style="transform: {{switcherTransform}};">
     <view class="wheel-type-switcher ws-{{wheelType}} {{switchingAnimation ? 'switching' : ''}}">
       <view class="switcher-item item-restaurant {{wheelType === 'restaurant' ? 'active' : ''}}" data-type="restaurant" bindtap="onSwitchWheelType">
         <image class="icon" src="{{switchIcons.canteen || placeholderImageUrl}}" mode="aspectFit"></image>
@@ -132,36 +128,62 @@
 
 
 
-  <!-- 备选区（3个透明背景虚线占位，填充后显示logo卡片+删除按钮） -->
-  <view class="shortlist">
-    <view class="short-title">备选清单</view>
-    <view class="short-grid short-grid-3">
-      <block wx:for="{{shortlist}}" wx:key="index" wx:for-index="idx">
-        <view class="short-slot filled {{activeShortlistIndex === idx ? 'selected' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" bindtap="onTapShortlistCard">
-          <image class="short-img" src="{{item.icon}}" mode="scaleToFill" lazy-load="true" data-id="{{item.id}}" binderror="onShortImgError" />
-          <view class="short-caption">{{item.name}}</view>
-          <view class="short-confirm" wx:if="{{activeShortlistIndex === idx}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" catchtap="onShortConfirm">就它<text wx:if="{{wheelType === 'takeout' || wheelType === 'beverage'}}">(去下单)</text></view>
-          <text class="short-remove" data-id="{{item.id}}" catchtap="onRemoveShort">×</text>
-        </view>
-      </block>
+  <!-- 备选与分享：左右并排布局 -->
+  <view class="short-share-row">
+    <view class="shortlist compact" style="transform: {{shortlistTransform}};">
+      <view class="short-title">备选清单</view>
+      <view class="short-grid short-grid-3 compact">
+        <block wx:for="{{shortlist}}" wx:key="index" wx:for-index="idx">
+          <view class="short-slot filled {{activeShortlistIndex === idx ? 'selected' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" bindtap="onTapShortlistCard">
+            <image class="short-img" src="{{item.icon}}" mode="scaleToFill" lazy-load="true" data-id="{{item.id}}" binderror="onShortImgError" />
+            <view class="short-caption">{{item.name}}</view>
+            <view class="short-confirm" wx:if="{{activeShortlistIndex === idx}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" catchtap="onShortConfirm">就它<text wx:if="{{wheelType === 'takeout' || wheelType === 'beverage'}}">(去下单)</text></view>
+            <text class="short-remove" data-id="{{item.id}}" catchtap="onRemoveShort">×</text>
+          </view>
+        </block>
         <block wx:for="{{placeholderSlots}}" wx:key="*this">
           <view class="short-slot placeholder"></view>
         </block>
+      </view>
+    </view>
+    <view class="share-panel" style="transform: {{shareTransform}};">
+      <view class="share-title">转发好友，一起决策</view>
+      <view class="share-text">{{shareText}}</view>
+      <view class="share-actions">
+        <image class="icon-btn" src="/images/copy.svg" catchtap="onCopyShare" />
+        <image class="icon-btn" src="/images/refresh.svg" catchtap="onRefreshShare" />
+      </view>
     </view>
   </view>
 
-  <!-- 分享区（固定底部条，图标按钮在右侧，3rpx 边距） -->
-  <view class="share-bar">
-    <view class="share-content">
-      <text class="share-title">转发好友，一起决策</text>
-      <text class="share-text">{{shareText}}</text>
+  <!-- 底部预留空间：迁移“附近优惠”模块 -->
+  <view class="nearby-section" style="transform: {{nearbyTransform}};">
+    <view class="nearby-header">
+      <text class="nearby-title">附近优惠</text>
+      <!-- 不重复位置选择模块：今日选择页顶部已有位置选择按钮 -->
     </view>
-    <view class="share-actions">
-       <image class="icon-btn" src="/images/copy.svg" catchtap="onCopyShare" />
-       <image class="icon-btn" src="/images/refresh.svg" catchtap="onRefreshShare" />
-       <!-- 移除：旧的定位开发中提示 -->
-     </view>
+
+    <!-- 未获取到位置或经纬度无效时的提示占位 -->
+    <view wx:if="{{!userLocation || !userLocation.latitude || !userLocation.longitude}}" class="nearby-placeholder">左上角定位后展示附近优惠</view>
+
+    <!-- 加载中提示：在已定位但附近优惠加载中时展示 -->
+    <view wx:elif="{{nearbyLoading}}" class="nearby-loading">附近优惠加载中<text class="dot dot1">.</text><text class="dot dot2">.</text><text class="dot dot3">.</text></view>
+
+    <!-- 当已定位但暂无附近优惠时，给出提示占位 -->
+    <view wx:elif="{{!(nearbyOffers && nearbyOffers.length > 0)}}" class="nearby-placeholder">附近暂无优惠</view>
+
+    <!-- 展示餐厅横滑列表（logo作底图+餐厅名），数据来自今日选择页的 nearbyOffers -->
+    <scroll-view wx:else class="horizontal-list" scroll-x="true" enable-flex="true">
+      <view class="h-card" wx:for="{{nearbyOffers}}" wx:key="id" data-id="{{item.id}}" bindtap="onNearbyRestaurantTap">
+        <image class="h-bg" src="{{item.logoUrl || '/images/placeholder.png'}}" mode="aspectFill" />
+        <view class="h-overlay">
+          <view class="h-title">{{item.name}}</view>
+          <view wx:if="{{item.distance}}" class="h-sub">{{item.distance}}m</view>
+        </view>
+      </view>
+    </scroll-view>
   </view>
+
   <view class="page-bottom-spacer"></view>
   <!-- 隐藏离屏画布：用于回退绘制分享图片 -->
   <canvas class="offscreen-canvas" canvas-id="shareCanvas" type="2d"></canvas>

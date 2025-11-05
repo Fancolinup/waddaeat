@@ -3,6 +3,7 @@
     "pages/loading/loading",
     "pages/index/index",
     "pages/coupon/index",
+    "pages/search/index",
     "pages/brand/detail",
     "pages/voice/index",
     "pages/test-voice/index",

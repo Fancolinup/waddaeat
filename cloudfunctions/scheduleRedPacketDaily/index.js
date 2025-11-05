@@ -13,19 +13,37 @@ exports.main = async (event, context) => {
   const brandNames = Array.isArray(event?.brandNames) ? event.brandNames : undefined;
 
   try {
-    const res = await cloud.callFunction({
+    // 阶段一：拉取数据，仅入库商品，不生成链接
+    const dataRes = await cloud.callFunction({
       name: 'buildRedPacketCouponsWorker',
       data: {
         platform,
-        onlyPending,
-        maxRetries,
-        delayMs,
+        onlyPending: false,
+        maxRetries: Math.min(maxRetries, 2),
+        delayMs: Math.min(delayMs, 1000),
         ...(limitBrandCount ? { limitBrandCount } : {}),
         ...(brandNames ? { brandNames } : {}),
-        ...(appKey && secret ? { appKey, secret } : {})
+        ...(appKey && secret ? { appKey, secret } : {}),
+        stage: 'data'
       }
     });
-    return { ok: true, task: 'daily', result: res?.result };
+
+    // 阶段二：补链接，仅处理未生成链接的条目
+    const linkRes = await cloud.callFunction({
+      name: 'buildRedPacketCouponsWorker',
+      data: {
+        platform,
+        onlyPending: true,
+        maxRetries: Math.min(maxRetries, 2),
+        delayMs: Math.min(delayMs, 1000),
+        ...(limitBrandCount ? { limitBrandCount } : {}),
+        ...(brandNames ? { brandNames } : {}),
+        ...(appKey && secret ? { appKey, secret } : {}),
+        stage: 'link'
+      }
+    });
+
+    return { ok: true, task: 'daily', result: { data: dataRes?.result, link: linkRes?.result } };
   } catch (e) {
     return { ok: false, error: { message: e.message } };
   }

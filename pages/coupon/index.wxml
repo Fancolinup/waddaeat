@@ -1,5 +1,10 @@
 <!-- pages/coupon/index.wxml -->
 <view class="coupon-page">
+  <!-- 顶部搜索入口（点击进入二级搜索页） -->
+  <view class="search-bar" bindtap="navigateToSearch" hover-class="none" hover-stop-propagation="true">
+    <image class="search-icon" src="/images/search.svg" mode="widthFix" />
+    <text class="search-placeholder">搜商品/品牌</text>
+  </view>
   <!-- 顶部合作品牌圆标 -->
   <scroll-view class="brand-scroll" scroll-x="true" enable-flex="true" show-scrollbar="false">
     <view class="brand-item" wx:for="{{partnerBrands}}" wx:key="name" data-name="{{item.name}}" data-logo="{{item.logo}}" bindtap="onPartnerBrandTap">
@@ -10,21 +15,15 @@
     </view>
   </scroll-view>
 
-  <!-- 活动Banner（保持原有样式类名），使用 CSS translateY 在 wxss 中微调上移 -->
-  <view class="banner-section" wx:if="{{false}}" bindtap="onBannerTap" hover-class="none" hover-stop-propagation="true">
-    <image class="banner-bg" src="{{activityBanner.image}}" mode="aspectFill" />
-    <view class="banner-overlay">
-      <view class="banner-title">{{activityBanner.title}}</view>
-      <view class="banner-desc">{{activityBanner.desc}}</view>
-    </view>
-  </view>
+  <!-- 整体上移容器：包含 banner 与下方所有模块，上移 5rpx -->
+  <view class="coupon-content-shift">
 
   <!-- 平台活动 Banner 轮播 -->
   <view wx:if="{{platformBanners.length}}" class="banner-section">
     <swiper class="banner-swiper" autoplay="true" interval="3500" circular="true">
       <swiper-item wx:for="{{platformBanners}}" wx:key="actId" wx:for-item="b" wx:for-index="bi">
-        <view class="grid-card" hover-class="none">
-          <image class="banner-bg" src="{{b.headUrl}}" mode="aspectFill" data-idx="{{bi}}" binderror="onPlatformBannerImageError" bindtap="onTapPlatformBanner" />
+        <view class="banner-slide" data-idx="{{bi}}" bindtap="onTapPlatformBanner" hover-class="none" hover-stop-propagation="true" style="-webkit-tap-highlight-color: transparent;">
+          <image class="banner-bg" src="{{b.headUrl}}" mode="aspectFill" binderror="onPlatformBannerImageError" style="-webkit-tap-highlight-color: transparent;" />
         </view>
       </swiper-item>
     </swiper>
@@ -38,31 +37,32 @@
     <view class="category-item {{selectedCategory==='instore'?'active':''}}" data-key="instore" bindtap="onCategoryTap">
       <text class="category-text">到店优惠</text>
     </view>
-    <view class="category-item {{selectedCategory==='flash'?'active':''}}" data-key="flash" bindtap="onCategoryTap">
-      <text class="category-text">限时秒杀</text>
-    </view>
+    <!-- 已移除：限时秒杀入口 -->
   </view>
+
+  <!-- 到店优惠首次加载 Loading -->
+  <loading wx:if="{{selectedCategory === 'instore' && instoreLoading}}" show="{{true}}" text="到店优惠加载中..." type="spinner" mask="{{true}}" opacity="{{0.5}}" />
 
   <!-- 优惠领券区（分页：2x2 网格，每屏4张） -->
   <view class="coupon-section">
     <swiper class="coupon-swiper" current="{{couponSwiperCurrent}}" bindchange="onCouponSwiperChange">
       <swiper-item wx:for="{{couponPages}}" wx:key="pi" wx:for-index="pi" wx:for-item="page">
         <view class="grid">
-          <view class="grid-card" wx:for="{{page}}" wx:key="id" wx:for-item="c" data-id="{{c.id}}" bindtap="onReceiveCoupon" hover-class="none">
-            <image class="grid-bg" src="{{c.image}}" mode="aspectFill" />
-            <!-- 主标题：品牌名（粗体中括号），卡片左上角 -->
-            <view class="grid-title brand-title">{{c.title}}</view>
-            <!-- 标签：移动到卡片右上角 -->
-            <view wx:if="{{c.tag}}" class="grid-tag tag-top-right">{{c.tag}}</view>
-            <view class="grid-overlay">
-              <!-- 副标题：商品名称（增大字号） -->
-              <view class="grid-sub">{{c.subTitle}}</view>
-              <!-- 价格区：优惠价高亮，原价灰色划线 -->
-              <view class="grid-price">
-                <text class="price-sale">¥{{c.sellPrice}}</text>
-                <text wx:if="{{c.originalPrice}}" class="price-original">¥{{c.originalPrice}}</text>
+          <view class="grid-card" wx:for="{{page}}" wx:key="skuViewId" wx:for-item="c" data-id="{{c.skuViewId}}" bindtap="onReceiveCoupon" hover-class="none">
+            <!-- 新布局：上方2/3为商品图；下方1/3为信息区 -->
+            <image class="card-image" src="{{c.headUrl}}" mode="aspectFill" />
+            <view class="card-info">
+              <view class="line1">
+                <text class="brand">{{c.brandName}}</text>
+                <text class="name">{{c.name}}</text>
               </view>
-              <!-- 移除按钮，改为整卡可点击跳转 -->
+              <view class="line2">
+                <view class="prices">
+                  <text wx:if="{{c.sellPrice}}" class="price-sale">¥{{c.sellPrice}}</text>
+                  <text wx:if="{{c.originalPrice}}" class="price-original">¥{{c.originalPrice}}</text>
+                </view>
+                <text wx:if="{{c.label1}}" class="tag">{{c.label1}}</text>
+              </view>
             </view>
           </view>
         </view>
@@ -76,32 +76,9 @@
     </view>
   </view>
 
-  <!-- 附近优惠区：固定标题 + 位置选择模块；未定位时显示提示 -->
-  <view class="nearby-section">
-    <view class="nearby-header">
-      <text class="nearby-title">附近优惠</text>
-      <view class="banner-location {{locationStatus === 'loading' ? 'loading' : ''}}" bindtap="onLocationTap">
-        <image class="icon" src="/images/map.svg" mode="widthFix" />
-        <text class="msg">{{locationText}}</text>
-        <text wx:if="{{locationStatus === 'loading'}}" class="loading-dot">...</text>
-      </view>
-    </view>
-
-    <!-- 未获取到位置时的提示占位 -->
-    <view wx:if="{{!userLocation}}" class="nearby-placeholder">选择位置后查看附近优惠</view>
-
-    <!-- 获取到位置后，展示商品横滑列表 -->
-    <scroll-view wx:else class="horizontal-list" scroll-x="true" enable-flex="true">
-      <view class="h-card" wx:for="{{nearbyOffersLoop.length ? nearbyOffersLoop : nearbyOffers}}" wx:key="id">
-        <image class="h-bg" src="{{item.image}}" mode="aspectFill" />
-        <view class="h-overlay">
-          <view class="h-title">{{item.name}}</view>
-          <view class="h-sub">{{item.distance}}m · {{item.category}}</view>
-          <button class="h-btn" size="mini" data-id="{{item.id}}" bindtap="onReceiveNearbyCoupon">去享受</button>
-        </view>
-      </view>
-    </scroll-view>
-  </view>
+  <!-- 已按需求移除领券中心的附近优惠模块（保留今日选择页的附近优惠不变） -->
 
   <view class="page-bottom-spacer"></view>
+
+  </view> <!-- /coupon-content-shift -->
 </view>

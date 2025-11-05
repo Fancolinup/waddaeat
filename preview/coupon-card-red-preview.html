@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>红包商品卡片（红色系）配色预览</title>
+  <style>
+    :root {
+      --page-bg: linear-gradient(180deg, #3c0d0d 0%, #5a1a1a 35%, #7a2a2a 100%);
+      --card-bg: #1b0d0d;
+      --card-border: rgba(255,255,255,0.12);
+      --overlay-grad: linear-gradient(180deg, rgba(0,0,0,0.00) 0%, rgba(0,0,0,0.55) 100%);
+
+      --brand-color: #fff3e6;        /* 品牌名（相对显眼） */
+      --product-color: #f1f5f9;      /* 商品名 */
+      --tag-bg: rgba(212,175,55,0.18);
+      --tag-color: #e7c976;          /* tag */
+
+      --price-original-color: #ffe5e5; /* 原价 */
+      --price-discount-color: #ffd1d1; /* 优惠价（删除线） */
+      --strike-color: rgba(255,255,255,0.85);
+
+      --accent: #b00020;             /* 红色系强调色 */
+
+      /* 阴影背景（可调） */
+      --text-bg-brand: rgba(0,0,0,0.50);
+      --text-bg-product: rgba(0,0,0,0.40);
+    }
+
+    body { margin: 0; background: var(--page-bg); color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+    .page { max-width: 980px; margin: 0 auto; padding: 20px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .toolbar button { padding: 8px 12px; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; background: rgba(0,0,0,0.25); color: #fff; cursor: pointer; }
+
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .card { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--card-border); box-shadow: 0 10px 26px rgba(0,0,0,0.28); background: var(--card-bg); }
+    .cover { position: relative; width: 100%; height: 140px; overflow: hidden; }
+    .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .overlay { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px; background: var(--overlay-grad); backdrop-filter: saturate(120%) blur(0.5px); }
+
+    .brand { font-size: 18px; font-weight: 900; color: var(--brand-color); letter-spacing: 0.3px; text-shadow: 1px 1px 4px rgba(0,0,0,0.45); display: inline-block; max-width: calc(100% - 4px); background-color: var(--text-bg-brand); padding: 2px 8px; border-radius: 6px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+    .product { margin-top: 4px; font-size: 14px; font-weight: 700; color: var(--product-color); line-height: 20px; text-shadow: 0.5px 0.5px 3px rgba(0,0,0,0.35); display: inline-block; max-width: calc(100% - 4px); background-color: var(--text-bg-product); padding: 2px 8px; border-radius: 6px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+
+    .tags { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .tag { background: var(--tag-bg); color: var(--tag-color); font-size: 12px; font-weight: 800; padding: 4px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15); }
+
+    .prices { margin-top: 8px; display: flex; gap: 12px; align-items: baseline; }
+    .price-original { color: var(--price-original-color); font-size: 16px; font-weight: 800; }
+    .price-discount { color: var(--price-discount-color); font-size: 14px; font-weight: 700; text-decoration: line-through; text-decoration-color: var(--strike-color); text-decoration-thickness: 2px; }
+
+    /* 主题 A：朱砂红 + 金色高亮 */
+    .theme-a { --page-bg: linear-gradient(180deg, #4a0d0d 0%, #6a1a1a 35%, #8c2a2a 100%); --card-bg: #2d1414; --card-border: rgba(255,255,255,0.14); --overlay-grad: linear-gradient(180deg, rgba(0,0,0,0.00) 0%, rgba(0,0,0,0.58) 100%); --brand-color: #fff3e6; --product-color: #f1f5f9; --tag-bg: rgba(212,175,55,0.20); --tag-color: #e7c976; --price-original-color: #ffe5e5; --price-discount-color: #ffd1d1; --strike-color: rgba(255,255,255,0.85); --accent: #b00020; }
+
+    /* 主题 B：绯红 + 煤黑对比 */
+    .theme-b { --page-bg: linear-gradient(180deg, #250606 0%, #3b0b0b 40%, #4d0f0f 100%); --card-bg: #0f0f0f; --card-border: rgba(255,255,255,0.12); --overlay-grad: linear-gradient(180deg, rgba(0,0,0,0.00) 0%, rgba(0,0,0,0.62) 100%); --brand-color: #ffeded; --product-color: #fefefe; --tag-bg: rgba(255, 93, 93, 0.18); --tag-color: #ff6b6b; --price-original-color: #ffecec; --price-discount-color: #ffd1d1; --strike-color: rgba(255,255,255,0.92); --accent: #cf2d2d; }
+
+    /* 主题 C：酒红 + 米白雅致 */
+    .theme-c { --page-bg: linear-gradient(180deg, #3b0a0a 0%, #4f0e0e 45%, #6b1515 100%); --card-bg: #2c1a1a; --card-border: rgba(255,255,255,0.12); --overlay-grad: linear-gradient(180deg, rgba(0,0,0,0.00) 0%, rgba(0,0,0,0.52) 100%); --brand-color: #f8f2e7; --product-color: #f5f5dc; --tag-bg: rgba(187, 138, 82, 0.18); --tag-color: #e7c69f; --price-original-color: #ffe9e3; --price-discount-color: #ffd6cf; --strike-color: rgba(255,255,255,0.88); --accent: #8b0000; }
+
+    /* 主题 D：珊瑚红 + 深灰稳重 */
+    .theme-d { --page-bg: linear-gradient(180deg, #3d0d0f 0%, #5a191f 40%, #7a232b 100%); --card-bg: #1a1a1a; --card-border: rgba(255,255,255,0.10); --overlay-grad: linear-gradient(180deg, rgba(0,0,0,0.00) 0%, rgba(0,0,0,0.60) 100%); --brand-color: #fff2f2; --product-color: #f8fafc; --tag-bg: rgba(255, 120, 120, 0.18); --tag-color: #ff8a8a; --price-original-color: #ffe5e5; --price-discount-color: #ffc6c6; --strike-color: rgba(255,255,255,0.90); --accent: #e74c3c; }
+
+    .theme-name { margin-bottom: 8px; font-size: 13px; color: rgba(255,255,255,0.75); }
+
+    /* 布局预设：以主题A为基础，预览不同排布（不改项目代码） */
+    /* 布局 1：默认底部堆叠，无需特殊样式 */
+
+    /* 布局 2：顶部强调品牌，价格置于右上角 */
+    body.layout-2 .overlay { top: 0; bottom: auto; background: linear-gradient(180deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.20) 100%); display: grid; grid-template-columns: 1fr auto; grid-auto-rows: auto; gap: 6px; }
+    body.layout-2 .brand { grid-column: 1; align-self: start; font-size: 20px; }
+    body.layout-2 .prices { grid-column: 2; align-self: start; justify-self: end; background: rgba(0,0,0,0.35); padding: 4px 8px; border-radius: 999px; }
+    body.layout-2 .tags { grid-column: 1 / span 2; }
+    body.layout-2 .product { grid-column: 1 / span 2; }
+
+    /* 布局 3：左侧竖排标签栏 */
+    body.layout-3 .overlay { bottom: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; }
+    body.layout-3 .tags { grid-column: 1; grid-row: 1 / span 3; display: flex; flex-direction: column; gap: 6px; }
+    body.layout-3 .tag { padding: 3px 8px; font-size: 11px; }
+    body.layout-3 .brand { grid-column: 2; grid-row: 1; }
+    body.layout-3 .product { grid-column: 2; grid-row: 2; }
+    body.layout-3 .prices { grid-column: 2; grid-row: 3; justify-self: end; }
+
+    /* 布局 4：底部两列信息，右侧为标签+价格 */
+    body.layout-4 .overlay { bottom: 0; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 6px; background: linear-gradient(180deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.60) 100%); }
+    body.layout-4 .brand { grid-column: 1; grid-row: 1; }
+    body.layout-4 .tags { grid-column: 2; grid-row: 1; justify-self: end; display: flex; gap: 6px; flex-wrap: wrap; }
+    body.layout-4 .product { grid-column: 1; grid-row: 2; }
+    body.layout-4 .prices { grid-column: 2; grid-row: 2; align-self: end; justify-self: end; }
+  </style>
+</head>
+<body class="theme-a layout-1">
+  <div class="page">
+    <div class="toolbar">
+      <button data-theme="a">主题 A：朱砂红 + 金色高亮</button>
+      <button data-theme="b">主题 B：绯红 + 煤黑对比</button>
+      <button data-theme="c">主题 C：酒红 + 米白雅致</button>
+      <button data-theme="d">主题 D：珊瑚红 + 深灰稳重</button>
+      <!-- 排布切换（默认以主题A预览） -->
+      <button data-layout="1">排布 1（底部堆叠）</button>
+      <button data-layout="2">排布 2（顶部强调品牌）</button>
+      <button data-layout="3">排布 3（左侧标签栏）</button>
+      <button data-layout="4">排布 4（底部两列信息）</button>
+    </div>
+
+    <div class="grid">
+      <!-- 卡片 1：麦当劳 -->
+      <div class="card">
+        <div class="theme-name">示例卡片 · 主题预览</div>
+        <div class="cover">
+          <img src="https://img.meituan.net/content/8e7a1aba97b08f563414f0eb9d67b399319957.jpg@420_0_1080_1080a%7C267h_267w_2e_90Q" alt="商品底图（美团API示例）" />
+          <div class="overlay">
+            <div class="brand">麦当劳 McDonald's</div>
+            <div class="product">麦辣鸡腿堡套餐（限时）</div>
+            <div class="tags">
+              <span class="tag">平台红包</span>
+              <span class="tag">限时</span>
+              <span class="tag">热销</span>
+            </div>
+            <div class="prices">
+              <div class="price-original">原价 ¥29</div>
+              <div class="price-discount">优惠价 ¥19</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 2：瑞幸 -->
+      <div class="card">
+        <div class="theme-name">示例卡片 · 主题预览</div>
+        <div class="cover">
+          <img src="https://img.meituan.net/content/8e7a1aba97b08f563414f0eb9d67b399319957.jpg@420_0_1080_1080a%7C267h_267w_2e_90Q" alt="商品底图（美团API示例）" />
+          <div class="overlay">
+            <div class="brand">瑞幸咖啡 Luckin Coffee</div>
+            <div class="product">美式买二免一（今日特惠）</div>
+            <div class="tags">
+              <span class="tag">平台红包</span>
+              <span class="tag">门店</span>
+              <span class="tag">精选</span>
+            </div>
+            <div class="prices">
+              <div class="price-original">原价 ¥25</div>
+              <div class="price-discount">优惠价 ¥15</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 3：海底捞 -->
+      <div class="card">
+        <div class="theme-name">示例卡片 · 主题预览</div>
+        <div class="cover">
+          <img src="https://img.meituan.net/content/8e7a1aba97b08f563414f0eb9d67b399319957.jpg@420_0_1080_1080a%7C267h_267w_2e_90Q" alt="商品底图（美团API示例）" />
+          <div class="overlay">
+            <div class="brand">海底捞</div>
+            <div class="product">单人套餐券（叠加红包）</div>
+            <div class="tags">
+              <span class="tag">平台红包</span>
+              <span class="tag">门店</span>
+              <span class="tag">热门</span>
+            </div>
+            <div class="prices">
+              <div class="price-original">原价 ¥68</div>
+              <div class="price-discount">优惠价 ¥48</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 4：奈雪的茶 -->
+      <div class="card">
+        <div class="theme-name">示例卡片 · 主题预览</div>
+        <div class="cover">
+          <img src="https://img.meituan.net/content/8e7a1aba97b08f563414f0eb9d67b399319957.jpg@420_0_1080_1080a%7C267h_267w_2e_90Q" alt="商品底图（美团API示例）" />
+          <div class="overlay">
+            <div class="brand">奈雪的茶</div>
+            <div class="product">霸气鲜果茶买一送一</div>
+            <div class="tags">
+              <span class="tag">平台红包</span>
+              <span class="tag">限时</span>
+              <span class="tag">热门</span>
+            </div>
+            <div class="prices">
+              <div class="price-original">原价 ¥32</div>
+              <div class="price-discount">优惠价 ¥22</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const toolbar = document.querySelector('.toolbar');
+    toolbar.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const body = document.body;
+      if (btn.hasAttribute('data-theme')) {
+        const t = btn.getAttribute('data-theme');
+        body.classList.remove('theme-a','theme-b','theme-c','theme-d');
+        body.classList.add('theme-' + t);
+      }
+      if (btn.hasAttribute('data-layout')) {
+        const l = btn.getAttribute('data-layout');
+        body.classList.remove('layout-1','layout-2','layout-3','layout-4');
+        body.classList.add('layout-' + l);
+      }
+    });
+  </script>
+</body>
+</html>

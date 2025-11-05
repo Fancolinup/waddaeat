@@ -1,0 +1,29 @@
+/* pages/search/index.wxss */
+.search-page { height: 100vh; background: #f8f8f8; }
+.search-fixed { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; padding: 20rpx 24rpx; background: #ffffff; box-shadow: 0 6rpx 12rpx rgba(0,0,0,0.06); }
+.search-icon { width: 36rpx; height: 36rpx; margin-right: 16rpx; filter: brightness(0.3); }
+.search-input { flex: 1; height: 72rpx; border-radius: 36rpx; background: #f2f3f5; padding: 0 28rpx; font-size: 28rpx; color: #333; }
+.search-btn { margin-left: 20rpx; height: 72rpx; line-height: 72rpx; padding: 0 28rpx; border-radius: 36rpx; background: #E74C3C; color: #fff; font-size: 28rpx; }
+
+.result-scroll { height: calc(100vh - 92rpx); }
+/* 缩小卡片之间的间距 */
+.result-grid { display: grid; grid-template-columns: repeat(1, 1fr); grid-gap: 16rpx; padding: 16rpx; }
+
+.product-card { display: flex; gap: 16rpx; background: #fff; border-radius: 16rpx; padding: 16rpx; box-shadow: 0 6rpx 12rpx rgba(0,0,0,0.05); }
+.product-image { width: 200rpx; height: 200rpx; border-radius: 12rpx; background: #f2f3f5; }
+.product-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+
+/* 商品名加粗并适当增大 */
+.product-name { font-size: 32rpx; color: #333; font-weight: 700; margin-bottom: 6rpx; }
+/* 品牌名作为辅信息 */
+.product-brand { font-size: 24rpx; color: #666; margin-bottom: 8rpx; }
+
+/* 将价格区块挪到卡片底部，字体稍增大 */
+.product-prices { margin-top: auto; display: flex; align-items: baseline; gap: 12rpx; }
+.sell-price { color: #E74C3C; font-size: 32rpx; font-weight: 800; }
+.original-price { color: #999; font-size: 26rpx; text-decoration: line-through; }
+
+/* 大屏下两列布局 */
+@media screen and (min-width: 480px) {
+  .result-grid { grid-template-columns: repeat(2, 1fr); }
+}

@@ -1,0 +1,29 @@
+<!-- pages/search/index.wxml -->
+<view class="search-page">
+  <!-- 顶部固定搜索栏：输入框 + 确认按钮 -->
+  <view class="search-fixed">
+    <image class="search-icon" src="/images/search.svg" mode="widthFix" />
+    <input class="search-input" placeholder="搜商品/品牌" confirm-type="search" bindinput="onInput" bindconfirm="onConfirm" focus="{{autoFocus}}"/>
+    <button class="search-btn" bindtap="onConfirm">搜索</button>
+  </view>
+
+  <!-- 结果列表区域（卡片栅格） -->
+  <scroll-view scroll-y="true" class="result-scroll">
+    <view class="result-grid">
+      <!-- 卡片结构参考品牌二级页面（product-card），保持视觉一致 -->
+      <view class="product-card" wx:for="{{results}}" wx:key="*this" data-id="{{item.skuViewId || item.actId || item._id}}" bindtap="onResultTap">
+        <image class="product-image" src="{{item.headUrl || '/images/placeholder.png'}}" mode="aspectFill" />
+        <view class="product-info">
+          <!-- 商品名优先显示，不再用品牌名占位 -->
+          <view class="product-name">{{item.name}}</view>
+          <!-- 品牌名作为辅信息显示 -->
+          <view wx:if="{{item.brandName}}" class="product-brand">{{item.brandName}}</view>
+          <view class="product-prices">
+            <text wx:if="{{item.sellPrice}}" class="sell-price">¥{{item.sellPrice}}</text>
+            <text wx:if="{{item.originalPrice}}" class="original-price">¥{{item.originalPrice}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

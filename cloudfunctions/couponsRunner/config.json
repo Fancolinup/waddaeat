@@ -1,5 +1,0 @@
-{
-  "triggers": [
-    { "name": "coupons_every_5_minutes", "type": "timer", "config": "0 */5 * * * * *" }
-  ]
-}

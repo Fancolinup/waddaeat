@@ -79,6 +79,19 @@ exports.main = async (event, context) => {
     candidates = [];
   }
 
+  // 价格上限过滤（默认 100 元，仅对红包领券生效）：同时约束优惠价与原价均不超过上限
+  const priceCap = (typeof event?.priceCap === 'number' && event.priceCap > 0) ? event.priceCap : 100;
+  candidates = candidates.filter(it => {
+    const sp = Number(it?.sellPrice || 0);
+    const op = Number(it?.originalPrice || 0);
+    const hasSp = sp > 0;
+    const hasOp = op > 0;
+    if (hasSp && hasOp) return sp <= priceCap && op <= priceCap;
+    if (hasSp && !hasOp) return sp <= priceCap;
+    if (!hasSp && hasOp) return op <= priceCap;
+    return false;
+  });
+
   // 内存排序：commission DESC -> commissionPercent DESC
   candidates.sort((a, b) => {
     const c1 = Number(b?.commission || 0) - Number(a?.commission || 0);
@@ -103,8 +116,8 @@ exports.main = async (event, context) => {
       name: it.name,
       skuViewId: it.skuViewId,
       headUrl: sanitizeUrl(it.headUrl),
-      originalPrice: it.originalPrice,
-      sellPrice: it.sellPrice,
+      originalPrice: Number(it?.originalPrice || 0),
+      sellPrice: Number(it?.sellPrice || 0),
       label1: (typeof it.label1 === 'string' ? it.label1.trim() : it.label1) || '',
       label2: (typeof it.label2 === 'string' ? it.label2.trim() : it.label2) || '',
       couponValidETime: it.couponValidETime,

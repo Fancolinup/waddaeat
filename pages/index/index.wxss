@@ -49,7 +49,7 @@
   justify-content: center;
   padding-top: 0rpx;           /* 用内边距控制垂直位置，替代translateY */
   position: relative;          /* 仅视觉上位移，不影响文档流与周围元素 */
-  top: -35rpx;                 /* 向上移动15rpx，缩小与转盘容器间距 */
+  /* 已合并到 switcherTransform 控制垂直位移，移除 top 偏移 */
 }
 
 /* 转盘切换按钮组：3D凸起凹陷效果 */
@@ -290,8 +290,8 @@
 /* 轮盘右下角扩展操作容器（包含“添加更多餐厅”按钮） */
 .roulette-extra-actions {
   position: absolute;
-  right: -50rpx;              /* 与右边缘保持合理间距 */
-  bottom: -30rpx;             /* 与底边缘保持合理间距 */
+  right: 0;   /* 位置交由 addBtnTransform 控制 */
+  bottom: 0;  /* 位置交由 addBtnTransform 控制 */
   z-index: 6;
 }
 .roulette-wheel { position: absolute; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; transition: transform 3.2s cubic-bezier(.24,.8,.26,1); box-shadow: 0 20rpx 40rpx rgba(0,0,0,0.12); }
@@ -424,13 +424,12 @@
 /* 右上角操作容器：配色 + 刷新 - 调整色盘按钮样式 */
 .top-actions { 
   position: absolute; 
-  right: -8rpx; 
-  top: -28rpx; 
+  right: 0;   /* 位置交由 paletteTransform 控制 */
+  top: 0;    /* 位置交由 paletteTransform 控制 */
   z-index: 5; 
   display: flex; 
   align-items: center; 
   gap: 16rpx; 
-  /* 移除transform，保持固定位置 */
 }
 .top-actions .palette-switch { 
   position: static; 
@@ -747,37 +746,27 @@
 .offscreen-canvas { position: absolute; width: 1px; height: 1px; left: -9999px; top: -9999px; opacity: 0; }
 .xr-hidden { position: absolute; width: 1px; height: 1px; left: -9999px; top: -9999px; opacity: 0; }
 
-/* 分享区（固定底部，图标按钮靠右，3rpx 边距） */
-.share-bar { 
-  position: fixed; 
-  left: 20rpx;            /* 分享区左边距 - 可调整 */
-  right: 20rpx;           /* 分享区右边距 - 可调整 */
-  bottom: 140rpx;         /* 分享区底部距离 - 可调整垂直位置 */
-  padding-top: 18rpx;     /* 分享区顶部内边距 */
-  padding-bottom: 18rpx;  /* 分享区底部内边距 */
-  padding-left: 20rpx;    /* 分享区左内边距 */
-  padding-right: 3rpx;    /* 分享区右内边距 */
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
-  background: rgba(255,255,255,0.98); 
-  border-radius: 24rpx; 
-  box-shadow: 0 8rpx 30rpx rgba(0,0,0,0.08); 
-  backdrop-filter: blur(20rpx); 
-  z-index: 100; 
-}
-.share-content { flex: 1; margin-right: 16rpx; }
-.share-title { font-size: 24rpx; color: #666; display: block; margin-bottom: 4rpx; }
-.share-text { font-size: 26rpx; color: #222; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.share-actions { display: flex; gap: 16rpx; margin-right: 3rpx; }
-.share-actions image { width: 32rpx; height: 32rpx; } /* 减小分享区icon尺寸 */
-.icon-btn { width: 48rpx; height: 48rpx; padding: 8rpx; background: #ffffff; border-radius: 50%; box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.18); border: 2rpx solid #e0e0e0; }
-.edge-hand { position: absolute; left: 50%; top: 12rpx; transform: translateX(-50%); width: 120rpx; opacity: .7; z-index: 2; pointer-events: none; }
-/* 页面底部安全区（自定义tabBar高度预留） */
-.page-bottom-spacer { height: 140rpx; }
+/* 备选与分享：并排布局容器 */
+.short-share-row { display: flex; align-items: flex-start; justify-content: flex-start; gap: 12rpx; padding: 0 12rpx 0 8rpx; }
 
-/* 调整分享条底部距离，适配更高tabBar */
-.share-bar { bottom: 160rpx; }
+/* 备选区压缩为50%尺寸并靠左 */
+.shortlist.compact { flex: 0 0 50%; margin: 0; transform: none; }
+.shortlist.compact .short-title { font-size: 24rpx; margin-bottom: 8rpx; }
+.shortlist.compact .short-grid.compact { gap: 12rpx; }
+.short-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.shortlist.compact .short-slot { width: 100rpx; height: 100rpx; border-radius: 12rpx; }
+.shortlist.compact .short-caption { height: 36rpx; font-size: 20rpx; line-height: 36rpx; }
+.shortlist.compact .short-confirm { height: 36rpx; font-size: 22rpx; line-height: 36rpx; }
+
+/* 分享面板：缩小尺寸并靠右放置在备选区右侧 */
+.share-panel { flex: 1.2; max-width: 55%; background: rgba(255,255,255,0.98); border-radius: 16rpx; box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.08); padding: 16rpx; }
+.share-panel .share-title { font-size: 20rpx; color: #666; margin-bottom: 6rpx; }
+.share-panel .share-text { font-size: 18rpx; color: #FF6B35; margin-bottom: 10rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.share-panel .share-actions { display: flex; gap: 12rpx; }
+.share-panel .icon-btn { width: 36rpx; height: 36rpx; padding: 6rpx; border-radius: 50%; box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.12); border: 2rpx solid #e0e0e0; }
+
+/* 移除底部固定分享条带来的空间占用 */
+.share-bar, .page-bottom-spacer { display: none; }
 .hero-area { 
   height: 720rpx;               /* 固定高度，防止因兄弟元素高度变化而重新布局 */
   flex: 0 0 720rpx;             /* 从Flex填充改为固定占位，保持独立 */
@@ -794,7 +783,8 @@
   margin: 10rpx 0 10rpx 0; /* 增加垂直间距，让其与切换区分离 */
   position: relative;
   z-index: 10;
-  transform: translateY(-20rpx); /* 轻微上移以靠近转盘，但不造成整体联动 */
+  /* 已合并到 addBtnTransform 控制位置，移除 translateY 以避免叠加 */
+  /* transform: translateY(-20rpx); */
 }
 
 /* 添加更多餐厅按钮（标准尺寸、贴近右下角） */
@@ -907,7 +897,45 @@
 .icon-btn { width: 48rpx; height: 48rpx; padding: 8rpx; background: #ffffff; border-radius: 50%; box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.18); border: 2rpx solid #e0e0e0; }
 .edge-hand { position: absolute; left: 50%; top: 12rpx; transform: translateX(-50%); width: 120rpx; opacity: .7; z-index: 2; pointer-events: none; }
 /* 页面底部安全区（自定义tabBar高度预留） */
-.page-bottom-spacer { height: 140rpx; }
+.page-bottom-spacer { height: 360rpx; }
+
+/* 底部附近优惠模块样式（从领券中心迁移） */
+.horizontal-list { white-space: nowrap; padding: 8rpx 24rpx; margin: 12rpx 0 24rpx; height: 220rpx; }
+.h-card { display: inline-block; width: 240rpx; height: 192rpx; margin-right: 10rpx; position: relative; border-radius: 20rpx; overflow: hidden; box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.18); }
+.h-bg { width: 100%; height: 100%; }
+.h-overlay { position: absolute; left: 0; right: 0; bottom: 0; padding: 12rpx; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%); color: #fff; }
+.h-title { font-size: 24rpx; font-weight: 700; transform: translateY(-2rpx); }
+.h-sub { font-size: 20rpx; opacity: 0.9; margin-top: 2rpx; transform: translateY(-1rpx); }
+
+/* 统一减少模块间距并整体上移（不影响位置选择模块） */
+.hero-area { margin-top: 0; }
+.wheel-type-switcher-area { margin-top: 6rpx; }
+.short-share-row { margin-top: 6rpx; gap: 10rpx; }
+/* 备选清单位置改由 shortlistTransform 控制 */
+.shortlist { /* margin-top: 12rpx; */ }
+.decision-layer .dl-actions { margin-top: 12rpx; }
+.top-toast { margin-top: 2rpx; }
+
+/* 附近优惠标题与占位提示样式 */
+/* 附近优惠区位置改由 nearbyTransform 控制 */
+.nearby-section { /* margin-top: 8rpx; */ min-height: 260rpx; overflow: hidden; }
+.nearby-header { display: flex; align-items: center; justify-content: space-between; padding: 0 24rpx; }
+.nearby-title { color: #111; font-weight: 800; font-size: 28rpx; }
+.nearby-placeholder, .nearby-loading { color: #666; border: 2rpx dashed rgba(0,0,0,0.15); border-radius: 16rpx; padding: 18rpx; text-align: center; margin: 8rpx 24rpx; }
+/* 附近优惠加载动画：三个点依次淡入淡出 */
+.nearby-loading .dot { display: inline-block; width: 10rpx; }
+@keyframes dotsFade {
+  0% { opacity: 0.2; }
+  33% { opacity: 1; }
+  66% { opacity: 0.2; }
+  100% { opacity: 0.2; }
+}
+.nearby-loading .dot1 { animation: dotsFade 1.2s infinite; animation-delay: 0s; }
+.nearby-loading .dot2 { animation: dotsFade 1.2s infinite; animation-delay: 0.2s; }
+.nearby-loading .dot3 { animation: dotsFade 1.2s infinite; animation-delay: 0.4s; }
+
+/* 防止与自定义tabBar重叠，预留更大的底部安全区 */
+.container { padding-bottom: 120rpx; }
 
 /* 调整分享条底部距离，适配更高tabBar */
 .share-bar { bottom: 160rpx; }
@@ -1086,6 +1114,8 @@
    border: none;
    transition: all 0.2s ease;
  }
+ /* 调整主操作按钮文字字号，确保完整显示 */
+ .dl-actions .dl-btn.dl-primary { font-size: 24rpx; }
  .dl-meituan-inline { 
    width: 32rpx; 
    height: 32rpx; 
@@ -1180,16 +1210,18 @@
 .icon-btn { width: 48rpx; height: 48rpx; padding: 8rpx; background: #ffffff; border-radius: 50%; box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.18); border: 2rpx solid #e0e0e0; }
 .edge-hand { position: absolute; left: 50%; top: 12rpx; transform: translateX(-50%); width: 120rpx; opacity: .7; z-index: 2; pointer-events: none; }
 /* 页面底部安全区（自定义tabBar高度预留） */
-.page-bottom-spacer { height: 140rpx; }
+.page-bottom-spacer { height: 360rpx; }
 
 /* 调整分享条底部距离，适配更高tabBar */
 .share-bar { bottom: 160rpx; }
 .hero-area { 
-  flex: 1; 
+  flex: 0 0 auto; 
   display: flex; 
   align-items: center; 
   justify-content: center; 
-  padding-top: -20rpx;     /* 转盘区顶部内边距 - 可调整转盘垂直位置 */
+  min-height: 720rpx; 
+  /* 已合并到统一 transform 位移（wheelTransform），移除负内边距以避免布局冲突）
+/* padding-top: -20rpx;  已废弃 */
   padding-bottom: 0rpx;  /* 转盘区底部内边距 */
 }
 
@@ -1264,19 +1296,20 @@
 .icon-btn { width: 48rpx; height: 48rpx; padding: 8rpx; background: #ffffff; border-radius: 50%; box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.18); border: 2rpx solid #e0e0e0; }
 .edge-hand { position: absolute; left: 50%; top: 12rpx; transform: translateX(-50%); width: 120rpx; opacity: .7; z-index: 2; pointer-events: none; }
 /* 页面底部安全区（自定义tabBar高度预留） */
-.page-bottom-spacer { height: 140rpx; }
+.page-bottom-spacer { height: 360rpx; }
 
 /* 调整分享条底部距离，适配更高tabBar */
 .share-bar { bottom: 160rpx; }
 .hero-area { 
-  flex: 1; 
+  height: 720rpx;               /* 固定高度，防止因兄弟元素高度变化而重新布局 */
+  flex: 0 0 720rpx;             /* 固定占位，保持独立 */
   display: flex; 
   align-items: center; 
   justify-content: center; 
-  padding-top: -20rpx;     /* 转盘区顶部内边距 - 可调整转盘垂直位置 */
-  padding-bottom: 0rpx;  /* 转盘区底部内边距 */
+  position: relative;
   padding-left: 24rpx;   /* 转盘区左边距 */
   padding-right: 24rpx;  /* 转盘区右边距 */
+  padding-bottom: 0rpx;  /* 转盘区底部内边距 */
 }
 .disabled-banner{position:absolute;top:16rpx;left:16rpx;display:flex;align-items:center;background:#f0f3f6;color:#9aa8b5;border:1rpx solid #c5d0da;border-radius:12rpx;padding:8rpx 12rpx;opacity:.9}
 .disabled-banner .icon{margin-right:8rpx}

@@ -16,13 +16,16 @@ Page({
     ],
     categories: [
       { key: 'coupon', name: '红包领券' },
-      { key: 'instore', name: '到店优惠' },
-      { key: 'flash', name: '限时秒杀' }
+      { key: 'instore', name: '到店优惠' }
     ],
     selectedCategory: 'coupon',
+    // 新增：两类数据源
+    redPacketItems: [],
+    instoreItems: [],
+    // 渲染页数据（当前类别对应的分页数据）
+    couponPages: [],
     coupons: [],
     couponsSmall: [],
-    couponPages: [],
     nearbyOffers: [],
     nearbyOffersLoop: [],
     activityBanner: {
@@ -36,7 +39,11 @@ Page({
     userLocation: null,
     // 领券区分页指示
     couponSwiperCurrent: 0,
-    platformBanners: []
+    platformBanners: [],
+    // 新增：到店优惠首次加载时的 Loading 状态
+    instoreLoading: false,
+    // 新增：附近优惠加载中状态，避免静默等待
+    nearbyLoading: false
   },
 
   onShow() {
@@ -68,13 +75,16 @@ Page({
   },
 
   onLoad() {
+    console.info('[CouponCenter][onLoad] 页面初始化');
     this.initPartnerBrands();
     this.loadRedPacketCouponsList(); // 接入云端红包领券列表
-    // 进入领券中心不触发位置选择：去掉自动加载附近优惠的强制选择，改为只有已有位置时才加载
-    const cachedLoc = wx.getStorageSync('userLocation');
-    if (cachedLoc && cachedLoc.latitude && cachedLoc.longitude) {
-      this.loadNearbyOffers();
-    }
+    // 已移除附近优惠模块：不再尝试加载或初始化附近优惠相关数据
+    // const cachedLoc = wx.getStorageSync('userLocation');
+    // console.info('[CouponCenter][onLoad] 本地缓存位置', cachedLoc);
+    // if (cachedLoc && cachedLoc.latitude && cachedLoc.longitude) {
+    //   console.info('[CouponCenter][onLoad] 发现已设置位置，触发附近优惠加载');
+    //   this.loadNearbyOffers();
+    // }
   },
 
   async initPartnerBrands() {
@@ -227,82 +237,255 @@ Page({
     this.setData({ couponSwiperCurrent: e.detail.current || 0 });
   },
 
+  // 辅助：根据餐厅/品牌名获取云端logo（带 https 兜底）
+  getBrandLogo(name) {
+    try {
+      const { cloudImageManager } = require('../../utils/cloudImageManager.js');
+      const map = restaurantData && restaurantData.pinyinMap ? restaurantData.pinyinMap : null;
+      const slug = map && name ? (map[name] || 'placeholder') : 'placeholder';
+      let url = cloudImageManager.getCloudImageUrl(slug);
+      if (typeof url === 'string' && url.startsWith('http://')) url = 'https://' + url.slice(7);
+      return url || '/images/placeholder.png';
+    } catch (e) {
+      return '/images/placeholder.png';
+    }
+  },
   async loadNearbyOffers() {
     try {
-      // 此方法不强制用户选择位置，仅当已有位置时使用其坐标进行搜索
+      // 开始加载附近优惠：打开加载中状态
+      this.setData({ nearbyLoading: true });
       const loc = this.data.userLocation || wx.getStorageSync('userLocation');
+      console.info('[附近优惠][餐厅聚合] 开始加载，使用位置', loc);
       if (!loc || !loc.latitude || !loc.longitude) {
-        return; // 无位置：保持占位提示
-      }
-      const res = await locationService.searchNearbyRestaurants({ latitude: loc.latitude, longitude: loc.longitude }, 800);
-      const sampleImages = ['/images/placeholder.png'];
-      const nearbyOffers = res.map(r => ({ id: r.id, name: r.name, distance: r.distance, category: r.category, image: sampleImages[((r.id||0) % sampleImages.length)] }));
-
-      // 为无限滑动浏览准备循环数据（简单重复拼接）
-      let nearbyOffersLoop = nearbyOffers;
-      if (nearbyOffers.length) {
-        nearbyOffersLoop = nearbyOffers.concat(nearbyOffers).concat(nearbyOffers);
+        console.info('[附近优惠][餐厅聚合] 未设置位置，跳过加载');
+        // 未设置位置：关闭加载中状态
+        this.setData({ nearbyLoading: false });
+        return;
       }
 
-      this.setData({ nearbyOffers, nearbyOffersLoop });
+      // 1) 获取附近餐厅列表（高德/模拟）并去重
+      const radius = 1000;
+      const nearby = await locationService.searchNearbyRestaurants({ latitude: loc.latitude, longitude: loc.longitude }, radius);
+      console.info('[附近优惠][餐厅聚合] 搜索到餐厅数量', Array.isArray(nearby) ? nearby.length : -1);
+      const nearbyArr = Array.isArray(nearby) ? nearby : [];
+      const deduped = [];
+      const seenNames = new Set();
+      for (const r of nearbyArr) {
+        const n = r && r.name ? String(r.name).trim() : '';
+        if (!n || seenNames.has(n)) continue;
+        seenNames.add(n);
+        deduped.push(r);
+      }
+      const restaurants = deduped.slice(0, 20); // 控制数量，扩充至20家，注意后续并发限制
+
+      // 2) 针对每家餐厅并发获取商品（外卖+到店），并为每个商品查询推广链接（仅保留有小程序链接的商品）
+      const restaurantCards = [];
+
+      for (const r of restaurants) {
+        const rName = r && r.name ? r.name : '';
+        if (!rName) continue;
+        console.info('[附近优惠][餐厅聚合] 处理餐厅', { id: r.id, name: rName, distance: r.distance });
+
+        // 拉取外卖与到店商品（静默失败）
+        let wmRes = null, osRes = null;
+        try {
+          wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: rName } });
+          console.info('[附近优惠][餐厅聚合] 外卖响应 result', wmRes && wmRes.result);
+        } catch (e1) { console.warn('[附近优惠][餐厅聚合] 外卖拉取失败', { name: rName, error: e1 }); }
+        try {
+          osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, searchText: rName } });
+          console.info('[附近优惠][餐厅聚合] 到店响应 result', osRes && osRes.result);
+        } catch (e2) { console.warn('[附近优惠][餐厅聚合] 到店拉取失败', { name: rName, error: e2 }); }
+
+        const normalizeList = (res, source) => {
+          const root = res?.result?.data || res?.result || {};
+          const arr = Array.isArray(root?.data)
+            ? root.data
+            : (Array.isArray(root?.list)
+              ? root.list
+              : (Array.isArray(root?.items) ? root.items : []));
+          return (arr || []).map(it => {
+            const skuViewId = String(it?.couponPackDetail?.skuViewId || it?.skuViewId || '').trim();
+            const brandName = it?.brandInfo?.brandName || it?.brandName || rName;
+            const name = it?.couponPackDetail?.name || it?.name || it?.title || '';
+            let headUrl = it?.couponPackDetail?.headUrl || it?.headUrl || it?.imgUrl || it?.image || it?.picUrl || '';
+            if (typeof headUrl === 'string' && headUrl.startsWith('http://')) headUrl = 'https://' + headUrl.slice(7);
+            // 新增：解析价格，保证二级页面显示
+            const parseNum = (v) => { const n = (typeof v === 'string') ? parseFloat(v) : (typeof v === 'number' ? v : NaN); return isFinite(n) ? n : 0; };
+            const originalPrice = parseNum(it?.couponPackDetail?.originalPrice || it?.originalPrice || it?.originPrice);
+            const sellPrice = parseNum(it?.couponPackDetail?.sellPrice || it?.sellPrice || it?.price || it?.currentPrice);
+            return { skuViewId, brandName, name, headUrl, source, bizLine: Number(it?.bizLine ?? (source === 'onsite' ? 1 : 0)), originalPrice, sellPrice };
+          }).filter(x => !!x.skuViewId);
+        };
+
+        const wmList = normalizeList(wmRes, 'takeout');
+        const osList = normalizeList(osRes, 'onsite');
+        console.info('[附近优惠][餐厅聚合] 解析完成', { restaurant: rName, takeoutCount: wmList.length, onsiteCount: osList.length });
+
+        const merged = wmList.concat(osList).slice(0, 6); // 每店最多取前6个用于查询链接
+        const itemsWithLink = [];
+        let idx = 0;
+        const couponWorkersLimit = 3; // 每家餐厅内部并发不超过3
+        const worker = async () => {
+          while (idx < merged.length) {
+            const it = merged[idx++];
+            try {
+              console.info('[附近优惠][餐厅聚合][referral] 请求 getMeituanReferralLink', { skuViewId: it.skuViewId });
+              const lr = await wx.cloud.callFunction({ name: 'getMeituanReferralLink', data: { skuViewId: it.skuViewId } });
+              console.info('[附近优惠][餐厅聚合][referral] 响应 result', lr && lr.result);
+              const root = lr?.result?.data || lr?.result || {};
+              const dataRoot = (root && typeof root === 'object' && root.data && typeof root.data === 'object') ? root.data : root;
+              const linkMap = dataRoot?.referralLinkMap || dataRoot?.linkMap || dataRoot?.urlMap || {};
+              const weapp = linkMap['4'] || linkMap[4] || linkMap.weapp || linkMap.mini;
+              if (weapp) {
+                itemsWithLink.push({ ...it, referralLinkMap: linkMap });
+              } else {
+                console.info('[附近优惠][餐厅聚合][referral] 未找到小程序链接，跳过', { skuViewId: it.skuViewId });
+              }
+            } catch (e) {
+              console.warn('[附近优惠][餐厅聚合][referral] 查询失败', { skuViewId: it && it.skuViewId, error: e });
+            }
+          }
+        };
+        await Promise.all(new Array(couponWorkersLimit).fill(0).map(() => worker()));
+
+        if (!itemsWithLink.length) {
+          console.info('[附近优惠][餐厅聚合] 餐厅无可跳转商品，跳过', { restaurant: rName });
+          continue;
+        }
+
+        // 提取品牌logo（优先使用美团返回的 brandLogoUrl）
+        const extractBrandLogoUrl = (resp) => {
+          try {
+            const root = resp?.result?.data || resp?.result || {};
+            const arr = Array.isArray(root?.data)
+              ? root.data
+              : (Array.isArray(root?.list)
+                ? root.list
+                : (Array.isArray(root?.items) ? root.items : []));
+            let c = '';
+            for (const it of arr) {
+              c = it?.brandInfo?.brandLogoUrl || it?.brandLogoUrl || '';
+              if (c) break;
+            }
+            if (typeof c === 'string' && c.startsWith('http://')) c = 'https://' + c.slice(7);
+            return c;
+          } catch (e) { return ''; }
+        };
+        const logoCandidate = extractBrandLogoUrl(wmRes) || extractBrandLogoUrl(osRes) || '';
+        const logoUrl = logoCandidate || this.getBrandLogo(rName);
+
+        restaurantCards.push({
+          id: r.id || (rName + '_' + (r.distance || '')), // 兜底生成id
+          name: rName,
+          distance: typeof r.distance === 'number' ? r.distance : null,
+          logoUrl: logoUrl || '/images/placeholder.png',
+          products: itemsWithLink
+        });
+      }
+
+      const nearbyOffers = restaurantCards;
+      const nearbyOffersLoop = []; // 移除重复循环，避免重复卡片
+      console.info('[附近优惠][餐厅聚合] 成功聚合餐厅数量', nearbyOffers.length);
+      this.setData({ nearbyOffers, nearbyOffersLoop, nearbyLoading: false });
     } catch (err) {
-      console.warn('获取附近优惠失败：', err.message || err);
+      console.warn('[附近优惠][餐厅聚合] 加载失败', err);
+      // 失败也需关闭加载中状态
+      this.setData({ nearbyLoading: false });
+    }
+  },
+
+  onNearbyRestaurantTap(e) {
+    try {
+      const id = e.currentTarget.dataset.id;
+      const list = Array.isArray(this.data.nearbyOffers) ? this.data.nearbyOffers : [];
+      const restaurant = list.find(r => String(r.id) === String(id));
+      console.info('[附近优惠][餐厅聚合][点击] 选中餐厅', { id, name: restaurant && restaurant.name });
+      if (!restaurant) return;
+      const name = restaurant.name || '';
+      const logo = restaurant.logoUrl || '/images/placeholder.png';
+      const products = Array.isArray(restaurant.products) ? restaurant.products : [];
+      const url = `/pages/brand/detail?name=${encodeURIComponent(name)}&logo=${encodeURIComponent(logo)}`;
+      wx.navigateTo({
+        url,
+        success: (res) => {
+          try {
+            const channel = res.eventChannel;
+            channel && channel.emit && channel.emit('initData', { products });
+            console.info('[附近优惠][餐厅聚合][跳转] 已传递商品数量', products.length);
+          } catch (e) { console.warn('[附近优惠][餐厅聚合][跳转] 传递数据失败', e); }
+        },
+        fail: (err) => { console.warn('[附近优惠][餐厅聚合][跳转] 失败', err); }
+      });
+    } catch (err) {
+      console.warn('[附近优惠][餐厅聚合][点击] 处理失败', err);
     }
   },
 
   async onLocationTap() {
     try {
+      console.info('[CouponCenter][位置] 用户触发位置选择');
       this.setData({ locationStatus: 'loading', locationText: '定位中' });
       // 直接调用微信内置位置选择，不进行权限检查与引导
       const loc = await locationService.chooseUserLocation();
+      console.info('[CouponCenter][位置] 用户选择位置', loc);
       // 记录用户选择的位置到本地存储（双向同步）
-      try { wx.setStorageSync('userLocation', loc); } catch(e) {}
-      // 刷新附近优惠
-      const res = await locationService.searchNearbyRestaurants({ latitude: loc.latitude, longitude: loc.longitude }, 800);
-      const sampleImages = ['/images/placeholder.png'];
-      const nearbyOffers = res.map(r => ({ id: r.id, name: r.name, distance: r.distance, category: r.category, image: sampleImages[((r.id||0) % sampleImages.length)] }));
-      let nearbyOffersLoop = nearbyOffers;
-      if (nearbyOffers.length) {
-        nearbyOffersLoop = nearbyOffers.concat(nearbyOffers).concat(nearbyOffers);
-      }
-      this.setData({ 
+      try { wx.setStorageSync('userLocation', loc); } catch(e) { console.warn('[CouponCenter][位置] 写入本地缓存失败', e); }
+      // 使用真实位置加载附近优惠（静默失败，无提示）
+      await this.setData({ userLocation: loc });
+      await this.loadNearbyOffers();
+      this.setData({
         userLocation: loc,
-        nearbyOffers,
-        nearbyOffersLoop,
         locationStatus: 'success',
         locationText: this.truncateLocationName ? this.truncateLocationName(loc.name) : (loc.name || '已设置位置')
       });
+      console.info('[CouponCenter][位置] 位置设置完成并已触发附近优惠加载');
     } catch (err) {
       this.setData({ locationStatus: 'idle', locationText: '选择位置' });
-      wx.showToast({ title: '位置选择失败', icon: 'none' });
+      console.warn('[CouponCenter][位置] 选择位置失败', err);
+      // 静默失败：不做前端提示
     }
   },
 
   onCategoryTap(e) {
     const key = e.currentTarget.dataset.key;
-    this.setData({ selectedCategory: key });
-    this.refreshDisplay();
-    // 修复页签点击：在“到店优惠”和“限时秒杀”添加对应切换逻辑
-    if (key === 'instore') {
-      // 可选：跳转到到店优惠详情页（如后续有单独页面）
-      // wx.navigateTo({ url: '/pages/coupon/instore' });
-    } else if (key === 'flash') {
-      // 可选：跳转到限时秒杀活动页（如后续有单独页面）
-      // wx.navigateTo({ url: '/pages/coupon/flash' });
+    if (!key) return;
+    this.setData({ selectedCategory: key, couponSwiperCurrent: 0 });
+    if (key === 'coupon') {
+      const list = this.data.redPacketItems || [];
+      if (list.length) {
+        this.setData({ couponPages: this.paginateCoupons(list, 4) });
+      } else {
+        // 空态：先清空旧分页，避免残留到店/红包列表
+        this.setData({ couponPages: [] });
+        this.loadRedPacketCouponsList();
+      }
+    } else if (key === 'instore') {
+      const list = this.data.instoreItems || [];
+      if (list.length) {
+        this.setData({ couponPages: this.paginateCoupons(list, 4) });
+      } else {
+        // 空态：先清空旧分页，避免残留红包列表，并显示加载中
+        this.setData({ couponPages: [], instoreLoading: true });
+        this.loadInstoreCouponsList();
+      }
     }
   },
 
   onReceiveCoupon(e) {
     try {
-      const id = e?.currentTarget?.dataset?.id || e?.target?.dataset?.id;
-      const item = (this.data.coupons || []).find(c => c.id === id);
+      const id = e?.currentTarget?.dataset?.id || e?.target?.dataset?.id; // skuViewId
+      const listA = Array.isArray(this.data.redPacketItems) ? this.data.redPacketItems : [];
+      const listB = Array.isArray(this.data.instoreItems) ? this.data.instoreItems : [];
+      const all = listA.concat(listB);
+      const item = all.find(c => String(c.skuViewId) === String(id));
       const map = item?.referralLinkMap || {};
-      const weapp = map['4'] || map[4] || map['3'] || map[3];
+      const weapp = map['4'] || map[4];
       if (!weapp) {
         wx.showToast({ title: '暂无可用链接', icon: 'none' });
         return;
       }
-      // 对象类型：包含 appId/path，优先使用对象内 appId，缺省回退至美团官方 appId
+      // 对象类型：包含 appId/path，优先使用对象内 appId
       if (wx?.navigateToMiniProgram && typeof weapp === 'object') {
         const info = weapp || {};
         const appId = info.appId || 'wxde8ac0a21135c07d';
@@ -321,7 +504,6 @@ Page({
       // 字符串类型：内部页面路径或小程序短链
       if (typeof weapp === 'string') {
         const s = weapp.trim();
-        // 内部页面路径：带上美团官方 appId
         if (s.startsWith('/')) {
           wx.navigateToMiniProgram({
             appId: 'wxde8ac0a21135c07d',
@@ -335,7 +517,6 @@ Page({
           });
           return;
         }
-        // 小程序短链
         if (wx?.navigateToMiniProgram) {
           wx.navigateToMiniProgram({
             shortLink: s,
@@ -357,8 +538,39 @@ Page({
   },
 
   onReceiveNearbyCoupon(e) {
-    const id = e.currentTarget.dataset.id;
-    wx.showToast({ title: '去商家享受优惠', icon: 'none' });
+    try {
+      const id = String(e?.currentTarget?.dataset?.id || '');
+      if (!id) return;
+      const list = Array.isArray(this.data.nearbyOffers) ? this.data.nearbyOffers : [];
+      const item = list.find(x => String(x.id) === id);
+      if (!item) return;
+      const map = item.referralLinkMap || {};
+      const weapp = map['4'] || map[4] || map.weapp || map.mini;
+      console.info('[附近优惠][点击跳转] 选中项', { id, itemPreview: { name: item && item.name, category: item && item.category }, linkMap: map });
+      if (!weapp) { console.info('[附近优惠][点击跳转] 未找到小程序链接'); return; }
+      // 对象类型：包含 appId/path，优先使用对象内 appId
+      if (wx?.navigateToMiniProgram && typeof weapp === 'object') {
+        const info = weapp || {};
+        const appId = info.appId || 'wxde8ac0a21135c07d';
+        console.info('[附近优惠][点击跳转] 以对象跳转', { appId, path: info.path || '' });
+        wx.navigateToMiniProgram({ appId, path: info.path || '', envVersion: 'release' });
+        return;
+      }
+      // 字符串类型：内部页面路径或小程序短链
+      if (typeof weapp === 'string' && wx?.navigateToMiniProgram) {
+        const s = weapp.trim();
+        if (s.startsWith('/')) {
+          console.info('[附近优惠][点击跳转] 以内部path跳转', { appId: 'wxde8ac0a21135c07d', path: s });
+          wx.navigateToMiniProgram({ appId: 'wxde8ac0a21135c07d', path: s, envVersion: 'release' });
+        } else {
+          console.info('[附近优惠][点击跳转] 以 shortLink 跳转', { shortLink: s });
+          wx.navigateToMiniProgram({ shortLink: s, envVersion: 'release' });
+        }
+      }
+    } catch (err) {
+      console.warn('[附近优惠][点击跳转] 失败', err);
+      // 静默失败：不做前端提示
+    }
   },
 
   onBannerTap() {
@@ -393,6 +605,15 @@ Page({
       wx.showToast({ title: '暂无可用小程序链接', icon: 'none' });
     } catch (err) {
       console.warn('[coupon] 顶部活动 banner 跳转失败:', err);
+    }
+  },
+
+  navigateToSearch() {
+    try {
+      wx.navigateTo({ url: '/pages/search/index' });
+    } catch (err) {
+      console.warn('[coupon] 跳转搜索页失败：', err);
+      wx.showToast({ title: '跳转失败', icon: 'none' });
     }
   },
 
@@ -513,6 +734,26 @@ Page({
         const urls = (normalized || []).map(x => ({ actId: x.actId, url: x.headUrl }));
         console.log('[coupon] 平台banner图片路径（actId->url）：', urls);
       } catch (eLog) {}
+
+      // 预填平台 Banner 的推广链接，减少点击时的等待
+      try {
+        const actIds = Array.from(new Set((normalized || []).map(x => String(x.actId || '')).filter(Boolean)));
+        if (actIds.length) {
+          const _ = db.command;
+          const urlBatch = await db.collection('MeituanOnsiteCouponURL').where({ actId: _.in(actIds) }).get();
+          const arr = Array.isArray(urlBatch?.data) ? urlBatch.data : [];
+          const mapAct = {};
+          for (const d of arr) {
+            const m = d.referralLinkMap || d.linkMap || d.urlMap || (d.links && d.links.referralLinkMap) || {};
+            if (d.actId && m && Object.keys(m).length > 0) mapAct[String(d.actId)] = m;
+          }
+          normalized = (normalized || []).map(x => ({ ...x, referralLinkMap: mapAct[String(x.actId)] || x.referralLinkMap || {} }));
+          console.log('[coupon] 预填平台banner链接完成，数量：', Object.keys(mapAct).length);
+        }
+      } catch (eFill) {
+        console.warn('[coupon] 预填平台banner链接失败：', eFill);
+      }
+
       this.setData({ platformBanners: normalized });
     } catch (e) {
       console.warn('[coupon] 读取平台banner失败：', e);
@@ -619,76 +860,103 @@ Page({
       return false;
     }
   },
-  onTapPlatformBanner(e) {
+  async onTapPlatformBanner(e) {
+    console.log('[banner] tap event:', e);
     const idx = Number(e?.currentTarget?.dataset?.idx || 0);
+    console.log('[banner] idx:', idx);
     const b = this.data.platformBanners[idx] || {};
-    const map = b.referralLinkMap || {};
-    const weapp = map['4'] || map[4];
-    // 优先跳转：小程序内跳转 (对象包含 appId)
-    if (weapp && wx?.navigateToMiniProgram && typeof weapp === 'object') {
-      const info = weapp || {};
-      if (info.appId) {
-        wx.navigateToMiniProgram({ appId: info.appId, path: info.path || '', envVersion: 'release' });
+    console.log('[banner] banner data:', b);
+    const map = (b && typeof b === 'object') ? (b.referralLinkMap || b.linkMap || b.urlMap || (b.links && b.links.referralLinkMap) || {}) : {};
+    const weapp = map['4'] || map[4] || map?.weapp || map?.mini;
+    console.log('[banner] referralLinkMap:', map, 'weapp:', weapp);
+    // 直接用小程序链接拉起（优先 weapp 对象 appId，其次短链字符串），不做额外 toast/内部跳转
+    try {
+      if (weapp && wx?.navigateToMiniProgram && typeof weapp === 'object' && weapp.appId) {
+        console.log('[banner] navigateToMiniProgram object:', weapp);
+        wx.navigateToMiniProgram({ appId: weapp.appId, path: weapp.path || '', envVersion: 'release' });
         return;
       }
+      if (typeof weapp === 'string' && wx?.navigateToMiniProgram) {
+        const s = weapp.trim();
+        console.log('[banner] navigateToMiniProgram shortLink/path:', s);
+        if (s.startsWith('/')) {
+          wx.navigateToMiniProgram({ appId: 'wxde8ac0a21135c07d', path: s, envVersion: 'release' });
+        } else {
+          wx.navigateToMiniProgram({ shortLink: s, envVersion: 'release' });
+        }
+        return;
+      }
+      // 兜底：通过云函数动态获取小程序链接并拉起
+      if (b.actId) {
+        console.log('[banner] fallback by actId:', b.actId);
+        const res = await wx.cloud.callFunction({ name: 'getMeituanReferralLink', data: { actId: b.actId } });
+        const root = res?.result?.data || {};
+        const dataRoot = (root && typeof root === 'object' && root.data && typeof root.data === 'object') ? root.data : root;
+        const linkMap = dataRoot?.referralLinkMap || {};
+        const wa = linkMap['4'] || linkMap[4] || linkMap.weapp || linkMap.mini;
+        console.log('[banner] fallback referralLinkMap:', linkMap, 'weapp:', wa);
+        if (wa && typeof wa === 'object' && wa.appId && wx?.navigateToMiniProgram) {
+          wx.navigateToMiniProgram({ appId: wa.appId, path: wa.path || '', envVersion: 'release' });
+          return;
+        }
+        if (typeof wa === 'string' && wx?.navigateToMiniProgram) {
+          const s2 = wa.trim();
+          if (s2.startsWith('/')) {
+            wx.navigateToMiniProgram({ appId: 'wxde8ac0a21135c07d', path: s2, envVersion: 'release' });
+          } else {
+            wx.navigateToMiniProgram({ shortLink: s2, envVersion: 'release' });
+          }
+          return;
+        }
+      }
+    } catch (e2) {
+      console.warn('[banner] 拉起小程序失败或链接缺失', e2);
     }
-    // 其次：字符串类型 weapp -> 内部页面 或 小程序短链
-    if (typeof weapp === 'string') {
-      if (weapp.startsWith('/')) {
-        wx.navigateTo({ url: weapp });
-        return;
-      }
-      if (wx?.navigateToMiniProgram) {
-        wx.navigateToMiniProgram({ shortLink: weapp, envVersion: 'release' });
-        return;
-      }
-    }
-    // 无 deeplink 回退，提示不可跳转
-    wx.showToast({ title: '暂无可用小程序链接', icon: 'none' });
+    // 不做任何 toast 或内部回退跳转，保持简单直达体验
   },
   // 从云函数读取红包领券列表，并映射为 UI 卡片
   async loadRedPacketCouponsList() {
     try {
-      const res = await wx.cloud.callFunction({
-        name: 'getRedPacketCouponsList',
-        data: { page: 1, pageSize: 40 }
+      const res = await wx.cloud.callFunction({ name: 'getRedPacketCouponsList', data: { page: 1, pageSize: 40, priceCap: 100 } });
+      let list = (res.result && (Array.isArray(res.result.list) ? res.result.list : (Array.isArray(res.result.items) ? res.result.items : []))) || [];
+      // 前端兜底：过滤价格上限（单位：元），同时约束 sellPrice 与 originalPrice
+      const cap = 100;
+      list = list.filter(it => {
+        const sp = Number(it?.sellPrice || 0);
+        const op = Number(it?.originalPrice || 0);
+        const hasSp = sp > 0;
+        const hasOp = op > 0;
+        if (hasSp && hasOp) return sp <= cap && op <= cap;
+        if (hasSp && !hasOp) return sp <= cap;
+        if (!hasSp && hasOp) return op <= cap;
+        return false;
       });
-      const result = res && res.result;
-      const list = Array.isArray(result?.list) ? result.list : [];
-      if (!list.length) {
-        // 云端无数据或异常：使用本地占位数据作为回退
-        this.initCoupons();
-        this.buildCouponPages();
-        return;
+      this.setData({ redPacketItems: list });
+      if (this.data.selectedCategory === 'coupon') {
+        this.setData({ couponPages: this.paginateCoupons(list, 4) });
       }
-      const mapped = list.map(it => {
-        const brand = typeof it.brandName === 'string' ? it.brandName.trim() : (it.brandName || '');
-        const brandTitle = brand || '品牌';
-        const subTitle = typeof it.name === 'string' ? it.name.trim() : (typeof it.title === 'string' ? it.title.trim() : '优惠券');
-        const image = (typeof it.headUrl === 'string' && it.headUrl.indexOf('http') === 0) ? it.headUrl : '/images/placeholder.png';
-        const tag1 = typeof it.label1 === 'string' ? it.label1.trim() : '';
-        const tag2 = typeof it.label2 === 'string' ? it.label2.trim() : '';
-        const tag = tag2 || tag1 || '';
-        const sellPrice = Number(it.sellPrice || 0);
-        const originalPrice = Number(it.originalPrice || 0);
-        return {
-          id: it.skuViewId,
-          title: brandTitle,
-          subTitle,
-          tag,
-          image,
-          sellPrice,
-          originalPrice,
-          referralLinkMap: it.referralLinkMap || {}
-        };
-      });
-      const pages = this.paginateCoupons(mapped, 4);
-      const pages10 = pages.slice(0, 10);
-      this.setData({ coupons: mapped, couponPages: pages10, couponSwiperCurrent: 0 });
     } catch (err) {
-      console.warn('[coupon] 读取红包领券列表失败，使用本地占位：', err);
-      this.initCoupons();
-      this.buildCouponPages();
+      console.error('[getRedPacketCouponsList] failed', err);
     }
-  }
+  },
+
+  // 新增：读取到店优惠列表（仅使用 linkType=4）
+  async loadInstoreCouponsList() {
+    try {
+      const res = await wx.cloud.callFunction({ name: 'getOnsiteCouponsList', data: { page: 1, pageSize: 40 } });
+      const list = (res.result && (Array.isArray(res.result.items) ? res.result.items : (Array.isArray(res.result.list) ? res.result.list : []))) || [];
+      this.setData({ instoreItems: list });
+      if (this.data.selectedCategory === 'instore') {
+        this.setData({ couponPages: this.paginateCoupons(list, 4) });
+      }
+    } catch (err) {
+      console.error('[getOnsiteCouponsList] failed', err);
+      wx.showToast({ title: '到店优惠加载失败', icon: 'none' });
+    } finally {
+      // 结束加载，隐藏 Loading
+      if (this.data.instoreLoading) {
+        this.setData({ instoreLoading: false });
+      }
+    }
+  },
 });
