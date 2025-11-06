@@ -9,7 +9,7 @@
   <scroll-view class="brand-scroll" scroll-x="true" enable-flex="true" show-scrollbar="false">
     <view class="brand-item" wx:for="{{partnerBrands}}" wx:key="name" data-name="{{item.name}}" data-logo="{{item.logo}}" bindtap="onPartnerBrandTap">
       <view class="brand-logo-wrap">
-        <image class="brand-logo" src="{{item.logo || '/images/placeholder.png'}}" mode="aspectFill" lazy-load="true" data-name="{{item.name}}" data-logo="{{item.logo}}" binderror="onBrandLogoError" />
+        <image class="brand-logo" src="{{item.logo || 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png'}}" mode="aspectFill" lazy-load="true" data-name="{{item.name}}" data-logo="{{item.logo}}" binderror="onBrandLogoError" />
       </view>
       <view class="brand-name">{{item.name}}</view>
     </view>

@@ -6,6 +6,22 @@ async function ensureCollection(db, name) {
   try { await db.createCollection(name); } catch (e) { /* ignore if exists */ }
 }
 
+// 轮询索引：使用 ScheduleState 集合持久化
+async function getAndAdvanceBrandRotation(db, keyName, totalCount) {
+  await ensureCollection(db, 'ScheduleState');
+  const coll = db.collection('ScheduleState');
+  const docId = `rotation:${keyName}`;
+  try { await coll.add({ data: { _id: docId, idx: 0, updatedAt: Date.now() } }); } catch (e) { /* ignore exists */ }
+  let idx = 0;
+  try {
+    const r = await coll.doc(docId).get();
+    idx = Number(r?.data?.idx || 0);
+  } catch (eGet) {}
+  const nextIdx = (Number.isFinite(idx) ? idx : 0) + 1;
+  try { await coll.doc(docId).update({ data: { idx: nextIdx % Math.max(totalCount, 1), updatedAt: Date.now() } }); } catch (eUpd) {}
+  return idx % Math.max(totalCount, 1);
+}
+
 function normalizeItem(it) {
   const brandNameRaw = (it?.brandInfo?.brandName || '').trim();
   const skuViewIdRaw = (it?.couponPackDetail?.skuViewId || it?.skuViewId || '').trim();
@@ -65,6 +81,9 @@ exports.main = async (event, context) => {
   const onsiteCouponsColl = db.collection('MeituanOnsiteCoupon');
   const onsiteUrlsColl = db.collection('MeituanOnsiteCouponURL');
 
+  // 预先声明，避免 data 阶段使用未定义
+  let linkedSet = new Set();
+
   const appKey = process.env.MEITUAN_APPKEY || event?.appKey || '';
   const secret = process.env.MEITUAN_SECRET || event?.secret || '';
   const platform = Number(event?.platform ?? 2); // 到店优惠默认平台=2
@@ -94,7 +113,10 @@ exports.main = async (event, context) => {
   await ensureCollection(db, 'MeituanOnsiteCoupon');
   await ensureCollection(db, 'MeituanOnsiteCouponURL');
 
-  const brands = brandNames.slice(0, 1);
+  // 计算轮询索引，每次只处理一个品牌
+  const rotationIndex = await getAndAdvanceBrandRotation(db, 'onsite-daily', brandNames.length);
+  const selectedBrand = brandNames[rotationIndex];
+  const brands = [selectedBrand];
 
   const statsData = { brandsProcessed: 0, itemsKept: 0 };
   const statsLink = { brandsProcessed: 0, itemsKept: 0, linksCreated: 0 };
@@ -178,7 +200,6 @@ exports.main = async (event, context) => {
   // 阶段二：补链接，仅处理未生成链接的条目
   if (stage === 'link' || stage === 'both') {
     // 收集已存在链接，onlyPending 时减少调用
-    let linkedSet = new Set();
     if (onlyPending) {
       try {
         const batch = await onsiteUrlsColl.get();
@@ -224,5 +245,5 @@ exports.main = async (event, context) => {
     }
   }
 
-  return { ok: true, task: 'onsite-daily', stage, result: { dataStage: statsData, linkStage: statsLink } };
+  return { ok: true, task: 'onsite-daily', stage, result: { dataStage: statsData, linkStage: statsLink, brand: selectedBrand, rotationIndex } };
 };

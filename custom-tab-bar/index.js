@@ -7,19 +7,16 @@ Component({
       {
         pagePath: '/pages/index/index',
         iconPath: '/images/icon_home.png',
-        selectedIconPath: '/images/icon_home_selected.png',
         text: '今日选择'
       },
       {
         pagePath: '/pages/coupon/index',
-        iconPath: '/images/icon_voice.png',
-        selectedIconPath: '/images/icon_voice_selected.png',
-        text: '领券中心'
+        iconPath: '/images/icon_coupon.png',
+        text: '红包领券'
       },
       {
         pagePath: '/pages/profile/profile',
         iconPath: '/images/icon_profile.png',
-        selectedIconPath: '/images/icon_profile_selected.png',
         text: '个人'
       }
     ],
@@ -38,7 +35,7 @@ Component({
     preloadImages() {
       const allImages = [];
       this.data.list.forEach(item => {
-        allImages.push(item.iconPath, item.selectedIconPath);
+        allImages.push(item.iconPath);
       });
       
       let loadedCount = 0;

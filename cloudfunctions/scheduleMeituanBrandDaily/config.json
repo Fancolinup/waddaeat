@@ -1,3 +1,5 @@
 {
-  "triggers": []
+  "triggers": [
+    { "name": "meituan_brand_minutely", "type": "timer", "config": "0 */1 * * * *" }
+  ]
 }

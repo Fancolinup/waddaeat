@@ -1,7 +1,7 @@
 <view class="tabbar">
   <block wx:for="{{list}}" wx:key="pagePath" wx:for-index="index">
     <view class="tab-item" bindtap="switchTab" data-index="{{index}}" data-path="{{item.pagePath}}">
-      <image class="icon" mode="widthFix" src="{{imagesLoaded ? (selected === index ? item.selectedIconPath : item.iconPath) : item.iconPath}}" />
+      <image class="icon {{index === 1 ? 'icon-large' : ''}}" mode="widthFix" src="{{item.iconPath}}" />
       <text class="text" style="color: {{selected === index ? selectedColor : color}}">{{item.text}}</text>
     </view>
     <view wx:if="{{index < list.length - 1}}" class="divider"></view>

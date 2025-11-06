@@ -24,7 +24,7 @@ Page({
     try {
       const { initUserData } = require('../../utils/dataManager');
       initUserData();
-      console.log('[Profile] 用户数据初始化完成');
+      console.debug('[Profile] 用户数据初始化完成');
     } catch (e) {
       console.warn('[Profile] 用户数据初始化失败:', e);
     }
@@ -38,9 +38,9 @@ Page({
 
   refreshStats(cb) {
     try {
-      console.log('[Profile] 开始刷新统计数据');
+      console.debug('[Profile] 开始刷新统计数据');
       const userData = getUserData();
-      console.log('[Profile] 获取到用户数据:', {
+      console.debug('[Profile] 获取到用户数据:', {
         points: userData.points,
         userLevel: userData.userLevel,
         hasPointsDedup: !!userData.pointsDedup
@@ -48,11 +48,11 @@ Page({
       
       // 积分与等级
       const points = userData.points || 0;
-      console.log('[Profile] 处理积分:', points);
+      console.debug('[Profile] 处理积分:', points);
       
       // 基于最新配置实时计算等级名称（避免老版本缓存）
       const level = recalculateUserLevel ? recalculateUserLevel(points) : (userData.userLevel || 'P5-应届牛马');
-      console.log('[Profile] 计算等级:', level);
+      console.debug('[Profile] 计算等级:', level);
 
       // 已决策数量（包含欢迎页 accept）
       const history = Array.isArray(userData.decisionHistory) ? userData.decisionHistory : [];
@@ -101,9 +101,9 @@ Page({
       const fav = userData.contentInteractions?.favorites || { quotes: [], votes: [] };
       const favoritesCount = (fav.quotes?.length || 0) + (fav.votes?.length || 0);
 
-      console.log('[Profile] 准备setData:', { points, level, decisionsCount: decisions, favoritesCount });
+      console.debug('[Profile] 准备setData:', { points, level, decisionsCount: decisions, favoritesCount });
       this.setData({ points, level, decisionsCount: decisions, favoritesCount, topTastes, topRestaurants });
-      console.log('[Profile] setData完成');
+      console.debug('[Profile] setData完成');
     } catch (e) {
       console.warn('[Profile] 刷新统计失败:', e);
     } finally {

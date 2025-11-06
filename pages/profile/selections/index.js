@@ -22,12 +22,12 @@ Page({
     logoRetryMap: {}
   },
   onLoad() {
-    console.log('[Selections] 页面加载开始');
+    console.debug('[Selections] 页面加载开始');
     // 预载 pinyin 映射
     try {
       const pinyin = require('../../../restaurant_pinyin.js');
-      console.log('[Selections] 拼音映射加载成功:', Object.keys(pinyin || {}).length, '个映射');
-      console.log('[Selections] 拼音映射内容示例:', Object.entries(pinyin || {}).slice(0, 5));
+      console.debug('[Selections] 拼音映射加载成功:', Object.keys(pinyin || {}).length, '个映射');
+      console.debug('[Selections] 拼音映射内容示例:', Object.entries(pinyin || {}).slice(0, 5));
       this.setData({ pinyinMap: pinyin || {} });
     } catch (e) {
       console.error('[Selections] 拼音映射加载失败:', e);
@@ -116,8 +116,8 @@ Page({
   // 历史记录logo加载失败处理（增强版）
   async onHistoryLogoError(e){
     const name = e.currentTarget.dataset.name;
-    console.log('[Selections] 历史记录logo加载失败 - 餐厅名称:', name);
-    console.log('[Selections] 错误详情:', e.detail);
+    console.debug('[Selections] 历史记录logo加载失败 - 餐厅名称:', name);
+    console.debug('[Selections] 错误详情:', e.detail);
     const idx = this.data.recentAccepts.findIndex(item => item.name === name);
     if (idx === -1) {
       console.warn('[Selections] 未找到对应的历史记录项:', name);
@@ -127,10 +127,11 @@ Page({
     try {
       // 使用增强的降级机制
       const py = this.data.pinyinMap[name];
-      const imageName = py || 'placeholder';
-      const fallbackUrl = await cloudImageManager.getImageUrlWithFallback(imageName);
+      const imageName = py || 'canteen';
+      // 直接使用本地兜底，不再调用云端降级机制
+      const fallbackUrl = cloudImageManager.getCloudImageUrlSync(imageName, 'png');
       
-      console.log('[Selections] 使用降级机制获取URL:', fallbackUrl);
+      console.debug('[Selections] 使用本地兜底URL:', fallbackUrl);
       this.setData({ [`recentAccepts[${idx}].logoPath`]: fallbackUrl });
     } catch (error) {
       console.warn('[Selections] 降级机制失败，使用占位符:', error);
@@ -138,22 +139,22 @@ Page({
       cloudImageManager.loadImageForIOS('placeholder', 'png', (placeholderUrl) => {
         this.setData({ [`recentAccepts[${idx}].logoPath`]: placeholderUrl });
       }, () => {
-        this.setData({ [`recentAccepts[${idx}].logoPath`]: '/images/placeholder.png' });
+        this.setData({ [`recentAccepts[${idx}].logoPath`]: cloudImageManager.getPlaceholderUrlSync() });
       });
     }
   },
   // 将品牌名数组转换为界面模型
   buildBrandModels(brandNames) {
-    console.log('[Selections] 构建品牌模型，输入品牌:', brandNames);
+    console.debug('[Selections] 构建品牌模型，输入品牌:', brandNames);
     const uniq = Array.from(new Set((brandNames || []).map(n => String(n).trim()).filter(Boolean)));
-    console.log('[Selections] 去重后品牌:', uniq);
+    console.debug('[Selections] 去重后品牌:', uniq);
     let ds = null;
     try { ds = require('../../../restaurant_data.js'); } catch(e) { ds = null; }
     const list = Array.isArray(ds) ? ds : (ds && (ds.restaurants || ds.list)) || [];
     const models = uniq.map(name => {
       const found = list.find(r => (r.name || r.brand || r.title) === name);
       const logoPath = this.resolveLogo(name);
-      console.log('[Selections] 品牌模型:', name, '-> logoPath:', logoPath);
+      console.debug('[Selections] 品牌模型:', name, '-> logoPath:', logoPath);
       return {
         name,
         selected: true,
@@ -161,30 +162,30 @@ Page({
         logoPath
       };
     });
-    console.log('[Selections] 最终品牌模型:', models);
+    console.debug('[Selections] 最终品牌模型:', models);
     return models;
   },
   // 解析 logo 路径（优先按拼音命名；按 png->jpg->webp 回退；最后占位）
   resolveLogo(name) {
     try {
-      console.log('[Selections] 解析logo路径 - 餐厅名称:', name);
-      console.log('[Selections] 拼音映射数据:', this.data.pinyinMap);
+      console.debug('[Selections] 解析logo路径 - 餐厅名称:', name);
+      console.debug('[Selections] 拼音映射数据:', this.data.pinyinMap);
       const py = this.data.pinyinMap[name];
-      console.log('[Selections] 找到拼音映射:', name, '->', py);
+      console.debug('[Selections] 找到拼音映射:', name, '->', py);
       if (py) {
         const logoUrl = cloudImageManager.getCloudImageUrl(py, 'png');
-        console.log('[Selections] 生成logo URL:', logoUrl);
+        console.debug('[Selections] 生成logo URL:', logoUrl);
         return logoUrl;
       } else {
         console.warn('[Selections] 未找到拼音映射，餐厅名称:', name);
-        // 使用云端placeholder图片
-        return cloudImageManager.getCloudImageUrl('placeholder', 'png');
+        // 使用本地餐厅兜底图片
+        return cloudImageManager.getCloudImageUrlSync('canteen', 'png');
       }
     } catch (e) {
       console.error('[Selections] 解析logo路径出错:', e);
     }
-    // 使用云端placeholder图片
-    return cloudImageManager.getCloudImageUrl('placeholder', 'png');
+    // 使用本地餐厅兜底图片
+    return cloudImageManager.getCloudImageUrlSync('canteen', 'png');
   },
   // 品牌logo加载失败处理（增强版）
   async onLogoError(e){
@@ -193,25 +194,20 @@ Page({
     if (!name || index == null) return;
     
     const retryCount = this.data.logoRetryMap[name] || 0;
-    console.log(`[Selections] Logo加载失败：${name}, 重试次数：${retryCount}`);
+    console.debug(`[Selections] Logo加载失败：${name}, 重试次数：${retryCount}`);
     
     if (retryCount >= 3) {
-      // 超过重试次数，使用占位图
-      cloudImageManager.loadImageForIOS('placeholder', 'png', (placeholderUrl) => {
-        this.setData({
-          [`brands[${index}].logoPath`]: placeholderUrl
-        });
-      }, () => {
-        this.setData({
-          [`brands[${index}].logoPath`]: '/images/placeholder.png'
-        });
+      // 超过重试次数，使用本地餐厅兜底
+      const fallbackUrl = cloudImageManager.getCloudImageUrlSync('canteen', 'png');
+      this.setData({
+        [`brands[${index}].logoPath`]: fallbackUrl
       });
       return;
     }
     
     try {
-      // 使用cloudImageManager的降级机制
-      const fallbackUrl = await cloudImageManager.getImageUrlWithFallback(name);
+      // 直接使用本地兜底，不再调用云端降级机制
+      const fallbackUrl = cloudImageManager.getCloudImageUrlSync('canteen', 'png');
       
       const newLogoRetryMap = { ...this.data.logoRetryMap };
       newLogoRetryMap[name] = retryCount + 1;
@@ -221,7 +217,7 @@ Page({
         logoRetryMap: newLogoRetryMap
       });
       
-      console.log(`[Selections] 使用降级机制获取URL成功:`, fallbackUrl);
+      console.debug(`[Selections] 使用本地兜底:`, fallbackUrl);
     } catch (error) {
       console.warn('[Selections] 降级机制失败，使用占位符:', error);
       // 最终兜底：使用iOS专用加载方法
@@ -231,7 +227,7 @@ Page({
         });
       }, () => {
         this.setData({
-          [`brands[${index}].logoPath`]: '/images/placeholder.png'
+          [`brands[${index}].logoPath`]: cloudImageManager.getPlaceholderUrlSync()
         });
       });
     }
@@ -296,7 +292,7 @@ Page({
       const ds = require('../../../restaurant_data.js');
       const list = Array.isArray(ds) ? ds : (ds && (ds.restaurants || ds.list)) || [];
       
-      console.log('[Selections] 数据同步开始 - 添加品牌:', added, '移除品牌:', removed);
+      console.debug('[Selections] 数据同步开始 - 添加品牌:', added, '移除品牌:', removed);
       
       // 添加：把同名餐厅 id 全部加入
       added.forEach(name => {
@@ -305,13 +301,13 @@ Page({
           matches.forEach(r => {
             const id = String(r.id != null ? r.id : r.sid);
             idsSet.add(id);
-            console.log(`[Selections] 添加系统餐厅ID: ${id} (${name})`);
+            console.debug(`[Selections] 添加系统餐厅ID: ${id} (${name})`);
           });
         } else {
           // 无匹配则创建用户自定义虚拟ID，确保使用user_added_前缀
           const userAddedId = `user_added_${name}`;
           idsSet.add(userAddedId);
-          console.log(`[Selections] 添加用户自定义餐厅ID: ${userAddedId}`);
+          console.debug(`[Selections] 添加用户自定义餐厅ID: ${userAddedId}`);
         }
       });
       
@@ -320,15 +316,15 @@ Page({
         const matches = list.filter(r => (r.name || r.brand || r.title) === name).map(r => String(r.id != null ? r.id : r.sid));
         matches.forEach(id => {
           idsSet.delete(String(id));
-          console.log(`[Selections] 移除系统餐厅ID: ${id} (${name})`);
+          console.debug(`[Selections] 移除系统餐厅ID: ${id} (${name})`);
         });
         const userAddedId = `user_added_${name}`;
         idsSet.delete(userAddedId);
-        console.log(`[Selections] 移除用户自定义餐厅ID: ${userAddedId}`);
+        console.debug(`[Selections] 移除用户自定义餐厅ID: ${userAddedId}`);
       });
       
       const nextIds = Array.from(idsSet);
-      console.log('[Selections] 最终同步的餐厅ID列表:', nextIds);
+      console.debug('[Selections] 最终同步的餐厅ID列表:', nextIds);
       
       dm.updateUserData('welcomeSelections', nextIds);
       wx.setStorageSync('welcomeSelections', nextIds);

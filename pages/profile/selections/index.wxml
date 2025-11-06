@@ -30,7 +30,7 @@
             <view class="h-name-row">
               <text class="h-name">{{item.name}}</text>
               <view class="h-type-tag {{item.wheelType}}" wx:if="{{item.wheelType}}">
-                {{item.wheelType === 'takeout' ? '外卖' : item.wheelType === 'beverage' ? '茶饮' : item.wheelType === 'restaurant' ? '堂食' : '其他'}}
+                {{item.wheelType === 'takeout' ? '外卖' : item.wheelType === 'beverage' ? '茶饮' : item.wheelType === 'restaurant' ? '餐厅' : '其他'}}
               </view>
             </view>
             <text class="h-time">{{item.timeText}}</text>

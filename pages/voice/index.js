@@ -50,7 +50,7 @@ Page({
   },
 
   onLoad: function(options) {
-    console.log('[Voice] 页面加载');
+    console.debug('[Voice] 页面加载');
     // 移除分包内容提供器注入，统一从主包 JSON/JS 读取
     this.initContent();
   },
@@ -132,7 +132,7 @@ Page({
         isLoading: false
       });
       
-      console.log('[Voice] 内容加载完成，卡片数量:', allCards.length);
+      console.debug('[Voice] 内容加载完成，卡片数量:', allCards.length);
     } catch (error) {
       console.error('[Voice] 加载内容失败:', error);
       this.setData({ isLoading: false });
@@ -292,7 +292,7 @@ Page({
       Math.min(cardRotate - 15, -25) : 
       Math.max(cardRotate + 15, 25);
     
-    console.log(`[Voice] 卡片向${direction === 'left' ? '左' : '右'}滑出，惯性速度:`, velocity);
+    console.debug(`[Voice] 卡片向${direction === 'left' ? '左' : '右'}滑出，惯性速度:`, velocity);
     
     // 启用动画并设置最终位置
     this.setData({
@@ -318,7 +318,7 @@ Page({
    * 处理卡片跳过（左滑）
    */
   handleCardSkip: function() {
-    console.log('[Voice] 处理卡片跳过');
+    console.debug('[Voice] 处理卡片跳过');
     this.nextCard();
   },
 
@@ -332,7 +332,7 @@ Page({
       return;
     }
 
-    console.log('[Voice] 处理卡片点赞:', currentCard.id);
+    console.debug('[Voice] 处理卡片点赞:', currentCard.id);
 
     try {
       // 收藏逻辑：检查是否已收藏，避免重复
@@ -359,7 +359,7 @@ Page({
       // 更新收藏数据
       if (!alreadyFavorited) {
         updateUserData('contentInteractions.favorites', favorites);
-        console.log('[Voice] 已收藏卡片:', currentCard.id);
+        console.debug('[Voice] 已收藏卡片:', currentCard.id);
       }
     } catch (e) {
       console.warn('[Voice] 点赞/收藏处理异常:', e);
@@ -380,7 +380,7 @@ Page({
    * 跳过当前卡片（左滑）
    */
   slideOutLeft: function() {
-    console.log('[Voice] 卡片向左滑出');
+    console.debug('[Voice] 卡片向左滑出');
 
     // 内部内容滑出动画
     this.setData({
@@ -402,7 +402,7 @@ Page({
     const { currentCard } = this.data;
     if (!currentCard || !currentCard.id) return;
 
-    console.log('[Voice] 点赞/收藏卡片:', currentCard.id);
+    console.debug('[Voice] 点赞/收藏卡片:', currentCard.id);
 
     try {
       // 收藏逻辑：检查是否已收藏，避免重复
@@ -431,7 +431,7 @@ Page({
       // 更新收藏数据
       if (!alreadyFavorited) {
         updateUserData('contentInteractions.favorites', favorites);
-        console.log('[Voice] 已收藏卡片:', currentCard.id);
+        console.debug('[Voice] 已收藏卡片:', currentCard.id);
       }
     } catch (e) {
       console.warn('[Voice] 点赞/收藏处理异常:', e);

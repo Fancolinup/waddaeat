@@ -12,7 +12,7 @@
     <view class="result-grid">
       <!-- 卡片结构参考品牌二级页面（product-card），保持视觉一致 -->
       <view class="product-card" wx:for="{{results}}" wx:key="*this" data-id="{{item.skuViewId || item.actId || item._id}}" bindtap="onResultTap">
-        <image class="product-image" src="{{item.headUrl || '/images/placeholder.png'}}" mode="aspectFill" />
+        <image class="product-image" src="{{item.headUrl || cloudPlaceholder}}" mode="aspectFill" />
         <view class="product-info">
           <!-- 商品名优先显示，不再用品牌名占位 -->
           <view class="product-name">{{item.name}}</view>

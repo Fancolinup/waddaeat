@@ -10,9 +10,9 @@ Page({
     // 在启动加载时预加载底部tab图标
     try {
       cloudImageManager.preloadImages([
-        'icon_home', 'icon_home_selected',
-        'icon_voice', 'icon_voice_selected',
-        'icon_profile', 'icon_profile_selected'
+        'icon_home',
+        'icon_coupon',
+        'icon_profile'
       ]);
     } catch (e) {
       console.warn('[Loading] 预加载tab图标失败', e);
@@ -38,15 +38,15 @@ Page({
           const hasEffectiveSelections = (Array.isArray(brandSelections) && brandSelections.length > 0) || (Array.isArray(idSelections) && idSelections.length > 0);
           const jsonFallbackUsed = wx.getStorageSync('JSON_FALLBACK_USED');
 
-          console.log('[Loading] hasShownWelcome=', hasShownWelcome, 'brandSelections.length=', Array.isArray(brandSelections) ? brandSelections.length : -1, 'idSelections.length=', Array.isArray(idSelections) ? idSelections.length : -1, 'jsonFallbackUsed=', jsonFallbackUsed);
+          console.debug('[Loading] hasShownWelcome=', hasShownWelcome, 'brandSelections.length=', Array.isArray(brandSelections) ? brandSelections.length : -1, 'idSelections.length=', Array.isArray(idSelections) ? idSelections.length : -1, 'jsonFallbackUsed=', jsonFallbackUsed);
 
           if (!hasShownWelcome || !hasEffectiveSelections) {
-            console.log('[Loading] 跳转欢迎页：hasShownWelcome=', hasShownWelcome, 'hasEffectiveSelections=', hasEffectiveSelections);
+            console.debug('[Loading] 跳转欢迎页：hasShownWelcome=', hasShownWelcome, 'hasEffectiveSelections=', hasEffectiveSelections);
             wx.redirectTo({
               url: '/packageA/pages/welcome/welcome'
             });
           } else {
-            console.log('[Loading] 跳转首页：hasShownWelcome & hasEffectiveSelections 均满足');
+            console.debug('[Loading] 跳转首页：hasShownWelcome & hasEffectiveSelections 均满足');
             wx.reLaunch({
               url: '/pages/index/index'
             });

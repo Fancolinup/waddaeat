@@ -4,15 +4,16 @@ const takeoutData = require('../../data/takeout');
 const beverageData = require('../../data/beverage');
 const locationService = require('../../utils/locationService');
 const restaurantData = require('../../restaurant_data.js');
+const { cloudImageManager } = require('../../utils/cloudImageManager.js');
 
 Page({
   data: {
     partnerBrands: [
-      { name: '美团', logo: '/images/placeholder.png' },
-      { name: '饿了么', logo: '/images/placeholder.png' },
-      { name: '肯德基', logo: '/images/placeholder.png' },
-      { name: '麦当劳', logo: '/images/placeholder.png' },
-      { name: '星巴克', logo: '/images/placeholder.png' }
+      { name: '美团', logo: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' },
+      { name: '饿了么', logo: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' },
+      { name: '肯德基', logo: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' },
+      { name: '麦当劳', logo: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' },
+      { name: '星巴克', logo: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' }
     ],
     categories: [
       { key: 'coupon', name: '红包领券' },
@@ -29,7 +30,7 @@ Page({
     nearbyOffers: [],
     nearbyOffersLoop: [],
     activityBanner: {
-      image: '/images/placeholder.png',
+      image: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png',
       title: '平台大促活动',
       desc: '限时抢券，抢到即赚到'
     },
@@ -62,8 +63,23 @@ Page({
       // 未设置位置：显示默认提示文案，不触发位置选择
       this.setData({ userLocation: null, locationStatus: 'idle', locationText: '选择位置' });
     }
+
+    // TTL 机制：位置超过2小时或附近优惠为空时自动尝试刷新
+    try {
+      const now = Date.now();
+      const TTL_MS = 2 * 3600 * 1000; // 2小时
+      const expired = cachedLoc && typeof cachedLoc.ts === 'number' ? (now - cachedLoc.ts > TTL_MS) : false;
+      const needRefresh = expired || !(Array.isArray(this.data.nearbyOffers) && this.data.nearbyOffers.length > 0);
+      if (cachedLoc && typeof cachedLoc.latitude === 'number' && typeof cachedLoc.longitude === 'number' && needRefresh) {
+        console.debug('[CouponCenter][附近优惠] 触发自动刷新：', { expired, empty: !(this.data.nearbyOffers && this.data.nearbyOffers.length) });
+        this.loadNearbyOffers();
+      }
+    } catch (e) { console.warn('[CouponCenter][附近优惠] 自动刷新检查失败', e); }
+
     this.loadPlatformBanners();
   },
+
+
 
   onPartnerBrandTap(e) {
     const brandName = e.currentTarget.dataset.name;
@@ -96,7 +112,7 @@ Page({
     try {
       const list = (restaurantData && restaurantData.restaurants) ? restaurantData.restaurants : [];
       const brands = list.map(r => {
-        let logo = r.logoUrl || '/images/placeholder.png';
+        let logo = r.logoUrl || cloudImageManager.getCloudImageUrlSync('takeout', 'png');
         if (typeof logo === 'string' && logo.startsWith('http://')) {
           logo = 'https://' + logo.slice(7);
         }
@@ -142,10 +158,10 @@ Page({
             if (logo.startsWith('http://')) {
               logo = 'https://' + logo.slice(7);
             } else if (logo.startsWith('cloud://')) {
-              logo = '/images/placeholder.png';
+              logo = cloudImageManager.getPlaceholderUrlSync();
             }
           }
-          console.info('[品牌区] 有券品牌：', b.name, 'logo来源：', candidate ? 'Meituan API' : (logo === '/images/placeholder.png' ? '占位' : '本地'));
+          console.info('[品牌区] 有券品牌：', b.name, 'logo来源：', candidate ? 'Meituan API' : (logo === cloudImageManager.getPlaceholderUrlSync() ? '占位' : '本地'));
           filtered.push({ name: b.name, logo });
         } else {
           console.info('[品牌区] 无券品牌过滤：', b.name);
@@ -181,11 +197,11 @@ Page({
     });
 
     const sampleImages = [
-      '/images/placeholder.png',
-      'https://picsum.photos/seed/coupon1/600/400',
-      'https://picsum.photos/seed/coupon2/600/400',
-      'https://picsum.photos/seed/coupon3/600/400',
-      'https://picsum.photos/seed/coupon4/600/400'
+      cloudImageManager.getPlaceholderUrlSync(),
+      cloudImageManager.getPlaceholderUrlSync(),
+      cloudImageManager.getPlaceholderUrlSync(),
+      cloudImageManager.getPlaceholderUrlSync(),
+      cloudImageManager.getPlaceholderUrlSync()
     ];
 
     const coupons = brandList.slice(0, 24).map((b, idx) => ({
@@ -245,9 +261,9 @@ Page({
       const slug = map && name ? (map[name] || 'placeholder') : 'placeholder';
       let url = cloudImageManager.getCloudImageUrl(slug);
       if (typeof url === 'string' && url.startsWith('http://')) url = 'https://' + url.slice(7);
-      return url || '/images/placeholder.png';
+      return url || cloudImageManager.getPlaceholderUrlSync();
     } catch (e) {
-      return '/images/placeholder.png';
+      return cloudImageManager.getPlaceholderUrlSync();
     }
   },
   async loadNearbyOffers() {
@@ -284,16 +300,17 @@ Page({
       for (const r of restaurants) {
         const rName = r && r.name ? r.name : '';
         if (!rName) continue;
-        console.info('[附近优惠][餐厅聚合] 处理餐厅', { id: r.id, name: rName, distance: r.distance });
-
+        const qName = this.cleanRestaurantName ? this.cleanRestaurantName(rName) : (String(rName).trim());
+        const lat = (r && typeof r.latitude === 'number') ? r.latitude : (r?.amapData?.latitude);
+        const lng = (r && typeof r.longitude === 'number') ? r.longitude : (r?.amapData?.longitude);
         // 拉取外卖与到店商品（静默失败）
         let wmRes = null, osRes = null;
         try {
-          wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: rName } });
+          wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: qName, latitude: lat, longitude: lng } });
           console.info('[附近优惠][餐厅聚合] 外卖响应 result', wmRes && wmRes.result);
         } catch (e1) { console.warn('[附近优惠][餐厅聚合] 外卖拉取失败', { name: rName, error: e1 }); }
         try {
-          osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, searchText: rName } });
+          osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, searchText: qName, latitude: lat, longitude: lng } });
           console.info('[附近优惠][餐厅聚合] 到店响应 result', osRes && osRes.result);
         } catch (e2) { console.warn('[附近优惠][餐厅聚合] 到店拉取失败', { name: rName, error: e2 }); }
 
@@ -335,7 +352,7 @@ Page({
               console.info('[附近优惠][餐厅聚合][referral] 响应 result', lr && lr.result);
               const root = lr?.result?.data || lr?.result || {};
               const dataRoot = (root && typeof root === 'object' && root.data && typeof root.data === 'object') ? root.data : root;
-              const linkMap = dataRoot?.referralLinkMap || dataRoot?.linkMap || dataRoot?.urlMap || {};
+              const linkMap = dataRoot?.referralLinkMap || {};
               const weapp = linkMap['4'] || linkMap[4] || linkMap.weapp || linkMap.mini;
               if (weapp) {
                 itemsWithLink.push({ ...it, referralLinkMap: linkMap });
@@ -379,7 +396,7 @@ Page({
           id: r.id || (rName + '_' + (r.distance || '')), // 兜底生成id
           name: rName,
           distance: typeof r.distance === 'number' ? r.distance : null,
-          logoUrl: logoUrl || '/images/placeholder.png',
+          logoUrl: logoUrl || cloudImageManager.getCloudImageUrlSync('takeout', 'png'),
           products: itemsWithLink
         });
       }
@@ -403,7 +420,7 @@ Page({
       console.info('[附近优惠][餐厅聚合][点击] 选中餐厅', { id, name: restaurant && restaurant.name });
       if (!restaurant) return;
       const name = restaurant.name || '';
-      const logo = restaurant.logoUrl || '/images/placeholder.png';
+      const logo = restaurant.logoUrl || cloudImageManager.getCloudImageUrlSync('takeout', 'png');
       const products = Array.isArray(restaurant.products) ? restaurant.products : [];
       const url = `/pages/brand/detail?name=${encodeURIComponent(name)}&logo=${encodeURIComponent(logo)}`;
       wx.navigateTo({
@@ -430,7 +447,7 @@ Page({
       const loc = await locationService.chooseUserLocation();
       console.info('[CouponCenter][位置] 用户选择位置', loc);
       // 记录用户选择的位置到本地存储（双向同步）
-      try { wx.setStorageSync('userLocation', loc); } catch(e) { console.warn('[CouponCenter][位置] 写入本地缓存失败', e); }
+      try { wx.setStorageSync('userLocation', { ...loc, ts: Date.now() }); } catch(e) { console.warn('[CouponCenter][位置] 写入本地缓存失败', e); }
       // 使用真实位置加载附近优惠（静默失败，无提示）
       await this.setData({ userLocation: loc });
       await this.loadNearbyOffers();
@@ -619,22 +636,25 @@ Page({
 
   // 前端触发云函数：调用美团 CPS Open API 的 query_coupon
   async callMeituanCoupon() {
-    console.log('[Meituan][FrontEnd] 准备调用云函数 getMeituanCoupon');
+    console.debug('[Meituan][FrontEnd] 准备调用云函数 getMeituanCoupon');
     try {
+      const loc = this.data.userLocation || wx.getStorageSync('userLocation') || {};
+      const latitude = (loc && typeof loc.latitude === 'number') ? loc.latitude : undefined;
+      const longitude = (loc && typeof loc.longitude === 'number') ? loc.longitude : undefined;
       const res = await wx.cloud.callFunction({
         name: 'getMeituanCoupon',
         data: {
           platform: 1,
           searchText: '麦当劳',
-          latitude: 31.23136,
-          longitude: 121.47004
+          latitude,
+          longitude
           // 安全建议：AppKey/Secret 建议通过云函数环境变量配置；若未配置可临时在 data 里传入
         }
       });
-      console.log('[Meituan][FrontEnd] 云函数返回 result:', res && res.result);
+      console.debug('[Meituan][FrontEnd] 云函数返回 result:', res && res.result);
       if (res && res.result) {
         if (res.result.ok) {
-          console.log('[Meituan][FrontEnd] 响应数据 data:', res.result.data);
+          console.debug('[Meituan][FrontEnd] 响应数据 data:', res.result.data);
         } else {
           console.warn('[Meituan][FrontEnd] 请求失败 error:', res.result.error);
         }
@@ -670,7 +690,7 @@ Page({
     const list = (this.data.partnerBrands || []).slice();
     const idx = list.findIndex(x => x.name === name);
     if (idx >= 0) {
-      list[idx].logo = '/images/placeholder.png';
+      list[idx].logo = cloudImageManager.getPlaceholderUrlSync();
       this.setData({ partnerBrands: list });
     }
   },
@@ -685,12 +705,12 @@ Page({
         return !t || t > now;
       });
 
-      console.log('[coupon] 平台banner从云端读取数量:', list.length);
+      console.debug('[coupon] 平台banner从云端读取数量:', list.length);
       // 如果云端没有有效数据，使用本地种子 actId 作为回退
       if (!list.length) {
         const fallbackActIds = [689, 701, 648, 645, 638, 569];
         list = fallbackActIds.map(actId => ({ actId, couponValidETimestamp: now + 7 * 24 * 3600 * 1000 }));
-        console.log('[coupon] 使用回退 actId 列表:', fallbackActIds);
+        console.debug('[coupon] 使用回退 actId 列表:', fallbackActIds);
       }
 
       // 使用云端自有图片：cloud://.../Waddaeat/platform_actions/${actId}.png
@@ -704,7 +724,7 @@ Page({
         return { ...b, headUrl: fileId };
       });
 
-      console.log('[coupon] 平台banner fileIds:', fileIds);
+      console.debug('[coupon] 平台banner fileIds:', fileIds);
 
       // 将 cloud:// 文件ID 转为临时HTTPS链接
       try {
@@ -720,19 +740,19 @@ Page({
           normalized = normalized.map(x => {
             const fid = x.headUrl;
             const temp = fid ? map[fid] : '';
-            return { ...x, headUrl: (temp && temp.indexOf('http') === 0) ? temp : '/images/placeholder.png' };
+            return { ...x, headUrl: (temp && temp.indexOf('http') === 0) ? temp : cloudImageManager.getPlaceholderUrlSync() };
           });
-          console.log('[coupon] 平台banner云图转HTTPS结果:', normalized.map(x => ({ actId: x.actId, url: x.headUrl })));
+          console.debug('[coupon] 平台banner云图转HTTPS结果:', normalized.map(x => ({ actId: x.actId, url: x.headUrl })));
         }
       } catch (eUrl) {
         console.warn('[coupon] 平台banner云图转HTTPS失败：', eUrl);
-        normalized = normalized.map(x => ({ ...x, headUrl: '/images/placeholder.png' }));
+        normalized = normalized.map(x => ({ ...x, headUrl: cloudImageManager.getPlaceholderUrlSync() }));
       }
 
       // 输出平台banner图片路径日志以便排查
       try {
         const urls = (normalized || []).map(x => ({ actId: x.actId, url: x.headUrl }));
-        console.log('[coupon] 平台banner图片路径（actId->url）：', urls);
+        console.debug('[coupon] 平台banner图片路径（actId->url）：', urls);
       } catch (eLog) {}
 
       // 预填平台 Banner 的推广链接，减少点击时的等待
@@ -748,7 +768,7 @@ Page({
             if (d.actId && m && Object.keys(m).length > 0) mapAct[String(d.actId)] = m;
           }
           normalized = (normalized || []).map(x => ({ ...x, referralLinkMap: mapAct[String(x.actId)] || x.referralLinkMap || {} }));
-          console.log('[coupon] 预填平台banner链接完成，数量：', Object.keys(mapAct).length);
+          console.debug('[coupon] 预填平台banner链接完成，数量：', Object.keys(mapAct).length);
         }
       } catch (eFill) {
         console.warn('[coupon] 预填平台banner链接失败：', eFill);
@@ -765,7 +785,7 @@ Page({
     const list = (this.data.platformBanners || []).slice();
     if (idx >= 0 && idx < list.length) {
       console.warn('[coupon] 平台banner图片加载失败，使用占位图。actId=', list[idx]?.actId, 'url=', list[idx]?.headUrl);
-      list[idx].headUrl = '/images/placeholder.png';
+      list[idx].headUrl = cloudImageManager.getPlaceholderUrlSync();
       this.setData({ platformBanners: list });
     }
   },
@@ -814,7 +834,7 @@ Page({
           b.brandLogo,
           b.raw && (b.raw.brandLogoUrl || (b.raw.brandInfo && b.raw.brandInfo.brandLogoUrl) || b.raw.logo)
         ];
-        let logo = '/images/placeholder.png';
+        let logo = cloudImageManager.getPlaceholderUrlSync();
         for (const c of candidates) {
           if (typeof c === 'string' && c.trim()) { logo = c; break; }
         }
@@ -825,7 +845,7 @@ Page({
         return { name, logo };
       }).filter(x => !!x.name);
 
-      console.log('[品牌区] 从云端读取的品牌原始列表（name->logo，总数=', brands.length, '）：', brands.map(x => ({ name: x.name, logo: x.logo })));
+      console.debug('[品牌区] 从云端读取的品牌原始列表（name->logo，总数=', brands.length, '）：', brands.map(x => ({ name: x.name, logo: x.logo })));
 
       // 兼容云存储 logo：将 cloud:// 路径转换为临时 HTTPS 链接，确保在 iOS 真机也可显示
       try {
@@ -842,11 +862,11 @@ Page({
           brands = brands.map(x => {
             if (typeof x.logo === 'string' && x.logo.indexOf('cloud://') === 0) {
               const temp = map[x.logo];
-              return { ...x, logo: (temp && temp.indexOf('http') === 0) ? temp : '/images/placeholder.png' };
+              return { ...x, logo: (temp && temp.indexOf('http') === 0) ? temp : cloudImageManager.getPlaceholderUrlSync() };
             }
             return x;
           });
-          console.log('[品牌区] 云logo转HTTPS结果：', brands.map(x => ({ name: x.name, logo: x.logo })));
+          console.debug('[品牌区] 云logo转HTTPS结果：', brands.map(x => ({ name: x.name, logo: x.logo })));
         }
       } catch (eLogo) {
         console.warn('[品牌区] 云logo转HTTPS失败：', eLogo);
@@ -861,24 +881,24 @@ Page({
     }
   },
   async onTapPlatformBanner(e) {
-    console.log('[banner] tap event:', e);
+    console.debug('[banner] tap event:', e);
     const idx = Number(e?.currentTarget?.dataset?.idx || 0);
-    console.log('[banner] idx:', idx);
+    console.debug('[banner] idx:', idx);
     const b = this.data.platformBanners[idx] || {};
-    console.log('[banner] banner data:', b);
+    console.debug('[banner] banner data:', b);
     const map = (b && typeof b === 'object') ? (b.referralLinkMap || b.linkMap || b.urlMap || (b.links && b.links.referralLinkMap) || {}) : {};
     const weapp = map['4'] || map[4] || map?.weapp || map?.mini;
-    console.log('[banner] referralLinkMap:', map, 'weapp:', weapp);
+    console.debug('[banner] referralLinkMap:', map, 'weapp:', weapp);
     // 直接用小程序链接拉起（优先 weapp 对象 appId，其次短链字符串），不做额外 toast/内部跳转
     try {
       if (weapp && wx?.navigateToMiniProgram && typeof weapp === 'object' && weapp.appId) {
-        console.log('[banner] navigateToMiniProgram object:', weapp);
+        console.debug('[banner] navigateToMiniProgram object:', weapp);
         wx.navigateToMiniProgram({ appId: weapp.appId, path: weapp.path || '', envVersion: 'release' });
         return;
       }
       if (typeof weapp === 'string' && wx?.navigateToMiniProgram) {
         const s = weapp.trim();
-        console.log('[banner] navigateToMiniProgram shortLink/path:', s);
+        console.debug('[banner] navigateToMiniProgram shortLink/path:', s);
         if (s.startsWith('/')) {
           wx.navigateToMiniProgram({ appId: 'wxde8ac0a21135c07d', path: s, envVersion: 'release' });
         } else {
@@ -888,13 +908,13 @@ Page({
       }
       // 兜底：通过云函数动态获取小程序链接并拉起
       if (b.actId) {
-        console.log('[banner] fallback by actId:', b.actId);
+        console.debug('[banner] fallback by actId:', b.actId);
         const res = await wx.cloud.callFunction({ name: 'getMeituanReferralLink', data: { actId: b.actId } });
         const root = res?.result?.data || {};
         const dataRoot = (root && typeof root === 'object' && root.data && typeof root.data === 'object') ? root.data : root;
         const linkMap = dataRoot?.referralLinkMap || {};
         const wa = linkMap['4'] || linkMap[4] || linkMap.weapp || linkMap.mini;
-        console.log('[banner] fallback referralLinkMap:', linkMap, 'weapp:', wa);
+        console.debug('[banner] fallback referralLinkMap:', linkMap, 'weapp:', wa);
         if (wa && typeof wa === 'object' && wa.appId && wx?.navigateToMiniProgram) {
           wx.navigateToMiniProgram({ appId: wa.appId, path: wa.path || '', envVersion: 'release' });
           return;

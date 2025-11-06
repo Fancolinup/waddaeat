@@ -56,7 +56,7 @@
     <scroll-view class="dl-content" scroll-y="true">
       <view class="dl-body">
         <!-- 根据转盘类型切换logo呈现方式：餐厅/茶饮/外卖统一使用云端图片 -->
-        <image class="dl-logo" src="{{selected ? selected.icon : placeholderImageUrl}}" mode="aspectFill" binderror="onSelectedLogoError" lazy-load="true" />
+        <image wx:if="{{selected && selected.icon}}" class="dl-logo" src="{{selected.icon}}" mode="aspectFill" binderror="onSelectedLogoError" lazy-load="true" />
         <view class="dl-info">
           <view class="dl-name">{{selected && selected.name}}</view>
           <view class="dl-type" wx:if="{{wheelType !== 'beverage'}}">{{selected && (selected.type || '餐厅')}}</view>
@@ -97,12 +97,17 @@
 
     <!-- 导航按钮：图片直接作为按钮 -->
     <view class="dl-navigation" wx:if="{{selected && selected.isFromAmap}}">
-      <image class="nav-icon-button" src="cloud://cloud1-4gw154ajfc4d5163.636c-cloud1-4gw154ajfc4d5163-1379600796/FullRest/mapdirection.png" bindtap="onNavigateToRestaurant" mode="aspectFill"></image>
+      <image class="nav-icon-button" src="cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/mapdirection.png" bindtap="onNavigateToRestaurant" mode="aspectFill"></image>
       <text class="nav-text" bindtap="onNavigateToRestaurant">导航去这里</text>
     </view>
 
     <view class="dl-actions">
-      <button class="dl-btn dl-primary" bindtap="onAccept">就它，帮我领券</button>
+      <button class="dl-btn dl-primary" bindtap="onAccept">
+        <view class="btn-text" style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;">
+          <text>就它，</text>
+          <text>帮我找券</text>
+        </view>
+      </button>
       <button class="dl-btn dl-secondary" bindtap="onReroll">再转一次</button>
       <button class="dl-btn dl-tertiary" bindtap="onAddShortlist">加入备选</button>
     </view>
@@ -113,7 +118,7 @@
     <view class="wheel-type-switcher ws-{{wheelType}} {{switchingAnimation ? 'switching' : ''}}">
       <view class="switcher-item item-restaurant {{wheelType === 'restaurant' ? 'active' : ''}}" data-type="restaurant" bindtap="onSwitchWheelType">
         <image class="icon" src="{{switchIcons.canteen || placeholderImageUrl}}" mode="aspectFit"></image>
-        <text class="switcher-text">堂食</text>
+        <text class="switcher-text">餐厅</text>
       </view>
       <view class="switcher-item item-takeout {{wheelType === 'takeout' ? 'active' : ''}}" data-type="takeout" bindtap="onSwitchWheelType">
         <image class="icon" src="{{switchIcons.takeout || placeholderImageUrl}}" mode="aspectFit"></image>
@@ -175,7 +180,7 @@
     <!-- 展示餐厅横滑列表（logo作底图+餐厅名），数据来自今日选择页的 nearbyOffers -->
     <scroll-view wx:else class="horizontal-list" scroll-x="true" enable-flex="true">
       <view class="h-card" wx:for="{{nearbyOffers}}" wx:key="id" data-id="{{item.id}}" bindtap="onNearbyRestaurantTap">
-        <image class="h-bg" src="{{item.logoUrl || '/images/placeholder.png'}}" mode="aspectFill" />
+        <image class="h-bg" src="{{item.logoUrl || nearbyPlaceholderImageUrl}}" mode="aspectFill" />
         <view class="h-overlay">
           <view class="h-title">{{item.name}}</view>
           <view wx:if="{{item.distance}}" class="h-sub">{{item.distance}}m</view>

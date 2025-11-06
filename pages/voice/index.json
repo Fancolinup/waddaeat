@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "领券中心（旧页废弃）",
+  "navigationBarTitleText": "红包领券（旧页废弃）",
   "enablePullDownRefresh": false,
   "usingComponents": {
     "loading": "/components/loading/loading"

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "openapi": []
+  },
+  "triggers": [
+    { "name": "redpacket_minutely_5", "type": "timer", "config": "0 */5 * * * *" }
+  ]
+}

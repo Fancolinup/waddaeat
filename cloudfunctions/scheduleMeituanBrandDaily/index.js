@@ -177,6 +177,29 @@ async function upsertToCollection(db, collectionName, query, payload) {
   return { _id: addRes._id, created: true };
 }
 
+async function getAndAdvanceBrandRotation(db, totalCount) {
+  try {
+    if (!Number.isFinite(totalCount) || totalCount <= 0) return 0;
+    const coll = db.collection('ScheduleState');
+    const key = 'scheduleMeituanBrandDaily_rotation';
+    const found = await coll.where({ key }).get();
+    let index = 0;
+    if (found?.data?.length) {
+      const id = found.data[0]._id;
+      index = typeof found.data[0].index === 'number' ? found.data[0].index : 0;
+      const next = (index + 1) % totalCount;
+      await coll.doc(id).update({ data: { index: next, updatedAt: new Date() } });
+    } else {
+      await coll.add({ data: { key, index: (1 % totalCount), updatedAt: new Date() } });
+      index = 0;
+    }
+    return index;
+  } catch (e) {
+    console.warn('[Schedule] 品牌轮询索引处理异常：', e);
+    return 0;
+  }
+}
+
 exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext();
   const isTrigger = wxContext && wxContext.SOURCE === 'wx_trigger';
@@ -202,8 +225,12 @@ exports.main = async (event, context) => {
   }));
   const limitBrandCount = typeof event?.limitBrandCount === 'number' && event.limitBrandCount > 0 ? event.limitBrandCount : brandsAll.length;
   const runMode = typeof event?.runMode === 'string' ? event.runMode : 'all';
-  const brands = brandsAll.slice(0, Math.min(brandsAll.length, limitBrandCount));
-
+  let brands = brandsAll.slice(0, Math.min(brandsAll.length, limitBrandCount));
+  if (isTrigger) {
+    const rotationIdx = await getAndAdvanceBrandRotation(db, brandsAll.length);
+    brands = (rotationIdx >= 0 && rotationIdx < brandsAll.length) ? [brandsAll[rotationIdx]] : [];
+    console.log('[Schedule] 轮询模式，选中品牌索引：', rotationIdx, '品牌：', brands[0] && brands[0].brandName);
+  }
   const couponResults = [];
   const metrics = {
     stage1: { brandsProcessed: 0, rawItemCount: 0, keptItemCount: 0, stats: [] },

@@ -4,7 +4,7 @@ const restaurantData = require('../../restaurant_data.js');
 Page({
   data: {
     brandName: '',
-    brandLogo: '/images/placeholder.png',
+    brandLogo: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png',
     products: [],
     userLocation: null,
     loading: true,
@@ -19,7 +19,7 @@ Page({
       logo = 'https://' + logo.slice(7);
     }
     if (logo) {
-      console.info('[品牌详情] 接收到上页传入的logo：', logo);
+      console.debug('[品牌详情] 接收到上页传入的logo：', logo);
       this.setData({ brandLogo: logo });
     }
     this.setData({ brandName: name });
@@ -30,7 +30,7 @@ Page({
       const channel = this.getOpenerEventChannel && this.getOpenerEventChannel();
       channel && channel.on && channel.on('initData', (payload) => {
         const arr = Array.isArray(payload && payload.products) ? payload.products : [];
-        console.info('[品牌详情] 接收到上页传入商品数量', arr.length);
+        console.debug('[品牌详情] 接收到上页传入商品数量', arr.length);
         if (arr.length) {
           this.setData({ products: arr, loading: false, hasInitProducts: true });
         }
@@ -50,26 +50,18 @@ Page({
 
   initBrandLogo(name) {
     try {
-      const map = restaurantData && restaurantData.pinyinMap ? restaurantData.pinyinMap : null;
-      const slug = map && name ? (map[name] || 'placeholder') : 'placeholder';
+      // 若上页已传入稳定的 https logo，则不覆盖
+      const current = this.data.brandLogo;
+      if (current && typeof current === 'string' && current.startsWith('https://') && current !== 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png') {
+        return;
+      }
       const { cloudImageManager } = require('../../utils/cloudImageManager.js');
-      // 优先使用带降级的异步方法，确保缺图走占位图
-      cloudImageManager.getImageUrlWithFallback(slug).then((url) => {
-        let final = url || '/images/placeholder.png';
-        if (typeof final === 'string' && final.startsWith('http://')) {
-          final = 'https://' + final.slice(7);
-        }
-        this.setData({ brandLogo: final });
-      }).catch(() => {
-        // 回退同步占位图
-        try {
-          this.setData({ brandLogo: cloudImageManager.getCloudImageUrlSync('placeholder', 'png') });
-        } catch (e2) {
-          this.setData({ brandLogo: '/images/placeholder.png' });
-        }
-      });
+      // 统一使用本地占位图，避免临时HTTPS过期导致logo消失
+      const final = cloudImageManager.getPlaceholderUrlSync();
+      this.setData({ brandLogo: final });
     } catch (e) {
-      this.setData({ brandLogo: '/images/placeholder.png' });
+      const { cloudImageManager } = require('../../utils/cloudImageManager.js');
+      this.setData({ brandLogo: cloudImageManager.getPlaceholderUrlSync() });
     }
   },
 
@@ -79,10 +71,10 @@ Page({
     // 如果事件通道已初始化商品，避免覆盖
     if (this.data.hasInitProducts) { this.setData({ loading: false }); return; }
     try {
-      console.info('[品牌详情] 从数据库读取品牌商品', { brandName: name });
+      console.debug('[品牌详情] 从数据库读取品牌商品', { brandName: name });
       const db = wx.cloud.database();
       const { data } = await db.collection('MeituanBrandCoupon').where({ brandName: name }).get();
-      console.info('[品牌详情] 数据库查询返回条数', Array.isArray(data) ? data.length : -1);
+      console.debug('[品牌详情] 数据库查询返回条数', Array.isArray(data) ? data.length : -1);
       const doc = Array.isArray(data) && data.length > 0 ? data[0] : null;
       const items = Array.isArray(doc?.items) ? doc.items : [];
       const list = items.map(it => {
@@ -124,21 +116,25 @@ Page({
         return itemObj;
       }).filter(x => !!x.skuViewId);
 
-      console.info('[品牌详情] 数据库解析完成，条数', list.length);
+      console.debug('[品牌详情] 数据库解析完成，条数', list.length);
       // 当数据库没有商品时，回退实时拉取
       if (!list.length) {
         try {
-          console.info('[品牌详情] 数据库为空，回退调用云函数 getMeituanCoupon', { platform: 1, searchText: name });
-          const res = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: name } });
-          console.info('[品牌详情] 云函数响应 result', res && res.result);
+          console.debug('[品牌详情] 数据库为空，回退调用云函数 getMeituanCoupon', { platform: 1, searchText: name });
+          const qName = (this.cleanRestaurantName ? this.cleanRestaurantName(name) : String(name).trim());
+          const loc = this.data.userLocation || wx.getStorageSync('userLocation') || {};
+          const lat = (loc && typeof loc.latitude === 'number') ? loc.latitude : undefined;
+          const lng = (loc && typeof loc.longitude === 'number') ? loc.longitude : undefined;
+          const res = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: qName, latitude: lat, longitude: lng } });
+          console.debug('[品牌详情] 云函数响应 result', res && res.result);
           const result = res && res.result;
           let realtime = this.transformProducts(result);
-          console.info('[品牌详情] 实时解析完成，条数', realtime.length);
+          console.debug('[品牌详情] 实时解析完成，条数', realtime.length);
           // 批量转换 cloud:// 头图为临时HTTPS
           try {
             const fileIds2 = realtime.filter(x => typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0).map(x => x.headUrl);
             if (fileIds2.length && wx.cloud && wx.cloud.getTempFileURL) {
-              console.info('[品牌详情] 请求临时文件URL数量', fileIds2.length);
+              console.debug('[品牌详情] 请求临时文件URL数量', fileIds2.length);
               const r3 = await wx.cloud.getTempFileURL({ fileList: fileIds2 });
               const m3 = {};
               const fl3 = (r3 && r3.fileList) || [];
@@ -146,11 +142,11 @@ Page({
               realtime = realtime.map(x => {
                 if (typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0) {
                   const tmp3 = m3[x.headUrl];
-                  return { ...x, headUrl: (tmp3 && tmp3.indexOf('http') === 0) ? tmp3 : '/images/placeholder.png' };
+                  return { ...x, headUrl: (tmp3 && tmp3.indexOf('http') === 0) ? tmp3 : 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' };
                 }
                 return x;
               });
-              console.info('[品牌详情] 临时URL转换完成');
+              console.debug('[品牌详情] 临时URL转换完成');
             }
           } catch (e3) {
             console.warn('[品牌详情] 临时URL转换失败', e3);
@@ -265,7 +261,7 @@ Page({
     if (!item || !item.skuViewId) return;
     const skuViewId = String(item.skuViewId).trim();
     const brandName = this.data.brandName;
-    console.info('[品牌详情][调试] 点击商品', { idx, skuViewId, brandName });
+    console.debug('[品牌详情] 点击商品', { idx, skuViewId, brandName });
     try {
       const directMap = (item && typeof item.referralLinkMap === 'object') ? item.referralLinkMap : null;
       const directResolved = this.resolveWeappLink(directMap);
@@ -314,7 +310,7 @@ Page({
       }
 
       const resolved = this.resolveWeappLink(map);
-      console.info('[品牌详情][跳转检查] 解析小程序链接', { hasLink: !!resolved, matchMeta, mapKeys: map && typeof map === 'object' ? Object.keys(map) : (typeof map) });
+      console.debug('[品牌详情][跳转检查] 解析小程序链接', { hasLink: !!resolved, matchMeta, mapKeys: map && typeof map === 'object' ? Object.keys(map) : (typeof map) });
       if (resolved && wx?.navigateToMiniProgram) {
         const { appId, path } = resolved;
         wx.navigateToMiniProgram({ appId: appId || 'wxde8ac0a21135c07d', path: path || '', envVersion: 'release',
@@ -323,7 +319,7 @@ Page({
         return;
       }
 
-      console.warn('[品牌详情][调试] 未找到 linkType=4 小程序链接', { skuViewId, brandName, matchMeta });
+      console.warn('[品牌详情] 未找到 linkType=4 小程序链接', { skuViewId, brandName, matchMeta });
       wx.showToast({ title: '暂无可用小程序链接', icon: 'none' });
     } catch (err) {
       console.warn('[品牌详情] 跳转处理失败', err);

@@ -20,19 +20,19 @@ Page({
 
   loadTestData: function() {
     try {
-      console.log('[TestVoice] 开始加载测试数据');
+      console.debug('[TestVoice] 开始加载测试数据');
       
       const content = getAppContent();
-      console.log('[TestVoice] 获取到内容:', content);
+      console.debug('[TestVoice] 获取到内容:', content);
       
       const quotes = content.quotes || [];
       const topics = content.topics || [];
       
-      console.log('[TestVoice] 语录数量:', quotes.length);
-      console.log('[TestVoice] 话题数量:', topics.length);
+      console.debug('[TestVoice] 语录数量:', quotes.length);
+      console.debug('[TestVoice] 话题数量:', topics.length);
       
       if (quotes.length > 0) {
-        console.log('[TestVoice] 第一条语录:', quotes[0]);
+        console.debug('[TestVoice] 第一条语录:', quotes[0]);
       }
       
       this.setData({

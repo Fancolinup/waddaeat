@@ -51,7 +51,8 @@ Page({
     nearbyLoading: false,
     
     // 云图片占位符
-    placeholderImageUrl: cloudImageManager.getCloudImageUrlSync('placeholder', 'png'),
+    placeholderImageUrl: cloudImageManager.getPlaceholderUrlSync(),
+    nearbyPlaceholderImageUrl: cloudImageManager.getPlaceholderUrlSync(),
     placeholderSlots: [0,0,0],
     // 轮盘类型切换按钮图标（HTTPS临时链接或占位图）
     switchIcons: { canteen: '', takeout: '', beverage: '' },
@@ -135,6 +136,14 @@ Page({
     try { cachedLoc = wx.getStorageSync('userLocation'); } catch(e) {}
     if (cachedLoc && cachedLoc.name) {
       this.setData({ userLocation: cachedLoc });
+      // TTL 检查：附近优惠为空或位置缓存过期则触发刷新
+      const ttlMs = 2 * 60 * 60 * 1000; // 2小时TTL
+      const now = Date.now();
+      const locTs = Number(cachedLoc.ts || 0);
+      const noOffers = !Array.isArray(this.data.nearbyOffers) || this.data.nearbyOffers.length === 0;
+      if (cachedLoc.latitude && cachedLoc.longitude && (noOffers || !locTs || (now - locTs > ttlMs))) {
+        this.loadNearbyOffers();
+      }
     }
     
     // 恢复位置信息显示
@@ -174,6 +183,9 @@ Page({
     
     // 刷新转盘数据
     this.initWheel(false);
+
+    // 切换后刷新占位图与切换图标（iOS 使用临时 HTTPS 链接）
+    try { this.initCloudImages(); } catch (_) {}
     
     // 隐藏结果浮层
     this.setData({ showDecisionLayer: false, showShareArea: false, selected: null });
@@ -211,7 +223,7 @@ Page({
 
   // 精确验证卡片居中位置
   verifyCenterPosition(phase = 'manual') {
-    console.log('=== 开始验证卡片居中位置 ===');
+    console.debug('=== 开始验证卡片居中位置 ===');
     
     const query = wx.createSelectorQuery();
     
@@ -234,7 +246,7 @@ Page({
       const heroArea = res[2];
       const rouletteContainer = res[3];
       
-      console.log('📱 视口信息:', {
+      console.debug('📱 视口信息:', {
         width: viewport.width,
         height: viewport.height,
         centerX: viewport.width / 2,
@@ -242,7 +254,7 @@ Page({
       });
       
       if (container) {
-        console.log('📦 容器信息:', {
+        console.debug('📦 容器信息:', {
           width: container.width,
           height: container.height,
           left: container.left,
@@ -253,7 +265,7 @@ Page({
       }
       
       if (heroArea) {
-        console.log('🎯 Hero区域信息:', {
+        console.debug('🎯 Hero区域信息:', {
           width: heroArea.width,
           height: heroArea.height,
           left: heroArea.left,
@@ -269,7 +281,7 @@ Page({
         const viewportCenterX = viewport.width / 2;
         const viewportCenterY = viewport.height / 2;
         
-        console.log('🎡 轮盘容器信息:', {
+        console.debug('🎡 轮盘容器信息:', {
           width: rouletteContainer.width,
           height: rouletteContainer.height,
           left: rouletteContainer.left,
@@ -282,7 +294,7 @@ Page({
         const offsetX = Math.abs(rouletteCenterX - viewportCenterX);
         const offsetY = Math.abs(rouletteCenterY - viewportCenterY);
         
-        console.log('📏 居中偏移分析:', {
+        console.debug('📏 居中偏移分析:', {
           水平偏移: `${offsetX.toFixed(2)}px`,
           垂直偏移: `${offsetY.toFixed(2)}px`,
           水平居中: offsetX < 1 ? '✅ 完美居中' : offsetX < 5 ? '⚠️ 基本居中' : '❌ 偏移过大',
@@ -293,7 +305,7 @@ Page({
         const xPercent = (rouletteCenterX / viewport.width * 100).toFixed(1);
         const yPercent = (rouletteCenterY / viewport.height * 100).toFixed(1);
         
-        console.log('📊 位置百分比:', {
+        console.debug('📊 位置百分比:', {
           水平位置: `${xPercent}%`,
           垂直位置: `${yPercent}%`,
           理想位置: '50.0%',
@@ -303,7 +315,7 @@ Page({
         
         // 综合评估
         const isWellCentered = offsetX < 5 && offsetY < 5;
-        console.log('🎯 居中评估结果:', isWellCentered ? '✅ 卡片居中良好' : '❌ 卡片居中需要调整');
+        console.debug('🎯 居中评估结果:', isWellCentered ? '✅ 卡片居中良好' : '❌ 卡片居中需要调整');
         
       } else {
         console.warn('⚠️ 无法获取轮盘容器信息');
@@ -315,12 +327,12 @@ Page({
       const shortlist = res[6];
       if (area && switcher && shortlist) {
         const distancePx = Math.max(0, shortlist.top - (area.top + switcher.height));
-        console.log(`🔍 [verify] phase=${phase} 切换按钮到备选区的垂直距离=${distancePx.toFixed(2)}px`, { areaTop: area.top, switcherHeight: switcher.height, shortlistTop: shortlist.top });
+        console.debug(`🔍 [verify] phase=${phase} 切换按钮到备选区的垂直距离=${distancePx.toFixed(2)}px`, { areaTop: area.top, switcherHeight: switcher.height, shortlistTop: shortlist.top });
       } else {
         console.warn('⚠️ 无法获取切换按钮/备选区的布局信息');
       }
 
-      console.log('=== 卡片居中位置验证完成 ===');
+      console.debug('=== 卡片居中位置验证完成 ===');
     });
   },
 
@@ -360,14 +372,14 @@ Page({
     ];
   },
 
-  // 根据餐厅名称返回图标路径（找不到时回退到占位图）
+  // 根据餐厅名称返回图标路径（找不到时回退到餐厅占位图 canteen.png）
   getRestaurantIconPath(name) {
     try {
       const map = this.getPinyinMap();
       const pkgA = this.getPackageAFullIcons();
       const pkgB = this.getPackageBFullIcons();
 
-      let key = map && name ? (map[name] || name) : (name || 'placeholder');
+      let key = map && name ? (map[name] || name) : (name || 'canteen');
 
       // 直配命中
       if (pkgA.includes(key) || pkgB.includes(key)) {
@@ -388,11 +400,11 @@ Page({
         }
       }
 
-      // 兜底占位图
-      return cloudImageManager.getCloudImageUrlSync('placeholder', 'png');
+      // 兜底占位图（餐厅统一 canteen.png）
+      return cloudImageManager.getCloudImageUrlSync('canteen', 'png');
     } catch (e) {
-      console.warn('getRestaurantIconPath 解析失败，使用占位图:', e);
-      return cloudImageManager.getCloudImageUrlSync('placeholder', 'png');
+      console.warn('getRestaurantIconPath 解析失败，使用餐厅占位图:', e);
+      return cloudImageManager.getCloudImageUrlSync('canteen', 'png');
     }
   },
 
@@ -431,7 +443,7 @@ Page({
           name: cname || '外卖类别',
           type: '外卖',
           brands: category.brands || [],
-          icon: py ? cloudImageManager.getCloudImageUrl(py, 'png') : cloudImageManager.getCloudImageUrl('placeholder', 'png'),
+          icon: py ? cloudImageManager.getCloudImageUrl(py, 'png') : cloudImageManager.getCloudImageUrl('takeout', 'png'),
           iconClass: this.getTakeoutIconClass(cname),
           recommendationScore: Math.random() * 100,
           specificScore: Math.random() * 100,
@@ -463,7 +475,7 @@ Page({
         priceLevel: brand.priceLevel || 2,
         tags: brand.tags || [],
         popularityScore: brand.popularityScore || 0.5,
-        icon: (brand.pinyin ? cloudImageManager.getCloudImageUrl(brand.pinyin, 'png') : cloudImageManager.getCloudImageUrl('placeholder', 'png')),
+        icon: (brand.pinyin ? cloudImageManager.getCloudImageUrl(brand.pinyin, 'png') : cloudImageManager.getCloudImageUrl('beverage', 'png')),
         recommendationScore: (brand.popularityScore || 0.5) * 100,
         specificScore: Math.random() * 100,
         preferenceScore: Math.random() * 100
@@ -526,7 +538,7 @@ Page({
       // 特殊刷新路径：若存在强制候选（长度为12），直接使用
       if (this._forcedRecs && Array.isArray(this._forcedRecs) && this._forcedRecs.length === (this.data.wheelType === 'restaurant' ? 20 : 12)) {
         recs = this._forcedRecs;
-        console.log(`[${ts()}] 应用强制候选（特殊刷新：保留前5+替换后7为窗口顺延）`);
+        console.debug(`[${ts()}] 应用强制候选（特殊刷新：保留前5+替换后7为窗口顺延）`);
       } else {
         // 根据转盘类型生成不同数据
         if (this.data.wheelType === 'takeout') {
@@ -536,7 +548,7 @@ Page({
         } else {
           // 只有餐厅转盘才使用基于位置的推荐
           if (this.data.userLocation && this.data.locationStatus === 'success') {
-            console.log('[轮盘初始化] 使用基于位置的推荐');
+            console.debug('[轮盘初始化] 使用基于位置的推荐');
             // 使用已缓存的定位推荐数据，避免重复调用
             const locationBasedRecommendations = this._cachedLocationRecommendations || [];
             if (locationBasedRecommendations.length > 0) {
@@ -552,7 +564,7 @@ Page({
       }
       
       const fmt = (v) => (typeof v === 'number' ? Number(v).toFixed(2) : '--');
-      console.log(`[${ts()}] 推荐列表(生成/刷新)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''} [总:${fmt(r && r.recommendationScore)} 评:${fmt(r && r.specificScore)} 偏:${fmt(r && r.preferenceScore)}]`));
+      console.debug(`[${ts()}] 推荐列表(生成/刷新)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''} [总:${fmt(r && r.recommendationScore)} 评:${fmt(r && r.specificScore)} 偏:${fmt(r && r.preferenceScore)}]`));
       const count = this.data.wheelType === 'restaurant' ? 20 : 12;
       const step = 360 / count;
       const { wheelRadius, labelOuterMargin, labelInnerMargin, labelMinStep, labelMaxStep } = this.data;
@@ -581,7 +593,7 @@ Page({
           id: String(r.id),
           name,
           type: r.type,
-          icon: (r && r.icon) ? r.icon : this.getRestaurantIconPath(name),
+          icon: (r && r.icon) ? r.icon : (this.data.wheelType === 'takeout' ? cloudImageManager.getCloudImageUrl('takeout', 'png') : (this.data.wheelType === 'beverage' ? cloudImageManager.getCloudImageUrl('beverage', 'png') : this.getRestaurantIconPath(name))),
           promoText: r.dynamicPromotions && r.dynamicPromotions[0] ? r.dynamicPromotions[0].promoText : '',
           angle: idx * step + step / 2, // 该段中心角（相对轮盘自身坐标系）
           slotNo: idx + 1,
@@ -619,7 +631,7 @@ Page({
       }
 
       const listLog = segments.map(s => `${s.slotNo}.${s.name} [总:${fmt(s.recommendationScore)} 评:${fmt(s.specificScore)} 偏:${fmt(s.preferenceScore)}]`);
-      console.log(`[${ts()}] 生成转盘(12)：`, listLog);
+      console.debug(`[${ts()}] 生成转盘(12)：`, listLog);
 
       // 输出变更状态日志（对比上一轮）
       if (prevSegments && prevSegments.length) {
@@ -631,14 +643,14 @@ Page({
           else status = `变更(原: ${prevName})`;
           return `${s.slotNo}. ${s.name} — ${status} [总:${fmt(s.recommendationScore)} 评:${fmt(s.specificScore)} 偏:${fmt(s.preferenceScore)}]`;
         });
-        console.log(`[${ts()}] 换一批后推荐列表（带变更标记）：\n${diffLines.join('\n')}`);
+        console.debug(`[${ts()}] 换一批后推荐列表（带变更标记）：\n${diffLines.join('\n')}`);
       } else {
         const initLines = segments.map(s => `${s.slotNo}. ${s.name} [总:${fmt(s.recommendationScore)} 评:${fmt(s.specificScore)} 偏:${fmt(s.preferenceScore)}]`);
-        console.log(`[${ts()}] 初始推荐列表：\n${initLines.join('\n')}`);
+        console.debug(`[${ts()}] 初始推荐列表：\n${initLines.join('\n')}`);
       }
 
       // 调试：输出所有段的角度位置
-      console.log(`[${ts()}] 段角度调试：`, segments.map((s, i) => `${s.slotNo}.${s.name}@${s.angle}°`));
+      console.debug(`[${ts()}] 段角度调试：`, segments.map((s, i) => `${s.slotNo}.${s.name}@${s.angle}°`));
 
       const base = { segments, selected: null, showDecisionLayer: false, displayOrder };
       if (!preserveRotation) {
@@ -646,7 +658,7 @@ Page({
         const s0Angle = segments[0].angle; // step/2
         const rotationOffset = ((pointerAngle - s0Angle) % 360 + 360) % 360;
         base.rouletteRotation = rotationOffset;
-        console.log(`[${ts()}] 初始对齐：基于段中心角 s0=${s0Angle}°，设置 rotation=${rotationOffset}°`);
+        console.debug(`[${ts()}] 初始对齐：基于段中心角 s0=${s0Angle}°，设置 rotation=${rotationOffset}°`);
 
         // 计算此时三角形指示器所指向的餐厅（编号与名称），用于验证对齐
         const effectiveRot0 = rotationOffset;
@@ -659,10 +671,10 @@ Page({
           if (diff0 < minDiff0) { minDiff0 = diff0; hitIndex0 = i; }
         }
         const pointed = segments[hitIndex0];
-        console.log(`[${ts()}] 初始化完成：当前指向 编号=${pointed.slotNo}，餐厅="${pointed.name}"`);
+        console.debug(`[${ts()}] 初始化完成：当前指向 编号=${pointed.slotNo}，餐厅="${pointed.name}"`);
         
         // 调试：输出所有段旋转后的实际位置
-        console.log(`[${ts()}] 旋转后段位置：`, segments.map((s, i) => {
+        console.debug(`[${ts()}] 旋转后段位置：`, segments.map((s, i) => {
           const rotatedAngle = ((s.angle + effectiveRot0) % 360 + 360) % 360;
           return `${s.slotNo}.${s.name}@${rotatedAngle.toFixed(1)}°`;
         }));
@@ -759,12 +771,12 @@ Page({
             this._priorityOffset = nextOffset;
             const backN = Array.from({ length: need }, (_, i) => base[(5 + nextOffset + i) % baseLen]);
             forcedRecs = first5.concat(backN).slice(0, 20);
-            console.log(`[${ts()}] 窗口顺延：后${need}替换为优先级列表的后续${need}个（offset=${nextOffset}，baseLen=${baseLen}）`);
+            console.debug(`[${ts()}] 窗口顺延：后${need}替换为优先级列表的后续${need}个（offset=${nextOffset}，baseLen=${baseLen}）`);
           } else {
             const userData = getUserData();
             const fallback = generateRecommendations(userData, 20) || [];
             forcedRecs = first5.concat(fallback.slice(first5.length)).slice(0, 20);
-            console.log(`[${ts()}] 优先级基准不足，回退通用推荐(20)`);
+            console.debug(`[${ts()}] 优先级基准不足，回退通用推荐(20)`);
           }
         } else if (this.data.wheelType === 'beverage' && typeof this.generateBeverageRecommendations === 'function') {
           forcedRecs = this.generateBeverageRecommendations(12);
@@ -777,7 +789,7 @@ Page({
         this._forcedRecs = forcedRecs;
       }
 
-      console.log(`[${ts()}] 再转一次：达到4次未接受/确认，执行特殊刷新（保留前5+替换后7为13~19），并自动旋转`);
+      console.debug(`[${ts()}] 再转一次：达到4次未接受/确认，执行特殊刷新（保留前5+替换后7为13~19），并自动旋转`);
       this.initWheel(false);
 
       // 等待初始化完成后，比较前后选项变化，并自动触发一次旋转
@@ -793,7 +805,7 @@ Page({
             changes.push({ 位置: i + 1, 之前: oldName || '(空)', 之后: newName || '(空)' });
           }
         }
-        console.log(`[${ts()}] 刷新后选项变化（位置1-12）：`, changes);
+        console.debug(`[${ts()}] 刷新后选项变化（位置1-12）：`, changes);
         this._pendingAutoRefresh = false;
         try { this.spinRoulette(); } catch(e) { console.warn('自动旋转触发失败:', e); }
       };
@@ -806,7 +818,7 @@ Page({
 
     // 刷新后自动旋转：先刷新12个推荐并完成显示（瞬时对齐），再在初始化完成后触发旋转
     const refreshCount = this.data.wheelType === 'restaurant' ? 20 : 12;
-    console.log(`[${ts()}] 再转一次：换一批推荐（${refreshCount}家），并将指针对齐第1名，同时自动旋转`);
+    console.debug(`[${ts()}] 再转一次：换一批推荐（${refreshCount}家），并将指针对齐第1名，同时自动旋转`);
     this.initWheel(false);
 
     // 等待 _initInProgress 复位（移除 no-transition），再触发与点击开始按钮一致的旋转动画
@@ -843,8 +855,12 @@ Page({
       const name = String(sel.name || '').trim();
       const logo = sel.icon || '';
       if (!name) return;
-      const wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: name } });
-      const osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, searchText: name } });
+      const qName = this.cleanRestaurantName ? this.cleanRestaurantName(name) : name;
+      const loc = this.data.userLocation || wx.getStorageSync('userLocation') || {};
+      const lat = (loc && typeof loc.latitude === 'number') ? loc.latitude : undefined;
+      const lng = (loc && typeof loc.longitude === 'number') ? loc.longitude : undefined;
+      const wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: qName, latitude: lat, longitude: lng } });
+      const osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, searchText: qName, latitude: lat, longitude: lng } });
       const list1 = this._mapMeituanItemsToProducts(wmRes && wmRes.result);
       const list2 = this._mapMeituanItemsToProducts(osRes && osRes.result);
       // 合并并按 skuViewId 去重
@@ -867,7 +883,7 @@ Page({
           merged = merged.map(x => {
             if (typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0) {
               const t = map[x.headUrl];
-              return { ...x, headUrl: (t && t.indexOf('http') === 0) ? t : '/images/placeholder.png' };
+              return { ...x, headUrl: (t && t.indexOf('http') === 0) ? t : this.data.placeholderImageUrl };
             }
             return x;
           });
@@ -921,10 +937,10 @@ Page({
     const count = this.data.spinCounter || 0;
     if (count >= 4) {
       if (this.data.wheelType === 'takeout') {
-        console.log(`[${ts()}] 自动刷新跳过：外卖转盘不生效（当前计数=${count}）`);
+        console.debug(`[${ts()}] 自动刷新跳过：外卖转盘不生效（当前计数=${count}）`);
         return;
       }
-      console.log(`[${ts()}] 自动刷新满足条件：连续旋转${count}次未接受/确认，标记待刷新，等待用户点击“再转一次”执行刷新`);
+      console.debug(`[${ts()}] 自动刷新满足条件：连续旋转${count}次未接受/确认，标记待刷新，等待用户点击“再转一次”执行刷新`);
       this._pendingAutoRefresh = true;
     }
   },
@@ -956,7 +972,7 @@ Page({
       address = selected.address || selected.name;
     } else {
       // 使用模拟数据（当前阶段）
-      console.log('[导航测试] 使用模拟数据进行导航功能测试');
+      console.debug('[导航测试] 使用模拟数据进行导航功能测试');
       
       // 模拟数据映射
       const mockLocationData = {
@@ -993,7 +1009,7 @@ Page({
       address: address,
       scale: 18,
       success: () => {
-        console.log('[导航] 成功打开微信地图导航');
+        console.debug('[导航] 成功打开微信地图导航');
         // 记录用户行为
         try {
           const { addDecisionRecord } = require('../../utils/decisionManager');
@@ -1064,7 +1080,7 @@ Page({
       return xName && selName && xName === selName;
     });
     
-    console.log('[备选区] 重复检查详情:', {
+    console.debug('[备选区] 重复检查详情:', {
       selected: { 
         id: sel.id, 
         name: sel.name, 
@@ -1091,64 +1107,38 @@ Page({
       // 备选区已满时，不隐藏浮层，让用户可以继续操作
       return; 
     }
+    // 构造条目，先设置临时图标以提升点击反馈（乐观更新）
     let item = { ...sel };
-    try {
-      const icon = item.icon;
-      
-      // 检查是否为手动添加的餐厅
-      const isUserAdded = item.id && typeof item.id === 'string' && item.id.startsWith('user_added_');
-      
-      if (isUserAdded) {
-        // 手动添加的餐厅使用云端placeholder图片
-        console.log(`[${ts()}] 备选区添加手动餐厅: ${item.name}, 使用云端placeholder`);
-        let url = '';
-        try { 
-          url = await cloudImageManager.getTempHttpsUrl('placeholder', 'png'); 
-        } catch (e1) {
-          console.warn('获取placeholder.png失败:', e1);
-        }
-        if (!url || url.indexOf('cloud://') === 0) { 
-          try { 
-            url = await cloudImageManager.getTempHttpsUrl('placeholder', 'jpg'); 
-          } catch (e2) {
-            console.warn('获取placeholder.jpg失败:', e2);
-          } 
-        }
-        if (!url || url.indexOf('cloud://') === 0) { 
-          try { 
-            url = await cloudImageManager.getTempHttpsUrl('placeholder', 'webp'); 
-          } catch (e3) {
-            console.warn('获取placeholder.webp失败:', e3);
-          } 
-        }
-        if (!url || url.indexOf('cloud://') === 0) { 
-          // 云端图片获取失败，使用云端placeholder的fileID作为兜底（同步）
-          url = cloudImageManager.getCloudImageUrlSync('placeholder', 'png');
-          console.log('[备选区] 云端placeholder获取失败，使用云端fileID(同步):', url);
-        }
-        item.icon = url;
-      } else if (icon && typeof icon === 'string' && icon.indexOf('cloud://') === 0) {
-        const lastSlash = icon.lastIndexOf('/');
-        const filename = lastSlash >= 0 ? icon.substring(lastSlash + 1) : icon;
-        const dot = filename.lastIndexOf('.');
-        let name = filename;
-        let ext = 'png';
-        if (dot > 0) { ext = filename.substring(dot + 1); name = filename.substring(0, dot); }
-        let url = '';
-        try { url = await cloudImageManager.getTempHttpsUrl(name, ext); } catch (e1) {}
-        if (!url || url.indexOf('cloud://') === 0) { try { url = await cloudImageManager.getTempHttpsUrl(name, 'jpg'); } catch (e2) {} }
-        if (!url || url.indexOf('cloud://') === 0) { try { url = await cloudImageManager.getTempHttpsUrl(name, 'webp'); } catch (e3) {} }
-        if (!url || url.indexOf('cloud://') === 0) { url = this.data.placeholderImageUrl || cloudImageManager.getCloudImageUrlSync('placeholder', 'png'); }
-        item.icon = url;
-      }
-    } catch (err) {
-      console.warn('onAddShortlist temp url convert failed', err);
-    }
+    const iconStr = typeof item.icon === 'string' ? item.icon : '';
+    const isCloud = iconStr.indexOf('cloud://') === 0;
+    const wt = this.data.wheelType;
+    const typeName = (wt === 'takeout') ? 'takeout' : (wt === 'beverage') ? 'beverage' : 'canteen';
+    const provisionalIcon = (isCloud || !iconStr)
+      ? (this.data.placeholderImageUrl || cloudImageManager.getCloudImageUrlSync(typeName, 'png'))
+      : iconStr;
+    item.icon = provisionalIcon;
+
+    // 立即加入备选并隐藏结果浮层
     list.push(item);
-    // 成功加入备选后隐藏结果浮层
     this.setData({ shortlist: list, showDecisionLayer: false });
-    this.updatePlaceholderSlots();
+    this.updatePlaceholderSlots && this.updatePlaceholderSlots();
     wx.showToast({ title: '已加入备选', icon: 'success' });
+
+    // 异步更新备选卡片图标：不再尝试云端临时链接，直接使用本地兜底
+    setTimeout(() => {
+      try {
+        if (isCloud) {
+          const curr = Array.isArray(this.data.shortlist) ? [...this.data.shortlist] : [];
+          const idx = curr.findIndex(x => String(x.id) === String(item.id));
+          if (idx >= 0) {
+            curr[idx].icon = cloudImageManager.getCloudImageUrlSync(typeName, 'png');
+            this.setData({ shortlist: curr });
+          }
+        }
+      } catch (err) {
+        console.warn('onAddShortlist async local fallback failed', err);
+      }
+    }, 0);
   },
 
   onRemoveShort(e) {
@@ -1335,11 +1325,11 @@ Page({
         }
       }
 
-      // 兜底占位图
-      return cloudImageManager.getCloudImageUrlSync('placeholder', 'png');
+      // 兜底占位图（统一占位图）
+      return cloudImageManager.getPlaceholderUrlSync();
     } catch (e) {
       console.warn('getRestaurantIconPath 解析失败，使用占位图:', e);
-      return cloudImageManager.getCloudImageUrlSync('placeholder', 'png');
+      return cloudImageManager.getPlaceholderUrlSync();
     }
   },
 
@@ -1362,7 +1352,7 @@ Page({
       const count = this.data.wheelType === 'restaurant' ? 20 : 12;
       const recs = generateRecommendations(userData, count);
       const fmt = (v) => (typeof v === 'number' ? Number(v).toFixed(2) : '--');
-      console.log(`[${ts()}] 推荐列表(生成/刷新${count}项)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''} [总:${fmt(r && r.recommendationScore)} 评:${fmt(r && r.specificScore)} 偏:${fmt(r && r.preferenceScore)}]`));
+      console.debug(`[${ts()}] 推荐列表(生成/刷新${count}项)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''} [总:${fmt(r && r.recommendationScore)} 评:${fmt(r && r.specificScore)} 偏:${fmt(r && r.preferenceScore)}]`));
       const step = 360 / count;
       const { wheelRadius, labelOuterMargin, labelInnerMargin, labelMinStep, labelMaxStep } = this.data;
       const pointerAngle = 0; // 修正：指针在CSS中位于top位置，对应0°
@@ -1390,7 +1380,7 @@ Page({
           id: String(r.id),
           name,
           type: r.type,
-          icon: this.getRestaurantIconPath(name),
+          icon: (this.data.wheelType === 'takeout') ? cloudImageManager.getCloudImageUrl('takeout', 'png') : (this.data.wheelType === 'beverage') ? cloudImageManager.getCloudImageUrl('beverage', 'png') : this.getRestaurantIconPath(name),
           promoText: r.dynamicPromotions && r.dynamicPromotions[0] ? r.dynamicPromotions[0].promoText : '',
           angle: idx * step + step / 2, // 该段中心角（相对轮盘自身坐标系）
           slotNo: idx + 1,
@@ -1415,7 +1405,7 @@ Page({
       }
 
       const listLog = segments.map(s => `${s.slotNo}.${s.name} [总:${fmt(s.recommendationScore)} 评:${fmt(s.specificScore)} 偏:${fmt(s.preferenceScore)}]`);
-      console.log(`[${ts()}] 生成转盘(12)：`, listLog);
+      console.debug(`[${ts()}] 生成转盘(12)：`, listLog);
 
       // 输出变更状态日志（对比上一轮）
       if (prevSegments && prevSegments.length) {
@@ -1427,14 +1417,14 @@ Page({
           else status = `变更(原: ${prevName})`;
           return `${s.slotNo}. ${s.name} — ${status} [总:${fmt(s.recommendationScore)} 评:${fmt(s.specificScore)} 偏:${fmt(s.preferenceScore)}]`;
         });
-        console.log(`[${ts()}] 换一批后推荐列表（带变更标记）：\n${diffLines.join('\n')}`);
+        console.debug(`[${ts()}] 换一批后推荐列表（带变更标记）：\n${diffLines.join('\n')}`);
       } else {
         const initLines = segments.map(s => `${s.slotNo}. ${s.name} [总:${fmt(s.recommendationScore)} 评:${fmt(s.specificScore)} 偏:${fmt(s.preferenceScore)}]`);
-        console.log(`[${ts()}] 初始推荐列表：\n${initLines.join('\n')}`);
+        console.debug(`[${ts()}] 初始推荐列表：\n${initLines.join('\n')}`);
       }
 
       // 调试：输出所有段的角度位置
-      console.log(`[${ts()}] 段角度调试：`, segments.map((s, i) => `${s.slotNo}.${s.name}@${s.angle}°`));
+      console.debug(`[${ts()}] 段角度调试：`, segments.map((s, i) => `${s.slotNo}.${s.name}@${s.angle}°`));
 
       const base = { segments, selected: null, showDecisionLayer: false, displayOrder };
       if (!preserveRotation) {
@@ -1442,7 +1432,7 @@ Page({
         const s0Angle = segments[0].angle; // step/2
         const rotationOffset = ((pointerAngle - s0Angle) % 360 + 360) % 360;
         base.rouletteRotation = rotationOffset;
-        console.log(`[${ts()}] 初始对齐：基于段中心角 s0=${s0Angle}°，设置 rotation=${rotationOffset}°`);
+        console.debug(`[${ts()}] 初始对齐：基于段中心角 s0=${s0Angle}°，设置 rotation=${rotationOffset}°`);
 
         // 计算此时三角形指示器所指向的餐厅（编号与名称），用于验证对齐
         const effectiveRot0 = rotationOffset;
@@ -1455,10 +1445,10 @@ Page({
           if (diff0 < minDiff0) { minDiff0 = diff0; hitIndex0 = i; }
         }
         const pointed = segments[hitIndex0];
-        console.log(`[${ts()}] 初始化完成：当前指向 编号=${pointed.slotNo}，餐厅="${pointed.name}"`);
+        console.debug(`[${ts()}] 初始化完成：当前指向 编号=${pointed.slotNo}，餐厅="${pointed.name}"`);
         
         // 调试：输出所有段旋转后的实际位置
-        console.log(`[${ts()}] 旋转后段位置：`, segments.map((s, i) => {
+        console.debug(`[${ts()}] 旋转后段位置：`, segments.map((s, i) => {
           const rotatedAngle = ((s.angle + effectiveRot0) % 360 + 360) % 360;
           return `${s.slotNo}.${s.name}@${rotatedAngle.toFixed(1)}°`;
         }));
@@ -1474,7 +1464,7 @@ Page({
   onRefreshWheel() {
     if (this.data.isSpinning) return;
     const refreshCount = this.data.wheelType === 'restaurant' ? 20 : 12;
-    console.log(`[${ts()}] 手动刷新：换一批推荐（${refreshCount}家），并将指针对齐第1名`);
+    console.debug(`[${ts()}] 手动刷新：换一批推荐（${refreshCount}家），并将指针对齐第1名`);
     // 重新生成推荐并重置旋转到slot1
     this.initWheel(false);
     // 隐藏结果浮层与分享区
@@ -1510,7 +1500,7 @@ Page({
     const randomAngle = 90 + Math.random() * 180; // 90°~270°
     const totalDelta = randomSpins * 360 + randomAngle;
     
-    console.log(`[${ts()}] 开始转动：+${totalDelta.toFixed(1)}°（${randomSpins}圈+${randomAngle.toFixed(1)}°），当前累计角度=${this.data.rouletteRotation}`);
+    console.debug(`[${ts()}] 开始转动：+${totalDelta.toFixed(1)}°（${randomSpins}圈+${randomAngle.toFixed(1)}°），当前累计角度=${this.data.rouletteRotation}`);
 
     // 触觉反馈：指针划过每个扇形边界时触发一次震动（全程），与CSS减速曲线对齐
     try {
@@ -1591,7 +1581,7 @@ Page({
         }
 
         // 转动结束日志：编号与命中餐厅
-        console.log(`[${ts()}] 转动结束：指针编号=${hit.slotNo}，餐厅="${hit.name}"，finalRotation=${finalRotation.toFixed(1)}，effectiveRot=${effectiveRot.toFixed(1)}，step=${step}`);
+        console.debug(`[${ts()}] 转动结束：指针编号=${hit.slotNo}，餐厅="${hit.name}"，finalRotation=${finalRotation.toFixed(1)}，effectiveRot=${effectiveRot.toFixed(1)}，step=${step}`);
 
         // 命中后补齐标签（若缺失），从数据源 restaurant_data.js 获取
         try {
@@ -1612,14 +1602,8 @@ Page({
           const isUserAdded = hit.id && typeof hit.id === 'string' && hit.id.startsWith('user_added_');
           
           if (isUserAdded) {
-            // 手动添加的餐厅直接使用云端placeholder图片（同步），避免闪烁
-            hit.icon = cloudImageManager.getCloudImageUrl('placeholder', 'png');
-            this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
-          if (Array.isArray(this._vibeTimers)) { this._vibeTimers.forEach(t => clearTimeout(t)); this._vibeTimers = []; }
-            if (Array.isArray(this._vibeTimers)) { this._vibeTimers.forEach(t => clearTimeout(t)); this._vibeTimers = []; }
-            try { this.autoRefreshWheelIfNeeded && this.autoRefreshWheelIfNeeded(); } catch(_) {}
-            console.log(`[${ts()}] 手动添加餐厅命中: ${hit.name}, 直接使用云端placeholder(同步)，避免闪烁`);
-            return; // 跳过异步获取逻辑
+            // 不再对手动添加的餐厅使用占位图，允许短暂白屏；继续按常规逻辑解析 logo
+            // 此分支不做特殊处理，不 return
           } else if (iconStr.indexOf('cloud://') === 0) {
             const lastSlash = iconStr.lastIndexOf('/');
             const filename = lastSlash >= 0 ? iconStr.substring(lastSlash + 1) : iconStr;
@@ -1631,28 +1615,16 @@ Page({
             nameForUrl = map && hit.name ? (map[hit.name] || hit.name) : hit.name || 'placeholder';
           }
           
-          // 尝试直接获取正确的logo，避免先显示placeholder再切换
-          cloudImageManager.getTempHttpsUrl(nameForUrl, ext).then((tempUrl) => {
-            let finalIcon;
-            if (tempUrl && typeof tempUrl === 'string' && tempUrl.indexOf('cloud://') !== 0) {
-              finalIcon = tempUrl;
-            } else {
-              // 如果获取的仍是云端fileID，直接使用它（同步）
-              finalIcon = cloudImageManager.getCloudImageUrl(nameForUrl, ext);
-            }
-            
-            hit.icon = finalIcon;
-            this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
-            if (Array.isArray(this._vibeTimers)) { this._vibeTimers.forEach(t => clearTimeout(t)); this._vibeTimers = []; }
-            try { this.autoRefreshWheelIfNeeded && this.autoRefreshWheelIfNeeded(); } catch(_) {}
-          }).catch(() => {
-            // 如果获取失败，使用云端placeholder（同步）
-            hit.icon = cloudImageManager.getCloudImageUrl('placeholder', 'png');
-            this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
-            if (Array.isArray(this._vibeTimers)) { this._vibeTimers.forEach(t => clearTimeout(t)); this._vibeTimers = []; }
-            try { this.autoRefreshWheelIfNeeded && this.autoRefreshWheelIfNeeded(); } catch(_) {}
-            console.warn(`[${ts()}] 获取${nameForUrl}的HTTPS链接失败，使用云端placeholder(同步)`);
-          });
+          // 立即显示结果浮层，但不再先用占位图，允许短暂白屏
+          this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
+          if (Array.isArray(this._vibeTimers)) { this._vibeTimers.forEach(t => clearTimeout(t)); this._vibeTimers = []; }
+          try { this.autoRefreshWheelIfNeeded && this.autoRefreshWheelIfNeeded(); } catch(_) {}
+          
+          // 命中结果图标：统一使用本地兜底，不再获取云端临时链接
+          const wt = this.data.wheelType;
+          const typeName = (wt === 'takeout') ? 'takeout' : (wt === 'beverage') ? 'beverage' : 'canteen';
+          const finalIcon = cloudImageManager.getCloudImageUrlSync(typeName, 'png');
+          this.setData({ 'selected.icon': finalIcon });
         } catch (_) {
           this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
         }
@@ -1674,7 +1646,7 @@ Page({
   // 手势检测 - 触摸开始
   onTouchStart(e) {
     const touch = e.touches[0];
-    console.log('🖐️ 触摸开始:', {
+    console.debug('🖐️ 触摸开始:', {
       clientX: touch.clientX,
       clientY: touch.clientY,
       pageX: touch.pageX,
@@ -1699,7 +1671,7 @@ Page({
     
     // 实时手势反馈（每100ms输出一次）
     if (!this._lastMoveLog || currentTime - this._lastMoveLog > 100) {
-      console.log('👆 手势移动:', {
+      console.debug('👆 手势移动:', {
         deltaY: deltaY.toFixed(1),
         deltaTime,
         velocity: (deltaY / deltaTime).toFixed(3),
@@ -1721,7 +1693,7 @@ Page({
     const deltaTime = endTime - this.data.touchStartTime;
     const velocity = deltaY / deltaTime; // px/ms
     
-    console.log('🏁 触摸结束 - 手势分析:', {
+    console.debug('🏁 触摸结束 - 手势分析:', {
       起始位置: { x: this.data.touchStartX, y: this.data.touchStartY },
       结束位置: { x: endX, y: endY },
       垂直位移: `${deltaY.toFixed(1)}px`,
@@ -1739,18 +1711,18 @@ Page({
       水平偏移: { value: deltaX, threshold: 100, passed: deltaX < 100 } // 防止斜滑
     };
     
-    console.log('📋 手势识别条件检查:', conditions);
+    console.debug('📋 手势识别条件检查:', conditions);
     
     const allConditionsMet = Object.values(conditions).every(c => c.passed);
     
     if (allConditionsMet) {
-      console.log('✅ 上滑手势识别成功，触发分享功能');
+      console.debug('✅ 上滑手势识别成功，触发分享功能');
       this.triggerShare();
     } else {
       const failedConditions = Object.entries(conditions)
         .filter(([key, condition]) => !condition.passed)
         .map(([key]) => key);
-      console.log('❌ 上滑手势识别失败，未满足条件:', failedConditions);
+      console.debug('❌ 上滑手势识别失败，未满足条件:', failedConditions);
     }
     
     // 清理移动日志计时器
@@ -1761,13 +1733,13 @@ Page({
   onXrReady({ detail }) {
     try {
       this._xrScene = detail && detail.value;
-      console.log('XR scene ready:', !!this._xrScene);
+      console.debug('XR scene ready:', !!this._xrScene);
     } catch(e) { console.warn('XR scene not ready', e); }
   },
 
   // 触发分享功能
   async triggerShare() {
-    console.log('🚀 === 开始分享功能检查流程 ===');
+    console.debug('🚀 === 开始分享功能检查流程 ===');
     
     // 1. 检查微信环境和API可用性
     this.checkWeChatEnvironment();
@@ -1776,7 +1748,7 @@ Page({
     this.checkShareComponents();
     
     try {
-      console.log('📸 尝试XR-Frame分享系统');
+      console.debug('📸 尝试XR-Frame分享系统');
       // 优先使用 XR-Frame ShareSystem
       const xrResult = await this.captureWithXR().catch((error) => {
         console.error('XR分享捕获异常:', error);
@@ -1784,44 +1756,44 @@ Page({
       });
       
       if (xrResult === 'success') {
-        console.log('✅ XR分享已完成，流程结束');
+        console.debug('✅ XR分享已完成，流程结束');
         return;
       } else if (xrResult) {
-        console.log('📤 XR返回图片路径，调用微信分享:', xrResult);
+        console.debug('📤 XR返回图片路径，调用微信分享:', xrResult);
         this.shareToWeChat(xrResult);
         return;
       } else {
-        console.log('⚠️ XR分享未返回有效结果，继续Canvas方案');
+        console.debug('⚠️ XR分享未返回有效结果，继续Canvas方案');
       }
     } catch(e) {
       console.error('❌ XR分享失败:', e);
     }
     
     try {
-      console.log('🖼️ 尝试Canvas截图方案');
+      console.debug('🖼️ 尝试Canvas截图方案');
       // 回落到 Canvas 截图
       const fallback = await this.captureWithCanvas();
       if (fallback) {
-        console.log('📤 Canvas截图成功，调用微信分享:', fallback);
+        console.debug('📤 Canvas截图成功，调用微信分享:', fallback);
         this.shareToWeChat(fallback);
         return;
       } else {
-        console.log('⚠️ Canvas截图未返回有效结果');
+        console.debug('⚠️ Canvas截图未返回有效结果');
       }
     } catch(e) {
       console.error('❌ Canvas截图失败:', e);
     }
     
-    console.log('📝 使用最终退化方案：仅文字分享');
+    console.debug('📝 使用最终退化方案：仅文字分享');
     // 最终退化：仅文字分享
     this.shareToWeChat();
     
-    console.log('🏁 === 分享功能检查流程结束 ===');
+    console.debug('🏁 === 分享功能检查流程结束 ===');
   },
   
   // 检查微信环境和API可用性
   checkWeChatEnvironment() {
-    console.log('🔍 检查微信环境:');
+    console.debug('🔍 检查微信环境:');
     
     const checks = {
       微信对象: typeof wx !== 'undefined',
@@ -1831,7 +1803,7 @@ Page({
       选择器查询: typeof wx.createSelectorQuery === 'function'
     };
     
-    console.log('📋 微信API检查结果:', checks);
+    console.debug('📋 微信API检查结果:', checks);
     
     const unavailableAPIs = Object.entries(checks)
       .filter(([key, available]) => !available)
@@ -1840,13 +1812,13 @@ Page({
     if (unavailableAPIs.length > 0) {
       console.warn('⚠️ 不可用的微信API:', unavailableAPIs);
     } else {
-      console.log('✅ 所有微信API检查通过');
+      console.debug('✅ 所有微信API检查通过');
     }
     
     // 检查微信版本信息
     try {
       const systemInfo = wx.getSystemInfoSync();
-      console.log('📱 系统信息:', {
+      console.debug('📱 系统信息:', {
         platform: systemInfo.platform,
         version: systemInfo.version,
         SDKVersion: systemInfo.SDKVersion,
@@ -1860,7 +1832,7 @@ Page({
   
   // 检查分享组件状态
   checkShareComponents() {
-    console.log('🔍 检查分享组件状态:');
+    console.debug('🔍 检查分享组件状态:');
     
     // 检查XR场景
     const xrStatus = {
@@ -1869,7 +1841,7 @@ Page({
       XR元素存在: !!wx.createSelectorQuery().select('#xr-scene')
     };
     
-    console.log('🎮 XR组件状态:', xrStatus);
+    console.debug('🎮 XR组件状态:', xrStatus);
     
     // 检查Canvas元素
     const query = wx.createSelectorQuery();
@@ -1882,7 +1854,7 @@ Page({
         Canvas位置: canvasRect ? `(${canvasRect.left}, ${canvasRect.top})` : '未知'
       };
       
-      console.log('🖼️ Canvas组件状态:', canvasStatus);
+      console.debug('🖼️ Canvas组件状态:', canvasStatus);
     });
     
     // 检查数据状态
@@ -1893,7 +1865,7 @@ Page({
       轮盘数据: this.data.segments ? this.data.segments.length : 0
     };
     
-    console.log('📊 数据状态:', dataStatus);
+    console.debug('📊 数据状态:', dataStatus);
   },
 
   // 使用 XR-Frame 分享系统截图（本地路径）
@@ -1978,7 +1950,7 @@ Page({
             quality: 0.8,
             success: (res2) => {
               if (res2.tempFilePath) {
-                console.log('Canvas截图成功:', res2.tempFilePath);
+                console.debug('Canvas截图成功:', res2.tempFilePath);
                 resolve(res2.tempFilePath);
               } else {
                 reject(new Error('Canvas截图失败：未返回文件路径'));
@@ -2032,12 +2004,13 @@ Page({
           if (placeholderUrl && typeof placeholderUrl === 'string' && placeholderUrl.indexOf('cloud://') !== 0) {
             this.setData({ placeholderImageUrl: placeholderUrl });
           } else {
-            // 紧急兜底
-            this.setData({ placeholderImageUrl: '/images/restaurant-default.svg' });
+            // 紧急兜底（统一占位图）
+            const cloudFallback = cloudImageManager.getPlaceholderUrlSync();
+            this.setData({ placeholderImageUrl: cloudFallback, nearbyPlaceholderImageUrl: cloudFallback });
           }
         }, () => {
-          // 紧急兜底
-          this.setData({ placeholderImageUrl: '/images/restaurant-default.svg' });
+          const cloudFallback = cloudImageManager.getPlaceholderUrlSync();
+          this.setData({ placeholderImageUrl: cloudFallback, nearbyPlaceholderImageUrl: cloudFallback });
         });
         return;
       }
@@ -2063,53 +2036,40 @@ Page({
       }
 
       const retryCount = this.data.logoRetryMap[name] || 0;
-      console.log(`[${ts()}] Logo加载失败：${sel.name} (${name}), 重试次数：${retryCount}`);
+      console.debug(`[${ts()}] Logo加载失败：${sel.name} (${name}), 重试次数：${retryCount}`);
 
-      // 使用增强的降级机制
-      if (retryCount < 3) {
-        try {
-          // 使用cloudImageManager的降级机制
-          const fallbackUrl = await cloudImageManager.getImageUrlWithFallback(name);
-          
-          const newLogoRetryMap = { ...this.data.logoRetryMap };
-          newLogoRetryMap[name] = retryCount + 1;
-          
-          this.setData({
-            'selected.icon': fallbackUrl,
-            logoRetryMap: newLogoRetryMap
-          });
-          
-          console.log(`[${ts()}] 使用降级机制获取URL成功:`, fallbackUrl);
-          return;
-        } catch (fallbackError) {
-          console.warn(`[${ts()}] 降级机制也失败:`, fallbackError);
-        }
-      }
-      
-      // 最终兜底：使用占位图
-      cloudImageManager.loadImageForIOS('placeholder', 'png', (placeholderUrl) => {
+      // 外卖/茶饮轮盘：直接使用类型兜底，避免误用餐厅兜底
+      const wt = this.data.wheelType;
+      if (wt === 'takeout' || wt === 'beverage') {
         const newLogoRetryMap = { ...this.data.logoRetryMap };
         newLogoRetryMap[name] = retryCount + 1;
-        
-        this.setData({
-          'selected.icon': placeholderUrl,
-          logoRetryMap: newLogoRetryMap
-        });
-        
-        console.log(`[${ts()}] 最终使用占位图:`, placeholderUrl);
-      }, () => {
-        // 紧急兜底
-        this.setData({
-          'selected.icon': '/images/restaurant-default.svg'
-        });
-      });
+        let fallback = '';
+        const imgName = wt;
+        // 直接使用本地兜底图片，不再尝试云端临时链接
+        fallback = cloudImageManager.getCloudImageUrlSync(imgName, 'png');
+        this.setData({ 'selected.icon': fallback, logoRetryMap: newLogoRetryMap });
+        console.debug(`[${ts()}] 外卖/茶饮logo降级为类型兜底(本地):`, fallback);
+        return;
+      }
+
+      // 餐厅轮盘：使用增强的降级机制
+      // 移除云端降级机制，直接使用本地餐厅兜底
+      const localCanteen = cloudImageManager.getCloudImageUrlSync('canteen', 'png');
+      const newLogoRetryMap = { ...this.data.logoRetryMap };
+      newLogoRetryMap[name] = retryCount + 1;
+      this.setData({ 'selected.icon': localCanteen, logoRetryMap: newLogoRetryMap });
+      console.debug(`[${ts()}] 餐厅logo降级为本地兜底:`, localCanteen);
+      return;
+      
+      // 最终兜底（餐厅）：已在上面统一设置为本地 canteen，无需重复处理
       
     } catch (e) {
       console.warn('onSelectedLogoError 异常', e);
-      // 紧急兜底
-      this.setData({
-        'selected.icon': '/images/restaurant-default.svg'
-      });
+      const wt = this.data.wheelType;
+      const imgName = (wt === 'takeout') ? 'takeout' : (wt === 'beverage') ? 'beverage' : 'canteen';
+      // 异常兜底：直接使用本地兜底图片
+      const fallback = cloudImageManager.getCloudImageUrlSync(imgName, 'png');
+      this.setData({ 'selected.icon': fallback });
     }
   },
 
@@ -2129,7 +2089,7 @@ Page({
       const shortlist = Array.isArray(this.data.shortlist) ? [...this.data.shortlist] : [];
       const idx = shortlist.findIndex(s => String(s.id) === String(id));
       if (idx >= 0) {
-        shortlist[idx].icon = this.data.placeholderImageUrl || cloudImageManager.getCloudImageUrlSync('placeholder', 'png');
+        shortlist[idx].icon = this.data.placeholderImageUrl || cloudImageManager.getPlaceholderUrlSync();
         this.setData({ shortlist });
       }
     } catch (err) {
@@ -2269,7 +2229,7 @@ Page({
 
   // 初始化云端图片 - iOS设备强制使用HTTPS临时链接
   async initCloudImages() {
-    console.log('[云图片初始化] 开始，设备类型:', cloudImageManager.isIOS ? 'iOS' : '非iOS');
+    console.debug('[云图片初始化] 开始，设备类型:', cloudImageManager.isIOS ? 'iOS' : '非iOS');
     
     // 初始化占位图
     await this.initPlaceholderImage();
@@ -2281,86 +2241,40 @@ Page({
   // 初始化占位图URL
   async initPlaceholderImage() {
     try {
-      if (cloudImageManager.isIOS) {
-        // iOS设备必须使用HTTPS临时链接
-        let placeholderUrl = await this.getImageWithFallback('placeholder');
-        this.setData({ placeholderImageUrl: placeholderUrl });
-        console.log('[iOS占位图] 初始化完成:', placeholderUrl);
-      } else {
-        // 非iOS设备使用cloud://协议
-        const placeholderUrl = cloudImageManager.getCloudImageUrlSync('placeholder', 'png');
-        this.setData({ placeholderImageUrl: placeholderUrl });
-        console.log('[非iOS占位图] 初始化完成:', placeholderUrl);
-      }
+      const placeholderUrl = cloudImageManager.getPlaceholderUrlSync();
+      this.setData({ placeholderImageUrl: placeholderUrl, nearbyPlaceholderImageUrl: placeholderUrl });
+      console.debug('[占位图] 初始化完成(本地):', placeholderUrl);
     } catch (e) {
       console.error('[占位图初始化] 失败:', e);
-      // 使用本地占位图作为最后兜底
-      this.setData({ placeholderImageUrl: '/images/restaurant-default.svg' });
+      const cloudFallback = cloudImageManager.getPlaceholderUrlSync();
+      this.setData({ placeholderImageUrl: cloudFallback, nearbyPlaceholderImageUrl: cloudFallback });
     }
   },
 
   // 初始化转盘切换按钮图标
   async initSwitchIcons() {
     try {
-      // 使用用户提供的云端文件ID
-      const canteenId = 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png';
-      const takeoutId = 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/takeout.png';
-      const beverageId = 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/beverage.png';
+      // 统一使用本地资源作为切换按钮图标
       const nextIcons = { ...this.data.switchIcons };
-
-      if (cloudImageManager.isIOS) {
-        // iOS 设备需要通过临时 HTTPS 链接
-        if (wx.cloud && wx.cloud.getTempFileURL) {
-          const res = await wx.cloud.getTempFileURL({ fileList: [canteenId, takeoutId, beverageId] });
-          const list = (res && (res.fileList || res.file_list)) || [];
-          const map = {};
-          list.forEach(item => {
-            const fid = item.fileID || item.fileId || item.file_id;
-            const url = item.tempFileURL || item.tempFileUrl;
-            if (fid && url) map[fid] = url;
-          });
-          nextIcons.canteen = map[canteenId] || this.data.placeholderImageUrl;
-          nextIcons.takeout = map[takeoutId] || this.data.placeholderImageUrl;
-          nextIcons.beverage = map[beverageId] || this.data.placeholderImageUrl;
-        } else {
-          // 无法获取临时链接时兜底为占位图
-          nextIcons.canteen = this.data.placeholderImageUrl;
-          nextIcons.takeout = this.data.placeholderImageUrl;
-          nextIcons.beverage = this.data.placeholderImageUrl;
-        }
-      } else {
-        // 非 iOS 设备直接使用 cloud:// 文件ID
-        nextIcons.canteen = canteenId;
-        nextIcons.takeout = takeoutId;
-        nextIcons.beverage = beverageId;
-      }
+      nextIcons.canteen = '/images/canteen.png';
+      nextIcons.takeout = '/images/takeout.png';
+      nextIcons.beverage = '/images/beverage.png';
 
       this.setData({ switchIcons: nextIcons });
-      console.log('[转盘图标] 使用指定云路径初始化完成:', nextIcons);
+      console.debug('[转盘图标] 使用本地资源初始化完成:', nextIcons);
     } catch (e) {
       console.error('[转盘图标初始化] 失败:', e);
     }
   },
 
-  // 获取图片的降级方案（支持多种格式）
+  // 获取图片的降级方案：统一使用本地 /images/* 兜底
   async getImageWithFallback(imageName) {
-    const extensions = ['png', 'jpg', 'webp'];
-    
-    for (const ext of extensions) {
-      try {
-        const url = await cloudImageManager.getTempHttpsUrl(imageName, ext);
-        if (url && url.startsWith('https://')) {
-          console.log(`[图片降级] ${imageName}.${ext} 成功:`, url);
-          return url;
-        }
-      } catch (e) {
-        console.warn(`[图片降级] ${imageName}.${ext} 失败:`, e);
-      }
+    const known = ['takeout', 'beverage', 'canteen', 'placeholder'];
+    if (known.includes(imageName)) {
+      return cloudImageManager.getCloudImageUrlSync(imageName, 'png');
     }
-    
-    // 所有云端格式都失败，使用本地占位图
-    console.warn(`[图片降级] ${imageName} 所有格式都失败，使用本地占位图`);
-    return '/images/restaurant-default.svg';
+    console.warn(`[图片降级] ${imageName} 使用本地占位图兜底`);
+    return cloudImageManager.getPlaceholderUrlSync();
   },
 
   // 定位功能相关方法
@@ -2371,25 +2285,25 @@ Page({
 
     try {
       // 微信隐私授权检查：如需授权则弹出官方隐私协议
-      console.log('[隐私授权] 开始检查隐私设置');
+      console.debug('[隐私授权] 开始检查隐私设置');
       await new Promise((resolve, reject) => {
         wx.getPrivacySetting({
           success: (res) => {
-            console.log('[隐私授权] getPrivacySetting 成功:', res);
+            console.debug('[隐私授权] getPrivacySetting 成功:', res);
             if (res.needAuthorization) {
-              console.log('[隐私授权] 需要用户授权，弹出隐私协议');
+              console.debug('[隐私授权] 需要用户授权，弹出隐私协议');
               wx.openPrivacyContract({
                 success: () => {
-                  console.log('[隐私授权] 用户同意隐私协议');
+                  console.debug('[隐私授权] 用户同意隐私协议');
                   resolve();
                 },
                 fail: (err) => {
-                  console.log('[隐私授权] 用户取消隐私授权:', err);
+                  console.debug('[隐私授权] 用户取消隐私授权:', err);
                   reject(new Error('用户取消隐私授权'));
                 }
               });
             } else {
-              console.log('[隐私授权] 用户已授权，无需弹窗');
+              console.debug('[隐私授权] 用户已授权，无需弹窗');
               resolve();
             }
           },
@@ -2408,7 +2322,7 @@ Page({
 
       // 直接使用wx.chooseLocation让用户选择位置，无需权限检查
       const { location } = await locationService.getNearbyRestaurants();
-      console.log('[定位] 用户选择的位置:', location);
+      console.debug('[定位] 用户选择的位置:', location);
 
       // 实例化高德SDK并调用 getPoiAround 获取 POI 数据
       const amap = new AMapWX({ key: '183ebcbcecc78388d3c07eca1d58fe10' });
@@ -2422,7 +2336,7 @@ Page({
           success: (res) => {
             try {
               const pois = (res && res.markers) ? res.markers : [];
-              console.log('[高德SDK v3] getPoiAround 返回 markers 数量:', pois.length);
+              console.debug('[高德SDK v3] getPoiAround 返回 markers 数量:', pois.length);
             } catch (e) { /* 忽略解析错误 */ }
             resolve(res && res.markers ? res.markers : []);
           },
@@ -2448,14 +2362,14 @@ Page({
         const data = v5Res && v5Res.data ? v5Res.data : null;
         const status = data && (data.status || data.statusCode);
         const info = data && data.info;
-        console.log('[高德REST v5] status:', status, 'info:', info);
+        console.debug('[高德REST v5] status:', status, 'info:', info);
         if (data && Array.isArray(data.pois)) {
           v5Pois = data.pois;
-          console.log('[高德REST v5] POI数量:', v5Pois.length);
+          console.debug('[高德REST v5] POI数量:', v5Pois.length);
           // 输出前5条POI的扩展字段示例，便于核对photos/biz_ext.rating/cost
           try {
             const sample = v5Pois.slice(0, 5).map(p => ({ name: p.name, photos: p.photos, biz_ext: p.biz_ext }));
-            console.log('[高德REST v5] 示例POI扩展字段(photos/biz_ext):', sample);
+            console.debug('[高德REST v5] 示例POI扩展字段(photos/biz_ext):', sample);
           } catch (logErr) {
             console.warn('[高德REST v5] 示例扩展字段日志失败:', logErr);
           }
@@ -2512,8 +2426,8 @@ Page({
         }
         // 对AMap外链图片进行质量优化
         const optimizedPhotoUrl = this.optimizeAmapPhotoUrl(photoUrlHttps);
-        const icon = optimizedPhotoUrl || this.getRestaurantIconPath(name);
-        console.log('[定位] POI字段检查:', { name, photosCount: photos.length, ratingRaw: biz && biz.rating, costRaw: biz && biz.cost, iconSource: optimizedPhotoUrl ? 'photos[0]+optimized' : 'fallback' });
+        const icon = optimizedPhotoUrl || (this.data.wheelType === 'takeout' ? cloudImageManager.getCloudImageUrl('takeout', 'png') : (this.data.wheelType === 'beverage' ? cloudImageManager.getCloudImageUrl('beverage', 'png') : this.getRestaurantIconPath(name)));
+        console.debug('[定位] POI字段检查:', { name, photosCount: photos.length, ratingRaw: biz && biz.rating, costRaw: biz && biz.cost, iconSource: optimizedPhotoUrl ? 'photos[0]+optimized' : 'fallback' });
         return {
           id: p.id || p.poiId || `amap_${idx}`,
           name,
@@ -2531,13 +2445,13 @@ Page({
         };
       });
 
-      console.log('[定位] 合并POI得到附近餐厅:', restaurants);
+      console.debug('[定位] 合并POI得到附近餐厅:', restaurants);
 
       // 获取基于位置的推荐（前60作为优先级基准，展示数量随轮盘类型变化）
       const basePriority = ranking.prioritizeRestaurants(restaurants, 60) || [];
       const topN = this.data.wheelType === 'restaurant' ? 20 : 12;
       const locationBasedRecommendations = basePriority.slice(0, topN);
-      console.log(`[定位] 基于位置的推荐(展示TOP${topN}):`, locationBasedRecommendations);
+      console.debug(`[定位] 基于位置的推荐(展示TOP${topN}):`, locationBasedRecommendations);
       // 输出TOPN的高德扩展字段（rating/cost）与照片URL（若存在）
       try {
         const topNList = locationBasedRecommendations.slice(0, topN).map(r => {
@@ -2560,7 +2474,7 @@ Page({
             photoUrls
           };
         });
-        console.log(`[定位] TOP${topN} 验证字段（id/name/ratingRaw/costRaw/photoUrls）:`, topNList);
+        console.debug(`[定位] TOP${topN} 验证字段（id/name/ratingRaw/costRaw/photoUrls）:`, topNList);
       } catch (e) {
         console.warn(`[定位] TOP${topN} 字段输出失败:`, e);
       }
@@ -2578,18 +2492,26 @@ Page({
       this.loadNearbyOffers();
 
       // 缓存用户选择的位置到本地存储（双向同步）
-      try { wx.setStorageSync('userLocation', location); } catch(e) {}
+      try { wx.setStorageSync('userLocation', { ...location, ts: Date.now() }); } catch(e) {}
 
-      // 使用基于位置的推荐更新轮盘
-      this.updateWheelWithLocationData(locationBasedRecommendations);
-
-      // 缓存定位推荐数据与优先级基准，用于initWheel与窗口顺延
+      // 缓存定位推荐数据与优先级基准，用于 initWheel 与窗口顺延
       this._basePriorityList = basePriority;
       this._priorityOffset = 0; // 定位后重置窗口偏移
-      this._cachedLocationRecommendations = locationBasedRecommendations;
+      // 为餐厅轮盘缓存完整 TOP20，避免在外卖/茶饮界面只缓存12条
+      const locationBasedRecommendationsForRestaurant = basePriority.slice(0, 20);
+      this._cachedLocationRecommendations = locationBasedRecommendationsForRestaurant;
 
-      // 显示成功提示
-      this.showTopToast('已获取附近餐厅推荐');
+      // 根据当前轮盘类型决定是否立即刷新轮盘（仅餐厅轮盘刷新）
+      if (this.data.wheelType === 'restaurant') {
+        // 使用餐厅 TOP20 刷新当前餐厅轮盘
+        this.updateWheelWithLocationData(locationBasedRecommendationsForRestaurant);
+        // 显示成功提示
+        this.showTopToast('已获取附近餐厅推荐');
+      } else {
+        // 外卖/茶饮界面：不影响当前轮盘，只更新餐厅轮盘缓存，用户切到餐厅时生效
+        console.debug('[定位] 当前非餐厅轮盘，已更新餐厅轮盘缓存，不刷新当前轮盘');
+        this.showTopToast('已更新餐厅转盘的附近餐厅数据');
+      }
 
     } catch (error) {
       console.error('[定位] 获取位置失败:', error);
@@ -2646,19 +2568,19 @@ Page({
       }
 
       return {
-        id: String(r.id),
-        name,
-        type: r.type || 'restaurant',
-        icon: r.icon || this.getRestaurantIconPath(name),
-        promoText: r.promoText || '',
-        angle: idx * step + step / 2,
-        slotNo: idx + 1,
-        // 位置相关信息
-        distance: r.distance,
-        priority: r.priority,
-        isFromAmap: !!(r && r.isFromAmap),
-        isPreselected: !!(r && r.isPreselected),
-        isUserAdded: !!(r && (r.isUserAdded || (typeof r.id === 'string' && r.id.startsWith('user_added_')))),
+          id: String(r.id),
+          name,
+          type: r.type || 'restaurant',
+          icon: (r && r.icon) ? r.icon : (this.data.wheelType === 'takeout' ? cloudImageManager.getCloudImageUrl('takeout', 'png') : (this.data.wheelType === 'beverage' ? cloudImageManager.getCloudImageUrl('beverage', 'png') : this.getRestaurantIconPath(name))),
+          promoText: r.promoText || '',
+          angle: idx * step + step / 2,
+          slotNo: idx + 1,
+          // 位置相关信息
+          distance: r.distance,
+          priority: r.priority,
+          isFromAmap: !!(r && r.isFromAmap),
+          isPreselected: !!(r && r.isPreselected),
+          isUserAdded: !!(r && (r.isUserAdded || (typeof r.id === 'string' && r.id.startsWith('user_added_')))),
         // 业务字段透传与展示
         tags: (function(){const base=Array.isArray(r && r.tags)? r.tags: []; const bt=(r && r.businessTag) || (r && r.category); return bt ? [...base, bt] : base; })(),
         rating: (r && typeof r.rating === 'number') ? r.rating : undefined,
@@ -2753,13 +2675,16 @@ Page({
   // 首页：加载附近优惠（与领券中心逻辑一致）
   async loadNearbyOffers() {
     try {
+      // 开始加载附近优惠：打开加载中状态
       this.setData({ nearbyLoading: true });
       const loc = this.data.userLocation;
       if (!loc || typeof loc.latitude !== 'number' || typeof loc.longitude !== 'number') {
         this.setData({ nearbyOffers: [], nearbyLoading: false });
         return;
       }
-      const targetCount = 40;
+
+      // 采集附近餐厅（多半径聚合+去重）
+      const targetCount = 60;
       const radiusSteps = [1500, 2500, 3500, 5000, 7000];
       let collected = [];
       let usedRadius = radiusSteps[0];
@@ -2778,56 +2703,112 @@ Page({
       }
       const nearbyArr = collected.slice(0, targetCount);
       console.info('[附近优惠][首页] 采集附近餐厅数:', nearbyArr.length, '使用半径:', usedRadius);
-      const restaurantCards = [];
 
-      const parseNum = (x) => { const n = Number(x); return isNaN(n) ? null : n; };
+      const restaurantCards = [];
+      const parseNum = (v) => { const n = (typeof v === 'string') ? parseFloat(v) : (typeof v === 'number' ? v : NaN); return isFinite(n) ? n : 0; };
 
       for (const r of nearbyArr) {
         const rName = r && (r.name || r.brandName || r.title) || '';
         if (!rName) continue;
+        const qName = this.cleanRestaurantName ? this.cleanRestaurantName(rName) : (String(rName).trim());
+        const lat = (r && typeof r.latitude === 'number') ? r.latitude : (r?.amapData?.latitude);
+        const lng = (r && typeof r.longitude === 'number') ? r.longitude : (r?.amapData?.longitude);
+
+        // 拉取外卖与到店商品（静默失败）
         let wmRes = null, osRes = null;
-        let itemsWithLink = [];
-        try { wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: rName } }); } catch(e) {}
-        try { osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, searchText: rName } }); } catch(e) {}
-        const collect = (resp, source) => {
-          const root = resp && (resp.result && (resp.result.data || resp.result) || resp) || {};
-          const arr = Array.isArray(root.data) ? root.data : (Array.isArray(root.list) ? root.list : (Array.isArray(root.items) ? root.items : []));
-          const out = [];
-          for (const it of arr) {
+        try { wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: qName, latitude: lat, longitude: lng } }); } catch (e1) { /* 静默 */ }
+        try { osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, searchText: qName, latitude: lat, longitude: lng } }); } catch (e2) { /* 静默 */ }
+
+        // 标准化解析响应
+        const normalizeList = (res, source) => {
+          const root = res?.result?.data || res?.result || {};
+          const arr = Array.isArray(root?.data)
+            ? root.data
+            : (Array.isArray(root?.list)
+              ? root.list
+              : (Array.isArray(root?.items) ? root.items : []));
+          return (arr || []).map(it => {
             const skuViewId = String(it?.couponPackDetail?.skuViewId || it?.skuViewId || '').trim();
-            if (!skuViewId) continue;
             const brandName = it?.brandInfo?.brandName || it?.brandName || rName;
             const name = it?.couponPackDetail?.name || it?.name || it?.title || '';
             let headUrl = it?.couponPackDetail?.headUrl || it?.headUrl || it?.imgUrl || it?.image || it?.picUrl || '';
             if (typeof headUrl === 'string' && headUrl.startsWith('http://')) headUrl = 'https://' + headUrl.slice(7);
             const originalPrice = parseNum(it?.couponPackDetail?.originalPrice || it?.originalPrice || it?.originPrice);
             const sellPrice = parseNum(it?.couponPackDetail?.sellPrice || it?.sellPrice || it?.price || it?.currentPrice);
-            out.push({ skuViewId, brandName, name, headUrl, source, bizLine: Number(it?.bizLine ?? (source === 'onsite' ? 1 : 0)), originalPrice, sellPrice });
-          }
-          return out;
+            return { skuViewId, brandName, name, headUrl, source, bizLine: Number(it?.bizLine ?? (source === 'onsite' ? 1 : 0)), originalPrice, sellPrice };
+          }).filter(x => !!x.skuViewId);
         };
-        const wmItems = wmRes ? collect(wmRes, 'waimai') : [];
-        const osItems = osRes ? collect(osRes, 'onsite') : [];
-        itemsWithLink = wmItems.concat(osItems);
+
+        const wmList = normalizeList(wmRes, 'takeout');
+        const osList = normalizeList(osRes, 'onsite');
+        const merged = wmList.concat(osList).slice(0, 6); // 每店最多取前6个用于查询链接
+
+        // 查询推广链接，仅保留有小程序链接的商品
+        const itemsWithLink = [];
+        let idx = 0;
+        const couponWorkersLimit = 3; // 每家餐厅内部并发不超过3
+        const worker = async () => {
+          while (idx < merged.length) {
+            const it = merged[idx++];
+            try {
+              const lr = await wx.cloud.callFunction({ name: 'getMeituanReferralLink', data: { skuViewId: it.skuViewId } });
+              const root = lr?.result?.data || lr?.result || {};
+              const dataRoot = (root && typeof root === 'object' && root.data && typeof root.data === 'object') ? root.data : root;
+              const linkMap = dataRoot?.referralLinkMap || dataRoot?.linkMap || dataRoot?.urlMap || {};
+              const weapp = linkMap['4'] || linkMap[4] || linkMap.weapp || linkMap.mini;
+              if (weapp) {
+                itemsWithLink.push({ ...it, referralLinkMap: linkMap });
+              }
+            } catch (_) { /* 静默 */ }
+          }
+        };
+        await Promise.all(new Array(couponWorkersLimit).fill(0).map(() => worker()));
+
+        if (!itemsWithLink.length) {
+          // 无商品可跳转：不渲染该餐厅卡片
+          continue;
+        }
+
+        // 提取品牌logo（优先使用美团返回的 brandLogoUrl）
         const extractBrandLogoUrl = (resp) => {
           try {
             const root = resp?.result?.data || resp?.result || {};
-            const arr = Array.isArray(root?.data) ? root.data : (Array.isArray(root?.list) ? root.list : (Array.isArray(root?.items) ? root.items : []));
+            const arr = Array.isArray(root?.data)
+              ? root.data
+              : (Array.isArray(root?.list)
+                ? root.list
+                : (Array.isArray(root?.items) ? root.items : []));
             let c = '';
-            for (const it of arr) { c = it?.brandInfo?.brandLogoUrl || it?.brandLogoUrl || ''; if (c) break; }
+            for (const it of arr) {
+              c = it?.brandInfo?.brandLogoUrl || it?.brandLogoUrl || '';
+              if (c) break;
+            }
             if (typeof c === 'string' && c.startsWith('http://')) c = 'https://' + c.slice(7);
             return c;
           } catch (e) { return ''; }
         };
         const logoCandidate = extractBrandLogoUrl(wmRes) || extractBrandLogoUrl(osRes) || '';
-        const logoUrl = logoCandidate || (r.icon || (r.photoUrls && r.photoUrls[0]) || this.data.placeholderImageUrl);
-        restaurantCards.push({ id: r.id || (rName + '_' + (r.distance || '')), name: rName, distance: typeof r.distance === 'number' ? r.distance : null, logoUrl: logoUrl || '/images/placeholder.png', products: itemsWithLink });
+        let logoUrl = logoCandidate;
+        if (!logoUrl) {
+          // 统一本地兜底，不再尝试云端临时链接
+          logoUrl = cloudImageManager.getCloudImageUrlSync('takeout', 'png');
+        }
+
+        restaurantCards.push({
+          id: r.id || (rName + '_' + (r.distance || '')),
+          name: rName,
+          distance: typeof r.distance === 'number' ? r.distance : null,
+          logoUrl,
+          products: itemsWithLink
+        });
       }
+
       const nearbyOffers = restaurantCards;
-      const nearbyOffersLoop = [];
+      const nearbyOffersLoop = []; // 移除重复循环，避免重复卡片
       this.setData({ nearbyOffers, nearbyOffersLoop, nearbyLoading: false });
     } catch (err) {
       console.warn('[附近优惠][首页] 加载失败', err);
+      // 失败也需关闭加载中状态
       this.setData({ nearbyLoading: false });
     }
   },
@@ -2840,7 +2821,7 @@ Page({
       const restaurant = list.find(r => String(r.id) === String(id));
       if (!restaurant) return;
       const name = restaurant.name || '';
-      const logo = restaurant.logoUrl || '/images/placeholder.png';
+      const logo = restaurant.logoUrl || this.data.nearbyPlaceholderImageUrl;
       const products = Array.isArray(restaurant.products) ? restaurant.products : [];
       const url = `/pages/brand/detail?name=${encodeURIComponent(name)}&logo=${encodeURIComponent(logo)}`;
       wx.navigateTo({
@@ -2858,4 +2839,4 @@ Page({
   }
 });
 
-console.log('[定位轮盘] 已更新轮盘数据，基于位置推荐');
+console.debug('[定位轮盘] 已更新轮盘数据，基于位置推荐');

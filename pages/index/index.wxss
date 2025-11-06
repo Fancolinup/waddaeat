@@ -568,6 +568,10 @@
   font-weight: 700; 
   border: none;
   transition: all 0.2s ease;
+  display: flex;               /* 使按钮内容启用flex布局 */
+  align-items: center;         /* 水平居中 */
+  justify-content: center;     /* 垂直居中 */
+  line-height: 1.2;            /* 两行文案时间距更合理 */
 }
 
 .dl-primary { 
@@ -1115,7 +1119,7 @@
    transition: all 0.2s ease;
  }
  /* 调整主操作按钮文字字号，确保完整显示 */
- .dl-actions .dl-btn.dl-primary { font-size: 24rpx; }
+ .dl-actions .dl-btn.dl-primary { font-size: 22rpx; }
  .dl-meituan-inline { 
    width: 32rpx; 
    height: 32rpx; 
@@ -1455,6 +1459,10 @@
   font-weight: 700; 
   border: none;
   transition: all 0.2s ease;
+  display: flex;               /* 使按钮内容启用flex布局 */
+  align-items: center;         /* 水平居中 */
+  justify-content: center;     /* 垂直居中 */
+  line-height: 1.2;            /* 两行文案间距更合理 */
 }
 
 .dl-primary { 
