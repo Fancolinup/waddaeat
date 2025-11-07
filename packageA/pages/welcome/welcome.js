@@ -450,16 +450,19 @@ Page({
     this.setData({ restaurants });
   },
 
-  // 完成选择并跳转
+  // 完成选择并跳转（允许空选择，等同跳过）
   onCompleteSelection: function () {
-    // 校验至少选择一个
+    // 若为空选择，直接标记欢迎页已展示并跳转主页
     if (this.data.selectedRestaurants.length === 0) {
-      wx.showToast({
-        title: '请至少选择一个餐厅',
-        icon: 'none'
-      });
+      try {
+        wx.setStorageSync('welcomeSelections', []);
+        wx.setStorageSync('welcomeSelectionsByBrand', []);
+        wx.setStorageSync('hasShownWelcome', true);
+      } catch (_) {}
+      wx.reLaunch({ url: '/pages/index/index' });
       return;
     }
+    // 非空选择仍按原逻辑保存
     this.saveSelections();
   },
 

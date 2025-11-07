@@ -101,7 +101,14 @@ Page({
           if (!hasMap) {
             const mBrand = x.brandName ? brandUrlMap.get(x.brandName) : null;
             const mAct = x.actId ? actIdUrlMap.get(String(x.actId)) : null;
-            x.referralLinkMap = mAct || mBrand || {};
+            if (mAct && Object.keys(mAct).length > 0) {
+              x.referralLinkMap = mAct;
+            } else if (mBrand && x.skuViewId) {
+              const perSku = mBrand[x.skuViewId] || mBrand[String(x.skuViewId)];
+              x.referralLinkMap = (perSku && typeof perSku === 'object') ? perSku : {};
+            } else {
+              x.referralLinkMap = {};
+            }
           }
         }
         console.debug('[search] after fill referralLinkMap count:', all.filter(x => x.referralLinkMap && Object.keys(x.referralLinkMap).length > 0).length);
@@ -109,9 +116,22 @@ Page({
         console.warn('[search] 补充 URL 失败：', eUrl);
       }
 
+      // 新增：过滤占位条目——必须有 name 且存在 skuViewId 或 actId
+      const filtered = all.filter(x => {
+        const hasName = x && typeof x.name === 'string' && x.name.trim().length > 0;
+        const hasId = x && (x.skuViewId || x.actId);
+        const brandOnly = (typeof x.name === 'string' && typeof x.brandName === 'string' && x.name.trim() === x.brandName.trim());
+        const hasPrice = Number.isFinite(x.sellPrice) ? x.sellPrice > 0 : !!x.sellPrice;
+        // 必须有 name 和 id；如果仅品牌名且无价格，则剔除
+        if (!hasName || !hasId) return false;
+        if (brandOnly && !hasPrice) return false;
+        return true;
+      });
+      console.debug('[search] filtered size:', filtered.length);
+
       const dedup = [];
       const seen = new Set();
-      for (const x of all) {
+      for (const x of filtered) {
         const key = String(x.skuViewId || x.actId || x._id || `${x.brandName}-${x.name}`);
         if (seen.has(key)) continue;
         seen.add(key);
@@ -184,6 +204,22 @@ Page({
       console.warn('[search] 结果跳转失败：', err);
     }
   },
-  // 重复的 onResultTap 已移除，避免与上面的实现冲突
+  // 新增：长按搜索按钮触发云端全量更新任务（安全保护：仅在开发模式下提示）
+  async onSearchButtonLongPress() {
+    try {
+      wx.showLoading({ title: '正在刷新美团数据', mask: true });
+      const res = await wx.cloud.callFunction({
+        name: 'scheduleMeituanBrandDaily',
+        data: { runMode: 'all' }
+      });
+      console.debug('[search] 手动刷新完成：', res && res.result);
+      wx.showToast({ title: '刷新完成', icon: 'success' });
+    } catch (err) {
+      console.warn('[search] 手动刷新失败：', err);
+      wx.showToast({ title: '刷新失败', icon: 'none' });
+    } finally {
+      wx.hideLoading();
+    }
+  }
 });
 const { cloudImageManager } = require('../../utils/cloudImageManager');

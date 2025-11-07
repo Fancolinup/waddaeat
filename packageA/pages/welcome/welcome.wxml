@@ -70,20 +70,11 @@
   </view>
   
 
-  <!-- 添加餐厅入口 -->
-  <view class="add-restaurant-section">
-    <view class="add-restaurant-btn" bindtap="onAddCustomRestaurant">
-      <view class="add-icon">+</view>
-      <text class="add-text">添加餐厅</text>
-    </view>
-  </view>
-  
   <!-- 底部操作区 -->
   <view class="bottom-actions">
     <button 
-      class="complete-btn {{selectedRestaurants.length > 0 ? 'active' : 'disabled'}}"
+      class="complete-btn active"
       bindtap="onCompleteSelection"
-      disabled="{{selectedRestaurants.length === 0}}"
     >
       确认选择
     </button>

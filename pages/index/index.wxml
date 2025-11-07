@@ -9,7 +9,7 @@
   <!-- 顶部搜索入口（点击进入二级搜索页，样式与领券页一致） -->
   <view class="search-bar" style="transform: {{searchTransform}};" bindtap="navigateToSearch" hover-class="none" hover-stop-propagation="true">
     <image class="search-icon" src="/images/search.svg" mode="widthFix" />
-    <text class="search-placeholder">搜优惠</text>
+    <text class="search-placeholder">直接搜优惠</text>
   </view>
 
 

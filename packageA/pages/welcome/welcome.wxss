@@ -368,7 +368,7 @@
 
 /* 底部操作区 */
 .bottom-actions {
-  padding: 20rpx 60rpx 80rpx;
+  padding: 0 60rpx 0; /* 去除额外底部间距，统一由 translate 控制 */
   display: flex;
   justify-content: center;
 }
@@ -381,6 +381,7 @@
   font-weight: 600;
   border: none;
   transition: all 0.3s ease;
+  transform: translateY(-240rpx); /* 通过 translate 上移按钮，手动调整这里的数值 */
 }
 
 .complete-btn.active {

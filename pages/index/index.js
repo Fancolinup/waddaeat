@@ -152,17 +152,9 @@ Page({
     try { cachedLoc = wx.getStorageSync('userLocation'); } catch(e) {}
     if (cachedLoc && cachedLoc.name) {
       this.setData({ userLocation: cachedLoc });
-      // TTL 检查：附近优惠为空或位置缓存过期则触发刷新
-      const ttlMs = 2 * 60 * 60 * 1000; // 2小时TTL
-      const now = Date.now();
-      const locTs = Number(cachedLoc.ts || 0);
-      const noOffers = !Array.isArray(this.data.nearbyOffers) || this.data.nearbyOffers.length === 0;
-      if (cachedLoc.latitude && cachedLoc.longitude && (noOffers || !locTs || (now - locTs > ttlMs))) {
-        this.loadNearbyOffers();
-      }
     }
     
-    // 恢复位置信息显示
+    // 仅恢复位置信息显示，不自动刷新附近优惠；刷新由选择位置或位置变更触发
     this.restoreLocationDisplay();
   },
 

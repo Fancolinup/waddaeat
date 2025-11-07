@@ -102,40 +102,94 @@ function computeBeginAt(it, nowTs = Date.now()) {
 }
 // 规范化商品条目（落库 MeituanBrandCoupon.items）
 function normalizeCouponItem(it, nowTs = Date.now()) {
-  const skuViewId = it?.couponPackDetail?.skuViewId || it?.skuViewId || it?.item?.skuViewId || '';
+  const detail = it?.couponPackDetail || it?.item || {};
+  const skuViewId = detail?.skuViewId || it?.skuViewId || '';
   if (!skuViewId) return null;
+
   const expireAt = computeExpireAt(it, nowTs);
-  if (!expireAt || nowTs >= expireAt) return null; // 必要丢弃：过期
+  if (!expireAt || nowTs >= expireAt) return null; // 过期直接丢弃
   const beginAt = computeBeginAt(it, nowTs);
-  const title = it?.title || it?.couponTitle || it?.item?.title || '';
-  const subtitle = it?.subtitle || it?.couponSubTitle || it?.item?.subtitle || '';
-  const price = it?.price || it?.payAmount || it?.finalPrice || 0;
-  const imgUrl = normalizeHttps(it?.picUrl || it?.imageUrl || it?.couponImgUrl || it?.item?.picUrl || '');
+
+  // 名称与图片（优先用 couponPackDetail）
+  const title = detail?.name || it?.name || it?.title || '';
+  const subtitle = it?.subtitle || it?.couponSubTitle || detail?.subtitle || '';
+  let headUrl = detail?.headUrl || it?.headUrl || it?.picUrl || it?.imageUrl || it?.couponImgUrl || '';
+  if (typeof headUrl === 'string' && headUrl.startsWith('http://')) headUrl = 'https://' + headUrl.slice(7);
+
+  // 价格：优先使用 couponPackDetail.sellPrice / originalPrice
+  const sellPriceRaw = detail?.sellPrice ?? it?.sellPrice ?? it?.price ?? it?.payAmount ?? it?.finalPrice;
+  const originalPriceRaw = detail?.originalPrice ?? it?.originalPrice ?? it?.originPrice;
+  const sellPrice = typeof sellPriceRaw === 'number' ? sellPriceRaw : (typeof sellPriceRaw === 'string' ? parseFloat(sellPriceRaw) : 0);
+  const originalPrice = typeof originalPriceRaw === 'number' ? originalPriceRaw : (typeof originalPriceRaw === 'string' ? parseFloat(originalPriceRaw) : 0);
+
+  // 校验：必须有标题且售价为正数
+  if (!title || !(Number.isFinite(sellPrice) && sellPrice > 0)) return null;
+  // 品牌信息
+  const brandInfo = it?.brandInfo || {};
+  const brandName = brandInfo?.brandName || it?.brandName || '';
+
   // 新增：品牌logo（兼容多字段，规范化为 https，并移除可能的反引号）
-  let brandLogoRaw = it?.brandLogoUrl || it?.item?.brandLogoUrl || (it?.brandInfo && it.brandInfo.brandLogoUrl) || it?.logoUrl || '';
+  let brandLogoRaw = it?.brandLogoUrl || detail?.brandLogoUrl || brandInfo?.brandLogoUrl || it?.logoUrl || '';
   if (typeof brandLogoRaw === 'string') {
     brandLogoRaw = brandLogoRaw.replace(/`/g, '').trim();
   }
   const brandLogoUrl = normalizeHttps(brandLogoRaw);
-  return { skuViewId, title, subtitle, expireAt, beginAt, price, imgUrl, brandLogoUrl };
+
+  // 标签（非强制）
+  const label1 = it?.productLabel?.historyPriceLabel || it?.productLabel?.beatMTLabel || '';
+
+  return {
+    skuViewId,
+    title,
+    subtitle,
+    beginAt,
+    expireAt,
+    headUrl,
+    sellPrice,
+    originalPrice,
+    brandName,
+    brandLogoUrl,
+    label1
+  };
 }
 // 从 DB 读取已有品牌券（用于 runMode=linksOnly）
-async function loadCouponsFromDB(db, limitBrandCount) {
+async function loadCouponsFromDB(db, limitBrandCount, brandNamesFilter) {
   const coll = db.collection('MeituanBrandCoupon');
   const payloads = [];
-  const limit = 100;
-  let skip = 0;
-  while (true) {
-    const batch = await coll.skip(skip).limit(limit).get();
-    const docs = Array.isArray(batch?.data) ? batch.data : [];
-    if (!docs.length) break;
-    for (const doc of docs) {
-      const items = Array.isArray(doc.items) ? doc.items : [];
-      payloads.push({ brandName: doc.brandName, brandLogo: doc.brandLogo || '', items });
+
+  // 优先按入参品牌过滤，避免读取所有品牌后再截断导致品牌不一致
+  if (Array.isArray(brandNamesFilter) && brandNamesFilter.length > 0) {
+    try {
+      const _ = db.command;
+      const res = await coll.where({ brandName: _.in(brandNamesFilter) }).get();
+      const docs = Array.isArray(res?.data) ? res.data : [];
+      for (const doc of docs) {
+        const items = Array.isArray(doc.items) ? doc.items : [];
+        payloads.push({ brandName: doc.brandName, brandLogo: doc.brandLogo || '', items });
+      }
+      console.log('[Schedule] linksOnly 按入参品牌过滤读取：', brandNamesFilter, '命中品牌数：', payloads.length);
+    } catch (e) {
+      console.warn('[Schedule] linksOnly 读取 DB 失败（按入参过滤）：', e);
     }
-    skip += docs.length;
-    if (docs.length < limit) break;
   }
+
+  // 无入参品牌或按入参未命中时，回退为全量分页读取
+  if (payloads.length === 0) {
+    const limit = 100;
+    let skip = 0;
+    while (true) {
+      const batch = await coll.skip(skip).limit(limit).get();
+      const docs = Array.isArray(batch?.data) ? batch.data : [];
+      if (!docs.length) break;
+      for (const doc of docs) {
+        const items = Array.isArray(doc.items) ? doc.items : [];
+        payloads.push({ brandName: doc.brandName, brandLogo: doc.brandLogo || '', items });
+      }
+      skip += docs.length;
+      if (docs.length < limit) break;
+    }
+  }
+
   if (typeof limitBrandCount === 'number' && limitBrandCount > 0) {
     return payloads.slice(0, Math.min(payloads.length, limitBrandCount));
   }
@@ -232,22 +286,40 @@ exports.main = async (event, context) => {
   await ensureCollection(db, 'MeituanPartnerBrandsSorted');
 
   // 品牌列表来源：统一读取 GlobalBrandSeed；为空回退至 SEED_BRANDS；也支持 event.brandNames 覆盖
-  const brandNamesParam = Array.isArray(event?.brandNames) && event.brandNames.length ? event.brandNames : null;
+  const incomingBrandNamesRaw =
+    (Array.isArray(event?.brandNames) && event.brandNames.length ? event.brandNames : null)
+    || (Array.isArray(event?.data?.brandNames) && event.data.brandNames.length ? event.data.brandNames : null)
+    || (Array.isArray(event?.params?.brandNames) && event.params.brandNames.length ? event.params.brandNames : null);
+  const incomingBrandNames = Array.isArray(incomingBrandNamesRaw)
+    ? incomingBrandNamesRaw.map(n => String(n).trim()).filter(Boolean)
+    : null;
+
   const brandNamesDefault = await readGlobalBrandSeed(db, SEED_BRANDS);
-  const brandNames = brandNamesParam || brandNamesDefault;
-  const list = brandNames.map(n => ({ name: n, logoUrl: '' }));
-  const brandsAll = list.map(r => ({
-    brandName: r.name,
-    brandLogo: normalizeHttps(r.logoUrl || ''),
+  const brandNames = (incomingBrandNames && incomingBrandNames.length) ? incomingBrandNames : brandNamesDefault;
+
+  const brandsAll = brandNames.map(n => ({
+    brandName: n,
+    brandLogo: normalizeHttps('')
   }));
-  const limitBrandCount = typeof event?.limitBrandCount === 'number' && event.limitBrandCount > 0 ? event.limitBrandCount : brandsAll.length;
-  const runMode = typeof event?.runMode === 'string' ? event.runMode : 'all';
+
+  const rawLimitBrandCount = (event?.limitBrandCount ?? event?.data?.limitBrandCount ?? event?.params?.limitBrandCount);
+  const limitBrandCount = typeof rawLimitBrandCount === 'number' && rawLimitBrandCount > 0 ? rawLimitBrandCount : brandsAll.length;
+  const rawRunMode = (event?.runMode ?? event?.data?.runMode ?? event?.params?.runMode);
+  const runMode = typeof rawRunMode === 'string' ? rawRunMode : 'all';
+
   let brands = brandsAll.slice(0, Math.min(brandsAll.length, limitBrandCount));
-  if (isTrigger) {
+  // 仅在没有传入品牌时才使用触发器轮询模式
+  if (!incomingBrandNames && isTrigger) {
     const rotationIdx = await getAndAdvanceBrandRotation(db, brandsAll.length);
     brands = (rotationIdx >= 0 && rotationIdx < brandsAll.length) ? [brandsAll[rotationIdx]] : [];
     console.log('[Schedule] 轮询模式，选中品牌索引：', rotationIdx, '品牌：', brands[0] && brands[0].brandName);
   }
+
+  console.log('[Schedule] 品牌来源：', incomingBrandNames ? 'incoming' : 'seed',
+    '入参品牌：', incomingBrandNames,
+    '最终品牌（截断后）:', brands.map(b => b.brandName),
+    'limitBrandCount:', limitBrandCount,
+    'runMode:', runMode);
   const couponResults = [];
   const metrics = {
     stage1: { brandsProcessed: 0, rawItemCount: 0, keptItemCount: 0, stats: [] },
@@ -317,7 +389,7 @@ exports.main = async (event, context) => {
   // runMode=linksOnly 时，从 DB 读取最新券作为阶段2入参
   if (runMode === 'linksOnly') {
     try {
-      const payloads = await loadCouponsFromDB(db, limitBrandCount);
+      const payloads = await loadCouponsFromDB(db, limitBrandCount, (brands || []).map(b => b.brandName));
       couponResults.push(...payloads);
       console.log('[Schedule] Stage2 入参来自DB，品牌数：', couponResults.length);
     } catch (e) {
@@ -330,7 +402,30 @@ exports.main = async (event, context) => {
     await runSerial(couponResults, async (entry) => {
       try {
         const items = Array.isArray(entry?.items) ? entry.items : [];
-        const subset = (typeof event?.limitSkuCount === 'number' ? items.slice(0, Math.min(items.length, event.limitSkuCount)) : items);
+        // 支持 SKU 选择策略：优先选择未生成过链接的 SKU（默认），或随机/仅未链接
+        const rawStrategy = (event?.skuSelectionStrategy ?? event?.data?.skuSelectionStrategy ?? event?.params?.skuSelectionStrategy);
+        const strategy = typeof rawStrategy === 'string' ? rawStrategy : 'unlinkedFirst';
+        const limitCount = (typeof event?.limitSkuCount === 'number' ? Math.min(items.length, event.limitSkuCount) : items.length);
+        let orderedItems = items;
+        if (strategy === 'unlinkedFirst' || strategy === 'onlyUnlinked') {
+          try {
+            const collUrl = db.collection('MeituanBrandCouponURL');
+            const foundUrl = await collUrl.where({ brandName: entry.brandName }).get();
+            const urlMapExisting = (foundUrl?.data?.[0]?.urlMap && typeof foundUrl.data[0].urlMap === 'object') ? foundUrl.data[0].urlMap : {};
+            const existingSet = new Set(Object.keys(urlMapExisting));
+            const unlinked = items.filter(it => it?.skuViewId && !existingSet.has(it.skuViewId));
+            const linked = items.filter(it => it?.skuViewId && existingSet.has(it.skuViewId));
+            orderedItems = strategy === 'onlyUnlinked' ? unlinked : [...unlinked, ...linked];
+            console.log('[Schedule] SKU选择策略=', strategy, '品牌：', entry.brandName, '未链接优先数量：', unlinked.length, '总项：', items.length);
+          } catch (eSel) {
+            console.warn('[Schedule] SKU选择策略=', strategy, '获取既有链接失败，使用原序：', entry.brandName, eSel);
+            orderedItems = items;
+          }
+        } else if (strategy === 'random') {
+          orderedItems = items.slice().sort(() => Math.random() - 0.5);
+          console.log('[Schedule] SKU选择策略=random 品牌：', entry.brandName, '总项：', items.length);
+        }
+        const subset = orderedItems.slice(0, limitCount);
         const urlMap = {};
         const nowTs = Date.now();
         for (const it of subset) {

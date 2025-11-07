@@ -4,7 +4,7 @@
   <view class="search-fixed">
     <image class="search-icon" src="/images/search.svg" mode="widthFix" />
     <input class="search-input" placeholder="搜商品/品牌" confirm-type="search" bindinput="onInput" bindconfirm="onConfirm" focus="{{autoFocus}}"/>
-    <button class="search-btn" bindtap="onConfirm">搜索</button>
+    <button class="search-btn" bindtap="onConfirm" bindlongpress="onSearchButtonLongPress">搜索</button>
   </view>
 
   <!-- 结果列表区域（卡片栅格） -->

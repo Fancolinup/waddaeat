@@ -91,7 +91,8 @@ Page({
 
         let skuViewId = it?.skuViewId || (detail && detail.skuViewId) || '';
         let name1 = (detail && detail.name) || it?.title || '';
-        let headUrl = (detail && detail.headUrl) || it?.imgUrl || '';
+        // 商品图：优先 couponPackDetail.headUrl，其次读取顶层规范化字段 it.headUrl，再回退到常见字段
+        let headUrl = (detail && detail.headUrl) || it?.headUrl || it?.imgUrl || it?.picUrl || it?.imageUrl || it?.couponImgUrl || '';
         let originalPrice = parseNum((detail && detail.originalPrice) || it?.originalPrice || it?.originPrice);
         let sellPrice = parseNum((detail && detail.sellPrice) || it?.sellPrice || it?.price || it?.currentPrice);
         let endStr = timeInfo && timeInfo.couponValidETime ? timeInfo.couponValidETime : '';

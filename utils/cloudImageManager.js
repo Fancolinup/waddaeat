@@ -725,8 +725,8 @@ class CloudImageManager {
 
   // 新增：统一获取占位图URL（iOS优先HTTPS缓存，否则内联SVG；非iOS返回cloud:// placeholder）
   getPlaceholderUrlSync() {
-    // 使用本地打包的占位图，避免云环境异常导致占位图不可用
-    return '/images/placeholder.png';
+    // 使用项目内已有的占位图，避免引用不存在的 /images/placeholder.png 导致 iOS 无法显示
+    return '/images/canteen.png';
   }
 }
 
