@@ -44,7 +44,12 @@ Page({
     // 新增：到店优惠首次加载时的 Loading 状态
     instoreLoading: false,
     // 新增：附近优惠加载中状态，避免静默等待
-    nearbyLoading: false
+    nearbyLoading: false,
+    // 新增：刷新控制状态（图片按钮点击时触发平滑过渡）
+    couponRefreshing: false,
+    // 新增：当前页码（用于按顺序分页读取下一批40条）
+    couponPageIndex: 1,
+    instorePageIndex: 1
   },
 
   onShow() {
@@ -247,6 +252,23 @@ Page({
       pages.push(list.slice(i, i + pageSize));
     }
     return pages;
+  },
+  ensureFullBatch(newList, oldList, size = 40) {
+    const desired = Number(size) || 40;
+    const base = Array.isArray(newList) ? newList.slice(0, desired) : [];
+    const old = Array.isArray(oldList) ? oldList : [];
+    const keyOf = (it) => String(it?.skuViewId || it?.id || it?._id || '');
+    const seen = new Set(base.map(keyOf).filter(Boolean));
+    for (let i = 0; i < old.length && base.length < desired; i++) {
+      const it = old[i];
+      const k = keyOf(it);
+      if (!k) continue;
+      if (!seen.has(k)) { base.push(it); seen.add(k); }
+    }
+    while (base.length < desired && old.length) {
+      base.push(old[base.length % old.length]);
+    }
+    return base.slice(0, desired);
   },
 
   onCouponSwiperChange(e) {
@@ -477,6 +499,8 @@ Page({
         this.setData({ couponPages: [] });
         this.loadRedPacketCouponsList();
       }
+      // 切换类别时重置红包页码
+      this.setData({ couponPageIndex: 1 });
     } else if (key === 'instore') {
       const list = this.data.instoreItems || [];
       if (list.length) {
@@ -486,6 +510,47 @@ Page({
         this.setData({ couponPages: [], instoreLoading: true });
         this.loadInstoreCouponsList();
       }
+      // 切换类别时重置到店页码
+      this.setData({ instorePageIndex: 1 });
+    }
+  },
+
+  // 刷新按钮点击：按顺序加载下一批40条并替换当前列表
+  async onRefreshTap() {
+    try {
+      if (this.data.couponRefreshing) return; // 避免重复触发
+      this.setData({ couponRefreshing: true });
+      const key = this.data.selectedCategory;
+      if (key === 'coupon') {
+        const nextPage = (this.data.couponPageIndex || 1) + 1;
+        const res = await wx.cloud.callFunction({ name: 'getRedPacketCouponsList', data: { page: nextPage, pageSize: 40, priceCap: 100 } });
+        let list = (res.result && (Array.isArray(res.result.list) ? res.result.list : (Array.isArray(res.result.items) ? res.result.items : []))) || [];
+        const cap = 100;
+        list = list.filter(it => {
+          const sp = Number(it?.sellPrice || 0);
+          const op = Number(it?.originalPrice || 0);
+          const hasSp = sp > 0;
+          const hasOp = op > 0;
+          if (hasSp && hasOp) return sp <= cap && op <= cap;
+          if (hasSp && !hasOp) return sp <= cap;
+          if (!hasSp && hasOp) return op <= cap;
+          return false;
+        });
+        const filled = this.ensureFullBatch(list, this.data.redPacketItems || [], 40);
+        this.setData({ redPacketItems: filled, couponPages: this.paginateCoupons(filled, 4), couponSwiperCurrent: 0, couponPageIndex: nextPage });
+      } else if (key === 'instore') {
+        const nextPage = (this.data.instorePageIndex || 1) + 1;
+        const res = await wx.cloud.callFunction({ name: 'getOnsiteCouponsList', data: { page: nextPage, pageSize: 40 } });
+        let list = (res.result && (Array.isArray(res.result.items) ? res.result.items : (Array.isArray(res.result.list) ? res.result.list : []))) || [];
+        const filled = this.ensureFullBatch(list, this.data.instoreItems || [], 40);
+        this.setData({ instoreItems: filled, couponPages: this.paginateCoupons(filled, 4), couponSwiperCurrent: 0, instorePageIndex: nextPage });
+      }
+    } catch (e) {
+      console.warn('[CouponCenter] 刷新失败：', e);
+      wx.showToast({ title: '刷新失败，请稍后重试', icon: 'none' });
+    } finally {
+      // 平滑过渡结束
+      setTimeout(() => { this.setData({ couponRefreshing: false }); }, 180);
     }
   },
 

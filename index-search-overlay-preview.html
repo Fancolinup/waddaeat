@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>今日选择页 - 搜索栏与毛玻璃遮罩预览</title>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, rgba(240, 248, 255, 0.6), rgba(230, 255, 250, 0.6)); }
+    .container { min-height: 100vh; display: flex; flex-direction: column; position: relative; }
+    .banner-location{ position:absolute; left:12rpx; top:10rpx; z-index:30; display:flex; align-items:center; gap:10rpx; padding:12rpx 16rpx; border-radius:16rpx; background:linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%); border:2rpx solid rgba(255,255,255,.8); box-shadow:0 8rpx 24rpx rgba(255,107,107,.3); cursor:pointer; min-width:120rpx; min-height:48rpx; }
+    .banner-location .icon { width:28rpx; height:28rpx; filter:brightness(0) invert(1); }
+    .banner-location .msg { font-size:24rpx; color:#ffffff; font-weight:600; text-shadow:0 1rpx 2rpx rgba(0,0,0,.1); }
+
+    /* 顶部搜索栏（复用领券页样式） */
+    .search-bar { position:absolute; left:0; top:0; z-index:31; display:flex; align-items:center; gap:10px; padding: 8px 12px; border-radius: 22px; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 200px; overflow:hidden; white-space:nowrap; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+    .search-icon { width: 28rpx; height: 28rpx; filter: brightness(0) invert(1); }
+    .search-placeholder { color:#111; font-size: 24rpx; opacity:0.85; }
+
+    /* 模拟转盘区占位 */
+    .hero-area { margin: 12rpx 24rpx; height: 300rpx; border-radius: 20rpx; background: rgba(255,255,255,0.6); box-shadow: 0 10rpx 24rpx rgba(0,0,0,0.08); }
+
+    /* 毛玻璃遮罩层（覆盖到页面底部） */
+    .glass-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.45); backdrop-filter: blur(16rpx); -webkit-backdrop-filter: blur(16rpx); z-index: 998; }
+    .decision-layer { position: fixed; top: 35%; left: 50%; transform: translate(-50%, -50%); width: 580rpx; background: rgba(255,255,255,0.95); border-radius: 24rpx; padding: 24rpx; box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.15); z-index: 999; }
+    .dl-actions { display:flex; gap:12rpx; margin-top: 12rpx; }
+    .dl-btn { padding: 12rpx 20rpx; border-radius: 12rpx; border: 2rpx solid #eee; background: #fafafa; }
+
+    /* 模拟下方备选清单区和转发决策区 */
+    .shortlist-area { margin: 24rpx; height: 220rpx; border-radius: 16rpx; background: rgba(255,255,255,0.7); box-shadow: 0 10rpx 24rpx rgba(0,0,0,0.08); }
+    .share-panel { margin: 24rpx; height: 160rpx; border-radius: 16rpx; background: rgba(255,255,255,0.7); box-shadow: 0 10rpx 24rpx rgba(0,0,0,0.08); }
+
+    .toolbar { position: fixed; right: 16px; bottom: 16px; z-index: 1000; display:flex; gap:8px; }
+    .toolbar button { padding:8px 12px; border-radius:8px; border:1px solid #ddd; background:#fff; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="banner-location">
+      <img class="icon" src="/images/map.svg" alt="" />
+      <span class="msg">上海市浦东新区</span>
+    </div>
+
+    <div class="search-bar" style="transform: translate(260px, 8px);" onclick="navigateToSearch()">
+      <img class="search-icon" src="/images/search.svg" alt="" />
+      <span class="search-placeholder">搜商品/品牌</span>
+    </div>
+
+    <div class="hero-area"></div>
+
+    <div id="glass" class="glass-overlay" style="display:none"></div>
+    <div id="dl" class="decision-layer" style="display:none">
+      <div>结果浮层（示意）</div>
+      <div class="dl-actions">
+        <button class="dl-btn">就它，帮我找券</button>
+        <button class="dl-btn">再转一次</button>
+        <button class="dl-btn">加入备选</button>
+      </div>
+    </div>
+
+    <div class="shortlist-area"></div>
+    <div class="share-panel"></div>
+  </div>
+
+  <div class="toolbar">
+    <button onclick="toggleDecision(true)">显示浮层</button>
+    <button onclick="toggleDecision(false)">隐藏浮层</button>
+  </div>
+
+  <script>
+    function navigateToSearch(){ alert('将跳转到 /pages/search/index（二级搜索页）'); }
+    function toggleDecision(show){
+      const glass = document.getElementById('glass');
+      const dl = document.getElementById('dl');
+      glass.style.display = show ? 'block' : 'none';
+      dl.style.display = show ? 'block' : 'none';
+    }
+  </script>
+</body>
+</html>

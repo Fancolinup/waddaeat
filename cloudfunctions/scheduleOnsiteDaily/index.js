@@ -6,6 +6,20 @@ async function ensureCollection(db, name) {
   try { await db.createCollection(name); } catch (e) { /* ignore if exists */ }
 }
 
+// 统一品牌种子读取：优先从云数据库 GlobalBrandSeed 集合读取；为空时回退到本地 SEED_BRANDS
+async function readGlobalBrandSeed(db, fallbackNames) {
+  await ensureCollection(db, 'GlobalBrandSeed');
+  try {
+    const coll = db.collection('GlobalBrandSeed');
+    const res = await coll.get();
+    const arr = Array.isArray(res?.data) ? res.data : [];
+    const names = arr.map(d => (d?.brandName || d?.name || '').trim()).filter(Boolean);
+    return names.length ? names : fallbackNames;
+  } catch (e) {
+    return fallbackNames;
+  }
+}
+
 // 轮询索引：使用 ScheduleState 集合持久化
 async function getAndAdvanceBrandRotation(db, keyName, totalCount) {
   await ensureCollection(db, 'ScheduleState');
@@ -88,7 +102,8 @@ exports.main = async (event, context) => {
   const secret = process.env.MEITUAN_SECRET || event?.secret || '';
   const platform = Number(event?.platform ?? 2); // 到店优惠默认平台=2
   const bizLine = Number(event?.bizLine ?? 1);   // 到店优惠默认 bizLine=1
-  const brandNames = Array.isArray(event?.brandNames) && event.brandNames.length ? event.brandNames : SEED_BRANDS;
+  const brandNamesDefault = await readGlobalBrandSeed(db, SEED_BRANDS);
+  const brandNames = Array.isArray(event?.brandNames) && event.brandNames.length ? event.brandNames : brandNamesDefault;
   const limitBrandCount = typeof event?.limitBrandCount === 'number' && event.limitBrandCount > 0 ? event.limitBrandCount : brandNames.length;
   const maxRetries = typeof event?.maxRetries === 'number' ? event.maxRetries : 3;
   const delayMs = typeof event?.delayMs === 'number' ? event.delayMs : 2000;

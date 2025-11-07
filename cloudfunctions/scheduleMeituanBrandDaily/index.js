@@ -28,10 +28,10 @@ const SEED_BRANDS = [
   "苏小柳", "蔡澜港式点心", "添好运", "很久以前羊肉串", "丰茂烤串", "木屋烧烤", "胡大饭店", "哥老官", "左庭右院",
   "湊湊火锅", "巴奴毛肚火锅", "大龙燚", "电台巷火锅", "小龙坎", "谭鸭血", "蜀大侠", "麦当劳",
   // 茶饮与咖啡
-  "瑞幸咖啡", "蜜雪冰城", "库迪咖啡", "幸运咖", "Manner Coffee", "茶颜悦色", "霸王茶姬", "古茗", "茶百道",
-  "书亦烧仙草", "沪上阿姨", "Tims天好咖啡", "挪瓦咖啡", "益禾堂", "Seesaw Coffee", "M Stand", "% Arabica",
-  "皮爷咖啡", "LAVAZZA", "甜啦啦", "贡茶", "悸动烧仙草", "快乐柠檬", "吾饮良品", "巡茶", "桂源铺", "茉酸奶",
-  "卡旺卡", "伏小桃", "注春", "Grid Coffee"
+  "瑞幸咖啡", "蜜雪冰城", "库迪咖啡", "Manner Coffee", "茶颜悦色", "霸王茶姬", "古茗", "茶百道",
+  "书亦烧仙草", "沪上阿姨", "Tims天好咖啡", "益禾堂", "Seesaw Coffee", "M Stand", "% Arabica",
+  "皮爷咖啡", "LAVAZZA", "贡茶", "悸动烧仙草", "快乐柠檬", "桂源铺", "茉酸奶",
+  "卡旺卡", "伏小桃", "Grid Coffee"
 ];
 
 // 简单的 https 规范化
@@ -164,6 +164,20 @@ async function ensureCollection(db, name) {
   }
 }
 
+// 统一品牌种子读取：优先从云数据库 GlobalBrandSeed 集合读取；为空时回退到本地 SEED_BRANDS
+async function readGlobalBrandSeed(db, fallbackNames) {
+  await ensureCollection(db, 'GlobalBrandSeed');
+  try {
+    const coll = db.collection('GlobalBrandSeed');
+    const res = await coll.get();
+    const arr = Array.isArray(res?.data) ? res.data : [];
+    const names = arr.map(d => (d?.brandName || d?.name || '').trim()).filter(Boolean);
+    return names.length ? names : fallbackNames;
+  } catch (e) {
+    return fallbackNames;
+  }
+}
+
 // 写入到云数据库集合
 async function upsertToCollection(db, collectionName, query, payload) {
   const coll = db.collection(collectionName);
@@ -217,8 +231,11 @@ exports.main = async (event, context) => {
   // 新增：确保品牌排序集合存在，用于链接阶段即时写入/删除
   await ensureCollection(db, 'MeituanPartnerBrandsSorted');
 
-  // 品牌列表来源：直接使用 SEED_BRANDS（内联，避免 require 开销）
-  const list = SEED_BRANDS.map(n => ({ name: n, logoUrl: '' }));
+  // 品牌列表来源：统一读取 GlobalBrandSeed；为空回退至 SEED_BRANDS；也支持 event.brandNames 覆盖
+  const brandNamesParam = Array.isArray(event?.brandNames) && event.brandNames.length ? event.brandNames : null;
+  const brandNamesDefault = await readGlobalBrandSeed(db, SEED_BRANDS);
+  const brandNames = brandNamesParam || brandNamesDefault;
+  const list = brandNames.map(n => ({ name: n, logoUrl: '' }));
   const brandsAll = list.map(r => ({
     brandName: r.name,
     brandLogo: normalizeHttps(r.logoUrl || ''),

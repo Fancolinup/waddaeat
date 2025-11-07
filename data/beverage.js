@@ -30,15 +30,6 @@ module.exports = {
       "popularityScore": 0.90
     },
     {
-      "id": "db_004",
-      "name": "奈雪的茶",
-      "pinyin": "naixuedecha",
-      "type": "奶茶",
-      "priceLevel": 3,
-      "tags": ["茶+软欧包", "霸气橙子", "都市白领", "Pro店模式", "品质生活"],
-      "popularityScore": 0.88
-    },
-    {
       "id": "db_005",
       "name": "蜜雪冰城",
       "pinyin": "mixuebingcheng",
@@ -55,15 +46,6 @@ module.exports = {
       "priceLevel": 1,
       "tags": ["高性价比", "咖啡+轻食", "快速扩张", "8.8元起"],
       "popularityScore": 0.85
-    },
-    {
-      "id": "db_007",
-      "name": "幸运咖",
-      "pinyin": "xingyunka",
-      "type": "咖啡",
-      "priceLevel": 1,
-      "tags": ["蜜雪冰城子品牌", "下沉市场", "均价8元", "美式", "冰淇淋咖啡"],
-      "popularityScore": 0.82
     },
     {
       "id": "db_008",
@@ -147,15 +129,6 @@ module.exports = {
       "popularityScore": 0.78
     },
     {
-      "id": "db_017",
-      "name": "挪瓦咖啡",
-      "pinyin": "nuowakafei",
-      "type": "咖啡",
-      "priceLevel": 2,
-      "tags": ["外卖市场", "互联网化运营", "咖啡+烘焙", "季节限定", "橙色视觉"],
-      "popularityScore": 0.77
-    },
-    {
       "id": "db_018",
       "name": "乐乐茶",
       "pinyin": "lelecha",
@@ -219,15 +192,6 @@ module.exports = {
       "popularityScore": 0.72
     },
     {
-      "id": "db_025",
-      "name": "甜啦啦",
-      "pinyin": "tianlala",
-      "type": "奶茶",
-      "priceLevel": 1,
-      "tags": ["下沉市场", "水果茶系列", "客单价低", "县城覆盖广"],
-      "popularityScore": 0.78
-    },
-    {
       "id": "db_026",
       "name": "贡茶",
       "pinyin": "gongcha",
@@ -273,24 +237,6 @@ module.exports = {
       "popularityScore": 0.75
     },
     {
-      "id": "db_031",
-      "name": "吾饮良品",
-      "pinyin": "wuyinliangpin",
-      "type": "奶茶",
-      "priceLevel": 2,
-      "tags": ["水果茶", "性价比", "年轻化", "多样选择"],
-      "popularityScore": 0.74
-    },
-    {
-      "id": "db_032",
-      "name": "巡茶",
-      "pinyin": "xuncha",
-      "type": "奶茶",
-      "priceLevel": 2,
-      "tags": ["水果茶", "大杯量", "超值享受", "解渴饮品"],
-      "popularityScore": 0.73
-    },
-    {
       "id": "db_033",
       "name": "桂源铺",
       "pinyin": "guiyuanpu",
@@ -334,15 +280,6 @@ module.exports = {
       "priceLevel": 2,
       "tags": ["日式风格", "创意茶饮", "高颜值", "少女心"],
       "popularityScore": 0.71
-    },
-    {
-      "id": "db_038",
-      "name": "注春",
-      "pinyin": "zhuchun",
-      "type": "奶茶",
-      "priceLevel": 2,
-      "tags": ["人文茶饮", "品质原茶", "清新风格", "健康理念"],
-      "popularityScore": 0.70
     },
     {
       "id": "db_039",

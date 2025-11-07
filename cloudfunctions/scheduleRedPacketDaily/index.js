@@ -6,6 +6,20 @@ async function ensureCollection(db, name) {
   try { await db.createCollection(name); } catch (e) { /* ignore if exists */ }
 }
 
+// 统一品牌种子读取：优先从云数据库 GlobalBrandSeed 集合读取；为空时回退到本地 SEED_BRANDS
+async function readGlobalBrandSeed(db, fallbackNames) {
+  await ensureCollection(db, 'GlobalBrandSeed');
+  try {
+    const coll = db.collection('GlobalBrandSeed');
+    const res = await coll.get();
+    const arr = Array.isArray(res?.data) ? res.data : [];
+    const names = arr.map(d => (d?.brandName || d?.name || '').trim()).filter(Boolean);
+    return names.length ? names : fallbackNames;
+  } catch (e) {
+    return fallbackNames;
+  }
+}
+
 // 品牌种子（与到店保持一致，后续可独立调整）
 const SEED_BRANDS = [
   "肯德基", "汉堡王", "麦当劳", "星巴克", "喜茶", "奈雪的茶", "海底捞", "呷哺呷哺", "蓝蛙", "瑞幸咖啡", "蜜雪冰城"
@@ -39,7 +53,8 @@ exports.main = async (event, context) => {
 
   const db = cloud.database();
   // 确定品牌列表与轮询索引
-  const brandNames = (brandNamesParam && brandNamesParam.length ? brandNamesParam : SEED_BRANDS);
+  const brandNamesDefault = await readGlobalBrandSeed(db, SEED_BRANDS);
+  const brandNames = (brandNamesParam && brandNamesParam.length ? brandNamesParam : brandNamesDefault);
   const rotationIndex = await getAndAdvanceBrandRotation(db, 'redpacket-daily', brandNames.length);
   const selectedBrand = brandNames[rotationIndex];
   const brands = [selectedBrand];

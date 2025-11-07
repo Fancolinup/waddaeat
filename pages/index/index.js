@@ -29,6 +29,8 @@ Page({
     rouletteRotation: 0,
     selected: null,
     isSpinning: false,
+    // 动态背景：非餐厅轮盘按扇区数生成的 conic-gradient 字符串（空串表示使用 CSS 类）
+    wheelBackground: '',
 
     // UI 状态
     showDecisionLayer: false,
@@ -73,9 +75,9 @@ Page({
     labelMinStep: 22,          // 字符最小步进（rpx）— 略增字距
     labelMaxStep: 34,          // 字符最大步进（rpx）— 略增字距
 
-    // 配色切换
-    currentPaletteKey: 'b',
-    paletteKeys: ['b','a','f','g'],
+    // 配色切换（9组）
+    currentPaletteKey: 's1',
+    paletteKeys: ['s1','s2','s3','s4','s5','s6','s7','s8','s9'],
     
     // 基于当前显示顺序的编号数组（1..12 -> segment索引），用于日志与后续扩展
     displayOrder: [],
@@ -92,13 +94,14 @@ Page({
 
     // === 统一位置微调（仅此一处） ===
     // 使用 transform: translate(Xrpx, Yrpx) 字符串进行微调，避免影响其他模块布局
-    wheelTransform: 'translate(0rpx, 0rpx)',           // 还原旧的负内边距效果
-    paletteTransform: 'translate(-8rpx, -28rpx)',         // 还原旧的右上角偏移
+    wheelTransform: 'translate(0rpx, 27rpx)',           // 还原旧的负内边距效果
+    paletteTransform: 'translate(8rpx, 0rpx)',         // 还原旧的右上角偏移
     addBtnTransform: 'translate(60rpx, 10rpx)',         // 还原旧的右下角偏移
-    switcherTransform: 'translate(0rpx, -30rpx)',         // 还原旧的上移 35rpx
+    switcherTransform: 'translate(0rpx, -20rpx)',         // 还原旧的上移 35rpx
     shortlistTransform: 'translate(-20rpx, -10rpx)',         // 还原旧的 margin-top:12rpx
     shareTransform: 'translate(-30rpx, -10rpx)',              // 默认不偏移
     nearbyTransform: 'translate(0rpx, 8rpx)',                   // 保持位置稳定，避免上移挤占上方模块
+    searchTransform: 'translate(560rpx, 658rpx)',                 // 顶部搜索框：与定位模块右侧对齐，使用 translate 控制
   },
 
   onLoad() {
@@ -108,11 +111,24 @@ Page({
     this._clock = setInterval(() => this.updateDateTime(), 60 * 1000);
     this.updatePlaceholderSlots();
 
-    // 默认每次进入页面均使用 B（不读取旧缓存），与需求保持一致
+    // 进入页面时恢复用户上次选择的色盘（若无则回退到 s1）
     try {
-      this.setData({ currentPaletteKey: 'b' });
-      wx.setStorageSync('paletteKey', 'b');
-    } catch(e) {}
+      const storedKey = wx.getStorageSync('paletteKey');
+      const keys = this.data.paletteKeys || ['s1','s2','s3','s4','s5','s6','s7','s8','s9'];
+      const valid = keys.includes(storedKey);
+      const initialKey = valid ? storedKey : 's1';
+      this.setData({ currentPaletteKey: initialKey });
+      if (!valid) wx.setStorageSync('paletteKey', initialKey);
+    } catch(e) {
+      this.setData({ currentPaletteKey: 's1' });
+      try { wx.setStorageSync('paletteKey', 's1'); } catch(_) {}
+    }
+
+    // 初始化动态背景（如果是非餐厅类型，会按当前 segments 数量计算；餐厅保持CSS）
+    try {
+      const bg = this.computeWheelBackground(this.data.currentPaletteKey, (this.data.segments || []).length, this.data.wheelType);
+      this.setData({ wheelBackground: bg });
+    } catch (eBg) { this.setData({ wheelBackground: '' }); }
     
     // 延迟验证卡片居中位置
     setTimeout(() => {
@@ -150,13 +166,18 @@ Page({
     this.restoreLocationDisplay();
   },
 
-  // 配色切换（循环 B→A→F→G）
+  // 配色切换（循环 9 组：s1→s2→...→s9→s1）
   onTogglePalette() {
-    const keys = this.data.paletteKeys || ['b','a','f','g'];
-    const cur = this.data.currentPaletteKey || 'b';
+    const keys = this.data.paletteKeys || ['s1','s2','s3','s4','s5','s6','s7','s8','s9'];
+    const cur = this.data.currentPaletteKey || 's1';
     const idx = Math.max(0, keys.indexOf(cur));
-    const next = keys[(idx + 1) % keys.length]; // 第一次点击从 b 切到 a
+    const next = keys[(idx + 1) % keys.length];
     this.setData({ currentPaletteKey: next });
+    // 立即更新动态背景（非餐厅）
+    try {
+      const bg = this.computeWheelBackground(next, (this.data.segments || []).length, this.data.wheelType);
+      this.setData({ wheelBackground: bg });
+    } catch (eBg) { this.setData({ wheelBackground: '' }); }
     try { wx.setStorageSync('paletteKey', next); } catch(e) {}
   },
 
@@ -183,6 +204,12 @@ Page({
     
     // 刷新转盘数据
     this.initWheel(false);
+
+    // 根据切换后的类型更新背景（餐厅清空以使用 CSS 固定，非餐厅按扇区数生成）
+    try {
+      const bg = this.computeWheelBackground(this.data.currentPaletteKey, (this.data.segments || []).length, newType);
+      this.setData({ wheelBackground: bg });
+    } catch (eBg) { this.setData({ wheelBackground: '' }); }
 
     // 切换后刷新占位图与切换图标（iOS 使用临时 HTTPS 链接）
     try { this.initCloudImages(); } catch (_) {}
@@ -409,13 +436,17 @@ Page({
   },
 
   // 生成外卖转盘推荐（从takeout.json的category_name中选取）
-  generateTakeoutRecommendations(count = 12) {
+  generateTakeoutRecommendations(count) {
     try {
       const categories = takeoutData.takeout_categories || [];
       if (categories.length === 0) return [];
+      const valid = categories.filter(c => c && String(c.category_name || '').trim().length > 0);
+      if (typeof count !== 'number' || count <= 0 || count > valid.length) {
+        count = valid.length;
+      }
       
       // 随机选择 count 个类别
-      const shuffled = [...categories].sort(() => Math.random() - 0.5);
+      const shuffled = [...valid].sort(() => Math.random() - 0.5);
       const selected = shuffled.slice(0, count);
       
       const pinyinMap = {
@@ -457,13 +488,17 @@ Page({
   },
 
   // 生成茶饮转盘推荐（从beverage.json的name中选取）
-  generateBeverageRecommendations(count = 12) {
+  generateBeverageRecommendations(count) {
     try {
       const brands = beverageData.beverage_brands || [];
       if (brands.length === 0) return [];
+      const valid = brands.filter(b => b && String(b.name || '').trim().length > 0);
+      if (typeof count !== 'number' || count <= 0 || count > valid.length) {
+        count = valid.length;
+      }
       
-      // 随机选择12个品牌
-      const shuffled = [...brands].sort(() => Math.random() - 0.5);
+      // 随机选择 count 个品牌
+      const shuffled = [...valid].sort(() => Math.random() - 0.5);
       const selected = shuffled.slice(0, count);
       
       return selected.map((brand, index) => ({
@@ -535,16 +570,16 @@ Page({
       const userData = getUserData();
       let recs = [];
 
-      // 特殊刷新路径：若存在强制候选（长度为12），直接使用
-      if (this._forcedRecs && Array.isArray(this._forcedRecs) && this._forcedRecs.length === (this.data.wheelType === 'restaurant' ? 20 : 12)) {
+      // 特殊刷新路径：若存在强制候选，直接使用（餐厅需20，其他只要有即可）
+      if (this._forcedRecs && Array.isArray(this._forcedRecs) && (this.data.wheelType === 'restaurant' ? this._forcedRecs.length === 20 : this._forcedRecs.length > 0)) {
         recs = this._forcedRecs;
         console.debug(`[${ts()}] 应用强制候选（特殊刷新：保留前5+替换后7为窗口顺延）`);
       } else {
         // 根据转盘类型生成不同数据
         if (this.data.wheelType === 'takeout') {
-          recs = this.generateTakeoutRecommendations(12);
+          recs = this.generateTakeoutRecommendations();
         } else if (this.data.wheelType === 'beverage') {
-          recs = this.generateBeverageRecommendations(12);
+          recs = this.generateBeverageRecommendations();
         } else {
           // 只有餐厅转盘才使用基于位置的推荐
           if (this.data.userLocation && this.data.locationStatus === 'success') {
@@ -565,12 +600,12 @@ Page({
       
       const fmt = (v) => (typeof v === 'number' ? Number(v).toFixed(2) : '--');
       console.debug(`[${ts()}] 推荐列表(生成/刷新)：`, recs.map((r, i) => `${i+1}.${r && r.name ? r.name : ''} [总:${fmt(r && r.recommendationScore)} 评:${fmt(r && r.specificScore)} 偏:${fmt(r && r.preferenceScore)}]`));
-      const count = this.data.wheelType === 'restaurant' ? 20 : 12;
+      const count = this.data.wheelType === 'restaurant' ? 20 : (Array.isArray(recs) ? recs.length : 0);
       const step = 360 / count;
       const { wheelRadius, labelOuterMargin, labelInnerMargin, labelMinStep, labelMaxStep } = this.data;
       const pointerAngle = 0; // 修正：指针在CSS中位于top位置，对应0°
 
-      // 保持推荐顺序(1..12)，不因指针对齐而重排
+      // 保持推荐顺序(1..N)，不因指针对齐而重排
       const segments = Array.from({ length: count }, (_, idx) => {
         const r = recs[idx];
         const rawName = (r && r.name) ? r.name : '';
@@ -631,7 +666,7 @@ Page({
       }
 
       const listLog = segments.map(s => `${s.slotNo}.${s.name} [总:${fmt(s.recommendationScore)} 评:${fmt(s.specificScore)} 偏:${fmt(s.preferenceScore)}]`);
-      console.debug(`[${ts()}] 生成转盘(12)：`, listLog);
+      console.debug(`[${ts()}] 生成转盘(${count})：`, listLog);
 
       // 输出变更状态日志（对比上一轮）
       if (prevSegments && prevSegments.length) {
@@ -691,15 +726,64 @@ Page({
           }, 0);
         });
       }
-      // 后台静默预加载本轮12个选项的图标，减少图片显示延迟
+      // 后台静默预加载本轮选项图标，减少图片显示延迟
       try { this.preloadSegmentIcons(segments); } catch(_) {}
+
+      // 根据当前 palette + 扇区数生成动态背景（非餐厅使用动态、餐厅保持 CSS 固定20片）
+      try {
+        const bg = this.computeWheelBackground(this.data.currentPaletteKey, segments.length, this.data.wheelType);
+        this.setData({ wheelBackground: bg });
+      } catch (eBg) {
+        console.warn('[轮盘背景] 生成失败，回退到 CSS 类', eBg);
+        this.setData({ wheelBackground: '' });
+      }
     } catch(e) {
       console.error(`[${ts()}] 初始化轮盘失败`, e);
       this.setData({ segments: [], selected: null, showDecisionLayer: false, displayOrder: [] });
     }
   },
 
-  // 静默预加载12个选项的云端图片（不阻塞UI）
+  // 计算轮盘背景：根据 currentPaletteKey 与扇区数生成 conic-gradient（非餐厅动态，餐厅返回空串保留 CSS）
+  computeWheelBackground(paletteKey, count, wheelType) {
+    try {
+      // 餐厅保持 20 片固定配色，使用 CSS 类
+      if (wheelType === 'restaurant') return '';
+      const n = Math.max(1, Number(count || 0));
+      const step = 360 / n;
+      // 策略A：复用现有调色板的颜色序列
+      const paletteMap = {
+        s1: ['#ffadbb','#fdc7cd','#fed7da','#c9d4f7','#acbfeb','#f6d6c3'],
+        s2: ['#ffd5d9','#ffc8d0','#e1f9e8','#d1e9f4','#c2d7f3','#778ccc'],
+        s3: ['#9adbc5','#a1dee0','#dfde6c','#fcc351','#fd8d6e','#fa86a9'],
+        s4: ['#fcedbe','#f7cf83','#ef836c','#f8c9d5','#ee84a8','#d35b7e'],
+        s5: ['#fecbba','#fe98a7','#fd8c67','#fdb78e','#fef0b9','#fad354'],
+        s6: ['#eeeae8','#e7d3ed','#c5a6c4','#fac4d5','#fa9daf','#b0d097'],
+        s7: ['#fbf1d7','#fad6b5','#faadac','#fcfde5','#daf1ee','#b6e3e7'],
+        s8: ['#feb2da','#d495e0','#ad8fdc','#8475c5','#86dcf4','#71bcec'],
+        s9: ['#f7e8c9','#ffbdb9','#f17172','#cee9dc','#a4ceb7','#c09f7e'],
+        a:  ['#0f172a','#1f2937','#374151','#4b5563','#6b7280','#94a3b8','#cbd5e1','#e2e8f0','#9ca3af','#64748b','#475569','#334155'],
+        b:  ['#ff6b35','#f7931e','#ffd23f','#06ffa5','#00d4ff','#7b68ee','#ff1493','#ff69b4','#ff4500','#ffa500','#32cd32','#1e90ff'],
+        f:  ['#ffe4e6','#fecdd3','#fbcfe8','#e9d5ff','#dbeafe','#bae6fd','#bbf7d0','#dcfce7','#fef9c3','#ffedd5','#fde68a','#c7d2fe'],
+        g:  ['#111827','#f59e0b','#0ea5e9','#ef4444','#10b981','#a855f7','#f43f5e','#22c55e','#eab308','#3b82f6','#fb7185','#9333ea']
+      };
+      const key = String(paletteKey || 's1');
+      const colors = paletteMap[key] || paletteMap['s1'];
+      const parts = [];
+      for (let i = 0; i < n; i++) {
+        const color = colors[i % colors.length];
+        const start = (i * step).toFixed(4);
+        const end = ((i + 1) * step).toFixed(4);
+        parts.push(`${color} ${start}deg ${end}deg`);
+      }
+      const gradient = `background: conic-gradient(${parts.join(', ')});`;
+      return gradient;
+    } catch (e) {
+      console.warn('[轮盘背景] 计算失败', e);
+      return '';
+    }
+  },
+
+  // 静默预加载当前轮盘选项的云端图片（不阻塞UI）
   preloadSegmentIcons(segments) {
     try {
       if (!Array.isArray(segments) || segments.length === 0) return;
@@ -779,13 +863,13 @@ Page({
             console.debug(`[${ts()}] 优先级基准不足，回退通用推荐(20)`);
           }
         } else if (this.data.wheelType === 'beverage' && typeof this.generateBeverageRecommendations === 'function') {
-          forcedRecs = this.generateBeverageRecommendations(12);
+          forcedRecs = this.generateBeverageRecommendations();
         }
       } catch(e) {
         console.warn('构造窗口顺延候选失败，回退普通刷新：', e);
       }
 
-      if (forcedRecs && forcedRecs.length === (this.data.wheelType === 'restaurant' ? 20 : 12)) {
+      if (forcedRecs && (this.data.wheelType === 'restaurant' ? forcedRecs.length === 20 : forcedRecs.length > 0)) {
         this._forcedRecs = forcedRecs;
       }
 
@@ -805,7 +889,7 @@ Page({
             changes.push({ 位置: i + 1, 之前: oldName || '(空)', 之后: newName || '(空)' });
           }
         }
-        console.debug(`[${ts()}] 刷新后选项变化（位置1-12）：`, changes);
+        console.debug(`[${ts()}] 刷新后选项变化（位置1-${newSegments.length}）：`, changes);
         this._pendingAutoRefresh = false;
         try { this.spinRoulette(); } catch(e) { console.warn('自动旋转触发失败:', e); }
       };
@@ -817,7 +901,7 @@ Page({
     this.setData({ showDecisionLayer: false, showShareArea: false, selected: null });
 
     // 刷新后自动旋转：先刷新12个推荐并完成显示（瞬时对齐），再在初始化完成后触发旋转
-    const refreshCount = this.data.wheelType === 'restaurant' ? 20 : 12;
+    const refreshCount = this.data.wheelType === 'restaurant' ? 20 : ((this.data.segments && this.data.segments.length) || 0);
     console.debug(`[${ts()}] 再转一次：换一批推荐（${refreshCount}家），并将指针对齐第1名，同时自动旋转`);
     this.initWheel(false);
 
@@ -1463,8 +1547,8 @@ Page({
   // 刷新推荐：重算推荐与转盘显示，重置累计旋转角，确保指针指向第1名
   onRefreshWheel() {
     if (this.data.isSpinning) return;
-    const refreshCount = this.data.wheelType === 'restaurant' ? 20 : 12;
-    console.debug(`[${ts()}] 手动刷新：换一批推荐（${refreshCount}家），并将指针对齐第1名`);
+    const refreshCount = this.data.wheelType === 'restaurant' ? 20 : ((this.data.segments && this.data.segments.length) || 0);
+    console.debug(`[${ts()}] 手动刷新：换一批推荐（${refreshCount}项），并将指针对齐第1名`);
     // 重新生成推荐并重置旋转到slot1
     this.initWheel(false);
     // 隐藏结果浮层与分享区
@@ -2540,10 +2624,10 @@ Page({
       return;
     }
 
-    // 取前12个推荐餐厅
-    const recs = locationBasedRecommendations.slice(0, this.data.wheelType === 'restaurant' ? 20 : 12);
+    // 取前N个推荐餐厅（餐厅取20，其他类型使用全部长度）
+    const recs = locationBasedRecommendations.slice(0, this.data.wheelType === 'restaurant' ? 20 : locationBasedRecommendations.length);
     
-    const count = this.data.wheelType === 'restaurant' ? 20 : 12;
+    const count = this.data.wheelType === 'restaurant' ? 20 : recs.length;
     const step = 360 / count;
     const { wheelRadius, labelOuterMargin, labelInnerMargin, labelMinStep, labelMaxStep } = this.data;
 
@@ -2600,6 +2684,15 @@ Page({
       segments,
       displayOrder: Array.from({ length: count }, (_, i) => i + 1)
     });
+
+    // 更新背景（非餐厅动态）
+    try {
+      const bg = this.computeWheelBackground(this.data.currentPaletteKey, segments.length, this.data.wheelType);
+      this.setData({ wheelBackground: bg });
+    } catch (eBg) {
+      console.warn('[轮盘背景][定位] 生成失败，回退到 CSS 类', eBg);
+      this.setData({ wheelBackground: '' });
+    }
   },
 
   // 截取位置名称，限制在20个字节内
@@ -2835,6 +2928,15 @@ Page({
       });
     } catch (err) {
       console.warn('[附近优惠][点击] 处理失败', err);
+    }
+  },
+
+  // 顶部搜索入口：跳转到搜索二级页（样式与领券页一致）
+  navigateToSearch() {
+    try {
+      wx.navigateTo({ url: '/pages/search/index' });
+    } catch (err) {
+      console.warn('[index] 跳转搜索页失败：', err);
     }
   }
 });

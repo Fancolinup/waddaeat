@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>附近优惠加载占位预览</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif; }
+    .wrap { max-width: 800px; margin: 40px auto; padding: 0 16px; }
+    h1 { font-size: 18px; margin: 0 0 16px; color: #111; }
+
+    /* 与 pages/index/index.wxss 对齐的占位样式 */
+    .nearby-loading {
+      color: #666;
+      border: 2px dashed rgba(0,0,0,0.15);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+      margin: 8px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .nearby-loading .shimmer-bg {
+      position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(45,156,219,0.18) 30%, rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, rgba(255,138,0,0.08), rgba(124,77,255,0.08));
+      background-size: 200% 100%, 100% 100%;
+      animation: shimmerMove 2.4s linear infinite;
+      pointer-events: none;
+    }
+    .nearby-loading .loading-line { position: relative; z-index: 1; }
+    @keyframes shimmerMove { from { background-position: 0% 0, 0 0; } to { background-position: 200% 0, 0 0; } }
+
+    /* 三个点淡入淡出动画 */
+    .dot { display: inline-block; width: 10px; }
+    @keyframes dotsFade { 0% { opacity: .2; } 33% { opacity: 1; } 66% { opacity: .2; } 100% { opacity: .2; } }
+    .dot1 { animation: dotsFade 1.2s infinite; animation-delay: 0s; }
+    .dot2 { animation: dotsFade 1.2s infinite; animation-delay: .2s; }
+    .dot3 { animation: dotsFade 1.2s infinite; animation-delay: .4s; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>附近优惠加载占位（虚线框 + 流动渐变 + 三点动画）</h1>
+    <div class="nearby-loading">
+      <div class="shimmer-bg" aria-hidden="true"></div>
+      <div class="loading-line">附近优惠加载中<span class="dot dot1">.</span><span class="dot dot2">.</span><span class="dot dot3">.</span></div>
+    </div>
+  </div>
+</body>
+</html>

@@ -56,6 +56,149 @@ async function runSerial(arr, handler) {
 exports.main = async (event, context) => {
   const db = cloud.database();
   await ensureCollection(db, 'MeituanPartnerBrandsSorted');
+  await ensureCollection(db, 'GlobalBrandSeed');
+
+  // 作为 GlobalBrandSeed 初始化的完整种子品牌列表（来自用户提供）
+  const SEED_BRANDS_SEED_INIT = [
+    "肯德基", "汉堡王", "Baker&Spice", "超级碗", "陈香贵", "马记永", "沃歌斯", "海底捞", "呷哺呷哺", "莆田餐厅", "蓝蛙",
+    "星巴克", "喜茶", "奈雪的茶", "和府捞面", "味千拉面", "一风堂", "鼎泰丰", "小杨生煎", "南翔馒头店", "新元素", "云海肴",
+    "西贝莜面村", "绿茶餐厅", "外婆家", "南京大牌档", "望湘园", "蜀都丰", "太二酸菜鱼", "江边城外", "耶里夏丽", "度小月",
+    "鹿港小镇", "避风塘", "唐宫", "点都德", "食其家", "吉野家", "松屋", "丸龟制面", "萨莉亚", "必胜客", "达美乐",
+    "棒约翰", "麻辣诱惑", "辛香汇", "小南国", "老盛昌", "吉祥馄饨", "阿香米线", "过桥米线", "汤先生", "谷田稻香",
+    "大米先生", "真功夫", "永和大王", "大娘水饺", "CoCo都可", "一点点", "乐乐茶", "7分甜", "桂满陇", "新白鹿",
+    "苏小柳", "蔡澜港式点心", "添好运", "很久以前羊肉串", "丰茂烤串", "木屋烧烤", "胡大饭店", "哥老官", "左庭右院",
+    "湊湊火锅", "巴奴毛肚火锅", "大龙燚", "电台巷火锅", "小龙坎", "谭鸭血", "蜀大侠", "麦当劳",
+    // 茶饮与咖啡
+    "瑞幸咖啡", "蜜雪冰城", "库迪咖啡", "Manner Coffee", "茶颜悦色", "霸王茶姬", "古茗", "茶百道",
+    "书亦烧仙草", "沪上阿姨", "Tims天好咖啡", "益禾堂", "Seesaw Coffee", "M Stand", "% Arabica",
+    "皮爷咖啡", "LAVAZZA", "贡茶", "悸动烧仙草", "快乐柠檬", "桂源铺", "茉酸奶",
+    "卡旺卡", "伏小桃", "Grid Coffee"
+  ];
+  
+  // 对应拼音映射（来源于 /restaurant_pinyin.js），仅覆盖上述品牌
+  const PINYIN_MAP_SEED_INIT = {
+    "肯德基": "kendeji",
+    "汉堡王": "hanbaowang",
+    "Baker&Spice": "Baker&Spice",
+    "超级碗": "chaojiwan",
+    "陈香贵": "chenxianggui",
+    "马记永": "majiyong",
+    "沃歌斯": "wogesi",
+    "海底捞": "haidilao",
+    "呷哺呷哺": "xiabuxiabu",
+    "莆田餐厅": "putiancanting",
+    "蓝蛙": "lanwa",
+    "星巴克": "xingbake",
+    "喜茶": "xicha",
+    "奈雪的茶": "naixuedecha",
+    "和府捞面": "hefulaomian",
+    "味千拉面": "weiqianlamian",
+    "一风堂": "yifengtang",
+    "鼎泰丰": "dingtaifeng",
+    "小杨生煎": "xiaoyangshengjian",
+    "南翔馒头店": "nanxiangmantoudian",
+    "新元素": "xinyuansu",
+    "云海肴": "yunhaiyao",
+    "西贝莜面村": "xibeiyoumiancun",
+    "绿茶餐厅": "lvchacanting",
+    "外婆家": "waipojia",
+    "南京大牌档": "nanjingdapaidang",
+    "望湘园": "wangxiangyuan",
+    "蜀都丰": "shudufeng",
+    "太二酸菜鱼": "taiersuancaiyu",
+    "江边城外": "jiangbianchengwai",
+    "耶里夏丽": "yelixiali",
+    "度小月": "duxiaoyue",
+    "鹿港小镇": "lugangxiaozhen",
+    "避风塘": "bifengtang",
+    "唐宫": "tanggong",
+    "点都德": "diandude",
+    "食其家": "shiqijia",
+    "吉野家": "jiyejia",
+    "松屋": "songwu",
+    "丸龟制面": "wanguizhimian",
+    "萨莉亚": "saliya",
+    "必胜客": "bishengke",
+    "达美乐": "dameile",
+    "棒约翰": "bangyuehan",
+    "麻辣诱惑": "malayouhuo",
+    "辛香汇": "xinxianghui",
+    "小南国": "xiaonanguo",
+    "老盛昌": "laoshengchang",
+    "吉祥馄饨": "jixianghuntun",
+    "阿香米线": "axiangmixian",
+    "过桥米线": "guoqiaomixian",
+    "汤先生": "tangxiansheng",
+    "谷田稻香": "gutiandaoxiang",
+    "大米先生": "damixiansheng",
+    "真功夫": "zhenggongfu",
+    "永和大王": "yonghedawang",
+    "大娘水饺": "daniangshuijiao",
+    "CoCo都可": "cocodouke",
+    "一点点": "yidiandian",
+    "乐乐茶": "lelecha",
+    "7分甜": "qifentian",
+    "桂满陇": "guimanlong",
+    "新白鹿": "xinbailu",
+    "苏小柳": "suxiaoliu",
+    "蔡澜港式点心": "cailangangshidianxin",
+    "添好运": "tianhaoyun",
+    "很久以前羊肉串": "henjiuyiqianyangrouchuan",
+    "丰茂烤串": "fengmaokaochuan",
+    "木屋烧烤": "muwushaokao",
+    "胡大饭店": "hudafandian",
+    "哥老官": "gelaoguan",
+    "左庭右院": "zuotingyouyuan",
+    "湊湊火锅": "coucouhuoguo",
+    "巴奴毛肚火锅": "banumaoduhuoguo",
+    "大龙燚": "dalongyi",
+    "电台巷火锅": "diantaixianghuoguo",
+    "小龙坎": "xiaolongkan",
+    "谭鸭血": "tanyaxie",
+    "蜀大侠": "shudaxia",
+    "麦当劳": "maidanglao",
+    // 茶饮与咖啡
+    "瑞幸咖啡": "ruixingkafei",
+    "蜜雪冰城": "mixuebingcheng",
+    "库迪咖啡": "kudikafei",
+    "Manner Coffee": "mannercoffee",
+    "茶颜悦色": "chayanyuese",
+    "霸王茶姬": "bawangchaji",
+    "古茗": "guming",
+    "茶百道": "chabaidao",
+    "书亦烧仙草": "shuyishaoxiancao",
+    "沪上阿姨": "hushangayi",
+    "Tims天好咖啡": "timstianhaokafei",
+    "益禾堂": "yihetang",
+    "Seesaw Coffee": "seesawcoffee",
+    "M Stand": "mstand",
+    "% Arabica": "arabica",
+    "皮爷咖啡": "piyekafei",
+    "LAVAZZA": "lavazza",
+    "贡茶": "gongcha",
+    "悸动烧仙草": "jidongshaoxiancao",
+    "快乐柠檬": "kuaileningmeng",
+    "桂源铺": "guiyuanpu",
+    "茉酸奶": "mosuannai",
+    "卡旺卡": "kawangka",
+    "伏小桃": "fuxiaotao",
+    "Grid Coffee": "gridcoffee"
+  };
+  
+  // 初始化全局品牌种子：入参 initGlobalBrandSeed=true 时执行一次性写入
+  if (event && event.initGlobalBrandSeed) {
+    const brandNamesSeed = (event && Array.isArray(event.brandNames) && event.brandNames.length) ? event.brandNames : SEED_BRANDS_SEED_INIT;
+    const pinyinMap = PINYIN_MAP_SEED_INIT;
+    const results = [];
+    for (const name of brandNamesSeed) {
+      /* eslint-disable no-await-in-loop */
+      const payload = { brandName: name, name: name, pinyin: (pinyinMap[name] || ''), updatedAt: new Date(), source: 'seed-init' };
+      const r = await upsertToCollection(db, 'GlobalBrandSeed', { brandName: name }, payload);
+      results.push({ name, ...r });
+      /* eslint-enable no-await-in-loop */
+    }
+    return { ok: true, initialized: true, total: results.length, results };
+  }
 
   // 品牌名称来源：优先 event.brandNames -> SEED_BRANDS
   const brandNames = (event && Array.isArray(event.brandNames) && event.brandNames.length) ? event.brandNames : SEED_BRANDS;

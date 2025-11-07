@@ -33,6 +33,11 @@
   pointer-events: none;
 }
 
+/* 顶部搜索栏（复用领券页样式） */
+.search-bar { position:absolute; left:0; top:0; z-index:31; display:flex; align-items:center; gap:10rpx; padding: 0rpx 12rpx; border-radius: 28rpx; background: rgba(255,255,255,0.10); border: 2rpx solid rgba(255,255,255,0.18); box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.15); width: 150rpx; height: 56rpx; overflow:hidden; white-space:nowrap; pointer-events:auto; }
+.search-icon { width: 28rpx; height: 28rpx; filter: none; }
+.search-placeholder { color:#000000; font-size: 24rpx; opacity:1; }
+
 /* POI 预览列表（调试用） */
 .poi-preview { padding: 12rpx 20rpx; background: #fff; border-bottom: 1px solid #eee; }
 .poi-item { display: flex; flex-wrap: wrap; gap: 12rpx; font-size: 24rpx; color: #333; padding: 8rpx 0; }
@@ -322,8 +327,8 @@
     0 0 0 12rpx rgba(255,215,0,0.8); /* 外层金色光晕 */
 }
 
-/* 轮盘边缘浅色环形装饰 + 手型图案（使用内阴影模拟） */
-.roulette-wheel::before { content: none; }
+/* 轮盘边缘浅色环形装饰（半透明白色包边，类似 tuli1） */
+.roulette-wheel::before { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 10rpx rgba(255,255,255,0.55); pointer-events: none; }
 .roulette-wheel::after { content: none; }
 
 /* 每个扇区的容器：负责旋转到对应角度 */
@@ -335,7 +340,7 @@
 /* 径向字符：粗重黑体 + 浅色描边效果，颜色与预览一致 */
 .label-ch { position: absolute; left: 50%; top: 50%; font-family: 'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans SC',sans-serif; font-weight: 800; font-size: 30rpx; color: #ffffff; text-shadow: 0 1rpx 2rpx rgba(0,0,0,0.35), 0 2rpx 8rpx rgba(0,0,0,0.15); }
 
-/* 固定中心按钮 - 整体黄色设计，参考附件图片 */
+/* 固定中心按钮 - 改为毛玻璃效果与柔和色彩 */
 .roulette-center { 
   position: absolute; 
   left: 50%; 
@@ -345,29 +350,32 @@
   width: 180rpx; 
   height: 180rpx; 
   border-radius: 50%; 
-  background: linear-gradient(135deg, #ffd700, #ffed4e); /* 黄色渐变背景 */
+  background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.18));
+  backdrop-filter: blur(14rpx) saturate(120%);
+  -webkit-backdrop-filter: blur(14rpx) saturate(120%);
   display: flex; 
   align-items: center; 
   justify-content: center; 
   box-shadow: 
-    0 8rpx 24rpx rgba(255, 215, 0, 0.4),
-    inset 0 0 0 6rpx rgba(255,255,255,0.3),
-    0 0 0 4rpx rgba(255, 215, 0, 0.6); /* 金色光晕效果 */
-  border: 3rpx solid #ffb347; /* 橙色边框 */
+    0 8rpx 24rpx rgba(0,0,0,0.16),
+    inset 0 0 0 6rpx rgba(255,255,255,0.45),
+    0 0 0 4rpx rgba(255,255,255,0.25);
+  border: 3rpx solid rgba(255,255,255,0.45);
 }
 .start-button { 
   padding: 0; 
   border-radius: 50%; 
-  background: transparent; 
-  color: #333; 
+  background: rgba(255, 255, 255, 0.08); /* 轻薄透明背景，与毛玻璃主体协调 */
+  color: #1f2d3d; 
   font-size: 32rpx; 
-  font-weight: 700; 
+  font-weight: 800; 
+  letter-spacing: 2rpx;
   display: flex; 
   align-items: center; 
   justify-content: center;
   width: 100%;
   height: 100%;
-  text-shadow: 0 1rpx 2rpx rgba(255,255,255,0.8);
+  text-shadow: 0 1rpx 2rpx rgba(255,255,255,0.85), 0 2rpx 6rpx rgba(0,0,0,0.2);
 }
 /* 移除手型图片，使用纯文字设计 */
 .start-hand { display: none; }
@@ -420,6 +428,80 @@
   );
 }
 /* 已移除 palette-c 与 palette-d （不再使用） */
+
+/* 通用：9 组 20 分片配色（s1~s9），不依赖 wheelType */
+.roulette-wheel.palette-s1 {
+  background: conic-gradient(
+    #ffadbb 0 18deg, #fdc7cd 18deg 36deg, #fed7da 36deg 54deg, #c9d4f7 54deg 72deg, #acbfeb 72deg 90deg, #f6d6c3 90deg 108deg,
+    #ffadbb 108deg 126deg, #fdc7cd 126deg 144deg, #fed7da 144deg 162deg, #c9d4f7 162deg 180deg, #acbfeb 180deg 198deg, #f6d6c3 198deg 216deg,
+    #ffadbb 216deg 234deg, #fdc7cd 234deg 252deg, #fed7da 252deg 270deg, #c9d4f7 270deg 288deg, #acbfeb 288deg 306deg, #f6d6c3 306deg 324deg,
+    #ffadbb 324deg 342deg, #fdc7cd 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s2 {
+  background: conic-gradient(
+    #ffd5d9 0 18deg, #ffc8d0 18deg 36deg, #e1f9e8 36deg 54deg, #d1e9f4 54deg 72deg, #c2d7f3 72deg 90deg, #778ccc 90deg 108deg,
+    #ffd5d9 108deg 126deg, #ffc8d0 126deg 144deg, #e1f9e8 144deg 162deg, #d1e9f4 162deg 180deg, #c2d7f3 180deg 198deg, #778ccc 198deg 216deg,
+    #ffd5d9 216deg 234deg, #ffc8d0 234deg 252deg, #e1f9e8 252deg 270deg, #d1e9f4 270deg 288deg, #c2d7f3 288deg 306deg, #778ccc 306deg 324deg,
+    #ffd5d9 324deg 342deg, #ffc8d0 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s3 {
+  background: conic-gradient(
+    #9adbc5 0 18deg, #a1dee0 18deg 36deg, #dfde6c 36deg 54deg, #fcc351 54deg 72deg, #fd8d6e 72deg 90deg, #fa86a9 90deg 108deg,
+    #9adbc5 108deg 126deg, #a1dee0 126deg 144deg, #dfde6c 144deg 162deg, #fcc351 162deg 180deg, #fd8d6e 180deg 198deg, #fa86a9 198deg 216deg,
+    #9adbc5 216deg 234deg, #a1dee0 234deg 252deg, #dfde6c 252deg 270deg, #fcc351 270deg 288deg, #fd8d6e 288deg 306deg, #fa86a9 306deg 324deg,
+    #9adbc5 324deg 342deg, #a1dee0 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s4 {
+  background: conic-gradient(
+    #fcedbe 0 18deg, #f7cf83 18deg 36deg, #ef836c 36deg 54deg, #f8c9d5 54deg 72deg, #ee84a8 72deg 90deg, #d35b7e 90deg 108deg,
+    #fcedbe 108deg 126deg, #f7cf83 126deg 144deg, #ef836c 144deg 162deg, #f8c9d5 162deg 180deg, #ee84a8 180deg 198deg, #d35b7e 198deg 216deg,
+    #fcedbe 216deg 234deg, #f7cf83 234deg 252deg, #ef836c 252deg 270deg, #f8c9d5 270deg 288deg, #ee84a8 288deg 306deg, #d35b7e 306deg 324deg,
+    #fcedbe 324deg 342deg, #f7cf83 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s5 {
+  background: conic-gradient(
+    #fecbba 0 18deg, #fe98a7 18deg 36deg, #fd8c67 36deg 54deg, #fdb78e 54deg 72deg, #fef0b9 72deg 90deg, #fad354 90deg 108deg,
+    #fecbba 108deg 126deg, #fe98a7 126deg 144deg, #fd8c67 144deg 162deg, #fdb78e 162deg 180deg, #fef0b9 180deg 198deg, #fad354 198deg 216deg,
+    #fecbba 216deg 234deg, #fe98a7 234deg 252deg, #fd8c67 252deg 270deg, #fdb78e 270deg 288deg, #fef0b9 288deg 306deg, #fad354 306deg 324deg,
+    #fecbba 324deg 342deg, #fe98a7 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s6 {
+  background: conic-gradient(
+    #eeeae8 0 18deg, #e7d3ed 18deg 36deg, #c5a6c4 36deg 54deg, #fac4d5 54deg 72deg, #fa9daf 72deg 90deg, #b0d097 90deg 108deg,
+    #eeeae8 108deg 126deg, #e7d3ed 126deg 144deg, #c5a6c4 144deg 162deg, #fac4d5 162deg 180deg, #fa9daf 180deg 198deg, #b0d097 198deg 216deg,
+    #eeeae8 216deg 234deg, #e7d3ed 234deg 252deg, #c5a6c4 252deg 270deg, #fac4d5 270deg 288deg, #fa9daf 288deg 306deg, #b0d097 306deg 324deg,
+    #eeeae8 324deg 342deg, #e7d3ed 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s7 {
+  background: conic-gradient(
+    #fbf1d7 0 18deg, #fad6b5 18deg 36deg, #faadac 36deg 54deg, #fcfde5 54deg 72deg, #daf1ee 72deg 90deg, #b6e3e7 90deg 108deg,
+    #fbf1d7 108deg 126deg, #fad6b5 126deg 144deg, #faadac 144deg 162deg, #fcfde5 162deg 180deg, #daf1ee 180deg 198deg, #b6e3e7 198deg 216deg,
+    #fbf1d7 216deg 234deg, #fad6b5 234deg 252deg, #faadac 252deg 270deg, #fcfde5 270deg 288deg, #daf1ee 288deg 306deg, #b6e3e7 306deg 324deg,
+    #fbf1d7 324deg 342deg, #fad6b5 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s8 {
+  background: conic-gradient(
+    #feb2da 0 18deg, #d495e0 18deg 36deg, #ad8fdc 36deg 54deg, #8475c5 54deg 72deg, #86dcf4 72deg 90deg, #71bcec 90deg 108deg,
+    #feb2da 108deg 126deg, #d495e0 126deg 144deg, #ad8fdc 144deg 162deg, #8475c5 162deg 180deg, #86dcf4 180deg 198deg, #71bcec 198deg 216deg,
+    #feb2da 216deg 234deg, #d495e0 234deg 252deg, #ad8fdc 252deg 270deg, #8475c5 270deg 288deg, #86dcf4 288deg 306deg, #71bcec 306deg 324deg,
+    #feb2da 324deg 342deg, #d495e0 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s9 {
+  background: conic-gradient(
+    #f7e8c9 0 18deg, #ffbdb9 18deg 36deg, #f17172 36deg 54deg, #cee9dc 54deg 72deg, #a4ceb7 72deg 90deg, #c09f7e 90deg 108deg,
+    #f7e8c9 108deg 126deg, #ffbdb9 126deg 144deg, #f17172 144deg 162deg, #cee9dc 162deg 180deg, #a4ceb7 180deg 198deg, #c09f7e 198deg 216deg,
+    #f7e8c9 216deg 234deg, #ffbdb9 234deg 252deg, #f17172 252deg 270deg, #cee9dc 270deg 288deg, #a4ceb7 288deg 306deg, #c09f7e 306deg 324deg,
+    #f7e8c9 324deg 342deg, #ffbdb9 342deg 360deg
+  );
+}
 
 /* 右上角操作容器：配色 + 刷新 - 调整色盘按钮样式 */
 .top-actions { 
@@ -635,6 +717,80 @@
   );
 }
 
+/* === 新增：Restaurant 20-slice palettes S1~S9（严格按预览色彩排布） === */
+.roulette-wheel.palette-s1.wt-restaurant {
+  background: conic-gradient(
+    #ffadbb 0 18deg, #fdc7cd 18deg 36deg, #fed7da 36deg 54deg, #c9d4f7 54deg 72deg, #acbfeb 72deg 90deg, #f6d6c3 90deg 108deg,
+    #ffadbb 108deg 126deg, #fdc7cd 126deg 144deg, #fed7da 144deg 162deg, #c9d4f7 162deg 180deg, #acbfeb 180deg 198deg, #f6d6c3 198deg 216deg,
+    #ffadbb 216deg 234deg, #fdc7cd 234deg 252deg, #fed7da 252deg 270deg, #c9d4f7 270deg 288deg, #acbfeb 288deg 306deg, #f6d6c3 306deg 324deg,
+    #ffadbb 324deg 342deg, #fdc7cd 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s2.wt-restaurant {
+  background: conic-gradient(
+    #ffd5d9 0 18deg, #ffc8d0 18deg 36deg, #e1f9e8 36deg 54deg, #d1e9f4 54deg 72deg, #c2d7f3 72deg 90deg, #778ccc 90deg 108deg,
+    #ffd5d9 108deg 126deg, #ffc8d0 126deg 144deg, #e1f9e8 144deg 162deg, #d1e9f4 162deg 180deg, #c2d7f3 180deg 198deg, #778ccc 198deg 216deg,
+    #ffd5d9 216deg 234deg, #ffc8d0 234deg 252deg, #e1f9e8 252deg 270deg, #d1e9f4 270deg 288deg, #c2d7f3 288deg 306deg, #778ccc 306deg 324deg,
+    #ffd5d9 324deg 342deg, #ffc8d0 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s3.wt-restaurant {
+  background: conic-gradient(
+    #9adbc5 0 18deg, #a1dee0 18deg 36deg, #dfde6c 36deg 54deg, #fcc351 54deg 72deg, #fd8d6e 72deg 90deg, #fa86a9 90deg 108deg,
+    #9adbc5 108deg 126deg, #a1dee0 126deg 144deg, #dfde6c 144deg 162deg, #fcc351 162deg 180deg, #fd8d6e 180deg 198deg, #fa86a9 198deg 216deg,
+    #9adbc5 216deg 234deg, #a1dee0 234deg 252deg, #dfde6c 252deg 270deg, #fcc351 270deg 288deg, #fd8d6e 288deg 306deg, #fa86a9 306deg 324deg,
+    #9adbc5 324deg 342deg, #a1dee0 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s4.wt-restaurant {
+  background: conic-gradient(
+    #fcedbe 0 18deg, #f7cf83 18deg 36deg, #ef836c 36deg 54deg, #f8c9d5 54deg 72deg, #ee84a8 72deg 90deg, #d35b7e 90deg 108deg,
+    #fcedbe 108deg 126deg, #f7cf83 126deg 144deg, #ef836c 144deg 162deg, #f8c9d5 162deg 180deg, #ee84a8 180deg 198deg, #d35b7e 198deg 216deg,
+    #fcedbe 216deg 234deg, #f7cf83 234deg 252deg, #ef836c 252deg 270deg, #f8c9d5 270deg 288deg, #ee84a8 288deg 306deg, #d35b7e 306deg 324deg,
+    #fcedbe 324deg 342deg, #f7cf83 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s5.wt-restaurant {
+  background: conic-gradient(
+    #fecbba 0 18deg, #fe98a7 18deg 36deg, #fd8c67 36deg 54deg, #fdb78e 54deg 72deg, #fef0b9 72deg 90deg, #fad354 90deg 108deg,
+    #fecbba 108deg 126deg, #fe98a7 126deg 144deg, #fd8c67 144deg 162deg, #fdb78e 162deg 180deg, #fef0b9 180deg 198deg, #fad354 198deg 216deg,
+    #fecbba 216deg 234deg, #fe98a7 234deg 252deg, #fd8c67 252deg 270deg, #fdb78e 270deg 288deg, #fef0b9 288deg 306deg, #fad354 306deg 324deg,
+    #fecbba 324deg 342deg, #fe98a7 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s6.wt-restaurant {
+  background: conic-gradient(
+    #eeeae8 0 18deg, #e7d3ed 18deg 36deg, #c5a6c4 36deg 54deg, #fac4d5 54deg 72deg, #fa9daf 72deg 90deg, #b0d097 90deg 108deg,
+    #eeeae8 108deg 126deg, #e7d3ed 126deg 144deg, #c5a6c4 144deg 162deg, #fac4d5 162deg 180deg, #fa9daf 180deg 198deg, #b0d097 198deg 216deg,
+    #eeeae8 216deg 234deg, #e7d3ed 234deg 252deg, #c5a6c4 252deg 270deg, #fac4d5 270deg 288deg, #fa9daf 288deg 306deg, #b0d097 306deg 324deg,
+    #eeeae8 324deg 342deg, #e7d3ed 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s7.wt-restaurant {
+  background: conic-gradient(
+    #fbf1d7 0 18deg, #fad6b5 18deg 36deg, #faadac 36deg 54deg, #fcfde5 54deg 72deg, #daf1ee 72deg 90deg, #b6e3e7 90deg 108deg,
+    #fbf1d7 108deg 126deg, #fad6b5 126deg 144deg, #faadac 144deg 162deg, #fcfde5 162deg 180deg, #daf1ee 180deg 198deg, #b6e3e7 198deg 216deg,
+    #fbf1d7 216deg 234deg, #fad6b5 234deg 252deg, #faadac 252deg 270deg, #fcfde5 270deg 288deg, #daf1ee 288deg 306deg, #b6e3e7 306deg 324deg,
+    #fbf1d7 324deg 342deg, #fad6b5 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s8.wt-restaurant {
+  background: conic-gradient(
+    #feb2da 0 18deg, #d495e0 18deg 36deg, #ad8fdc 36deg 54deg, #8475c5 54deg 72deg, #86dcf4 72deg 90deg, #71bcec 90deg 108deg,
+    #feb2da 108deg 126deg, #d495e0 126deg 144deg, #ad8fdc 144deg 162deg, #8475c5 162deg 180deg, #86dcf4 180deg 198deg, #71bcec 198deg 216deg,
+    #feb2da 216deg 234deg, #d495e0 234deg 252deg, #ad8fdc 252deg 270deg, #8475c5 270deg 288deg, #86dcf4 288deg 306deg, #71bcec 306deg 324deg,
+    #feb2da 324deg 342deg, #d495e0 342deg 360deg
+  );
+}
+.roulette-wheel.palette-s9.wt-restaurant {
+  background: conic-gradient(
+    #f7e8c9 0 18deg, #ffbdb9 18deg 36deg, #f17172 36deg 54deg, #cee9dc 54deg 72deg, #a4ceb7 72deg 90deg, #c09f7e 90deg 108deg,
+    #f7e8c9 108deg 126deg, #ffbdb9 126deg 144deg, #f17172 144deg 162deg, #cee9dc 162deg 180deg, #a4ceb7 180deg 198deg, #c09f7e 198deg 216deg,
+    #f7e8c9 216deg 234deg, #ffbdb9 234deg 252deg, #f17172 252deg 270deg, #cee9dc 270deg 288deg, #a4ceb7 288deg 306deg, #c09f7e 306deg 324deg,
+    #f7e8c9 324deg 342deg, #ffbdb9 342deg 360deg
+  );
+}
+
 /* Palette wheel icon adapts to wheelType (20-slice when restaurant) */
 .palette-wheel.wt-restaurant {
   background: conic-gradient(
@@ -646,6 +802,52 @@
   );
 }
 
+/* palette-wheel icon 9 schemes (s1~s9), matching roulette-wheel colors */
+.palette-wheel.palette-s1 { background: conic-gradient(
+  #ffadbb 0 18deg, #fdc7cd 18deg 36deg, #fed7da 36deg 54deg, #c9d4f7 54deg 72deg, #acbfeb 72deg 90deg, #f6d6c3 90deg 108deg,
+  #ffadbb 108deg 126deg, #fdc7cd 126deg 144deg, #fed7da 144deg 162deg, #c9d4f7 162deg 180deg, #acbfeb 180deg 198deg, #f6d6c3 198deg 216deg,
+  #ffadbb 216deg 234deg, #fdc7cd 234deg 252deg, #fed7da 252deg 270deg, #c9d4f7 270deg 288deg, #acbfeb 288deg 306deg, #f6d6c3 306deg 324deg,
+  #ffadbb 324deg 342deg, #fdc7cd 342deg 360deg ); }
+.palette-wheel.palette-s2 { background: conic-gradient(
+  #ffd5d9 0 18deg, #ffc8d0 18deg 36deg, #e1f9e8 36deg 54deg, #d1e9f4 54deg 72deg, #c2d7f3 72deg 90deg, #778ccc 90deg 108deg,
+  #ffd5d9 108deg 126deg, #ffc8d0 126deg 144deg, #e1f9e8 144deg 162deg, #d1e9f4 162deg 180deg, #c2d7f3 180deg 198deg, #778ccc 198deg 216deg,
+  #ffd5d9 216deg 234deg, #ffc8d0 234deg 252deg, #e1f9e8 252deg 270deg, #d1e9f4 270deg 288deg, #c2d7f3 288deg 306deg, #778ccc 306deg 324deg,
+  #ffd5d9 324deg 342deg, #ffc8d0 342deg 360deg ); }
+.palette-wheel.palette-s3 { background: conic-gradient(
+  #9adbc5 0 18deg, #a1dee0 18deg 36deg, #dfde6c 36deg 54deg, #fcc351 54deg 72deg, #fd8d6e 72deg 90deg, #fa86a9 90deg 108deg,
+  #9adbc5 108deg 126deg, #a1dee0 126deg 144deg, #dfde6c 144deg 162deg, #fcc351 162deg 180deg, #fd8d6e 180deg 198deg, #fa86a9 198deg 216deg,
+  #9adbc5 216deg 234deg, #a1dee0 234deg 252deg, #dfde6c 252deg 270deg, #fcc351 270deg 288deg, #fd8d6e 288deg 306deg, #fa86a9 306deg 324deg,
+  #9adbc5 324deg 342deg, #a1dee0 342deg 360deg ); }
+.palette-wheel.palette-s4 { background: conic-gradient(
+  #fcedbe 0 18deg, #f7cf83 18deg 36deg, #ef836c 36deg 54deg, #f8c9d5 54deg 72deg, #ee84a8 72deg 90deg, #d35b7e 90deg 108deg,
+  #fcedbe 108deg 126deg, #f7cf83 126deg 144deg, #ef836c 144deg 162deg, #f8c9d5 162deg 180deg, #ee84a8 180deg 198deg, #d35b7e 198deg 216deg,
+  #fcedbe 216deg 234deg, #f7cf83 234deg 252deg, #ef836c 252deg 270deg, #f8c9d5 270deg 288deg, #ee84a8 288deg 306deg, #d35b7e 306deg 324deg,
+  #fcedbe 324deg 342deg, #f7cf83 342deg 360deg ); }
+.palette-wheel.palette-s5 { background: conic-gradient(
+  #fecbba 0 18deg, #fe98a7 18deg 36deg, #fd8c67 36deg 54deg, #fdb78e 54deg 72deg, #fef0b9 72deg 90deg, #fad354 90deg 108deg,
+  #fecbba 108deg 126deg, #fe98a7 126deg 144deg, #fd8c67 144deg 162deg, #fdb78e 162deg 180deg, #fef0b9 180deg 198deg, #fad354 198deg 216deg,
+  #fecbba 216deg 234deg, #fe98a7 234deg 252deg, #fd8c67 252deg 270deg, #fdb78e 270deg 288deg, #fef0b9 288deg 306deg, #fad354 306deg 324deg,
+  #fecbba 324deg 342deg, #fe98a7 342deg 360deg ); }
+.palette-wheel.palette-s6 { background: conic-gradient(
+  #eeeae8 0 18deg, #e7d3ed 18deg 36deg, #c5a6c4 36deg 54deg, #fac4d5 54deg 72deg, #fa9daf 72deg 90deg, #b0d097 90deg 108deg,
+  #eeeae8 108deg 126deg, #e7d3ed 126deg 144deg, #c5a6c4 144deg 162deg, #fac4d5 162deg 180deg, #fa9daf 180deg 198deg, #b0d097 198deg 216deg,
+  #eeeae8 216deg 234deg, #e7d3ed 234deg 252deg, #c5a6c4 252deg 270deg, #fac4d5 270deg 288deg, #fa9daf 288deg 306deg, #b0d097 306deg 324deg,
+  #eeeae8 324deg 342deg, #e7d3ed 342deg 360deg ); }
+.palette-wheel.palette-s7 { background: conic-gradient(
+  #fbf1d7 0 18deg, #fad6b5 18deg 36deg, #faadac 36deg 54deg, #fcfde5 54deg 72deg, #daf1ee 72deg 90deg, #b6e3e7 90deg 108deg,
+  #fbf1d7 108deg 126deg, #fad6b5 126deg 144deg, #faadac 144deg 162deg, #fcfde5 162deg 180deg, #daf1ee 180deg 198deg, #b6e3e7 198deg 216deg,
+  #fbf1d7 216deg 234deg, #fad6b5 234deg 252deg, #faadac 252deg 270deg, #fcfde5 270deg 288deg, #daf1ee 288deg 306deg, #b6e3e7 306deg 324deg,
+  #fbf1d7 324deg 342deg, #fad6b5 342deg 360deg ); }
+.palette-wheel.palette-s8 { background: conic-gradient(
+  #feb2da 0 18deg, #d495e0 18deg 36deg, #ad8fdc 36deg 54deg, #8475c5 54deg 72deg, #86dcf4 72deg 90deg, #71bcec 90deg 108deg,
+  #feb2da 108deg 126deg, #d495e0 126deg 144deg, #ad8fdc 144deg 162deg, #8475c5 162deg 180deg, #86dcf4 180deg 198deg, #71bcec 198deg 216deg,
+  #feb2da 216deg 234deg, #d495e0 234deg 252deg, #ad8fdc 252deg 270deg, #8475c5 270deg 288deg, #86dcf4 288deg 306deg, #71bcec 306deg 324deg,
+  #feb2da 324deg 342deg, #d495e0 342deg 360deg ); }
+.palette-wheel.palette-s9 { background: conic-gradient(
+  #f7e8c9 0 18deg, #ffbdb9 18deg 36deg, #f17172 36deg 54deg, #cee9dc 54deg 72deg, #a4ceb7 72deg 90deg, #c09f7e 90deg 108deg,
+  #f7e8c9 108deg 126deg, #ffbdb9 126deg 144deg, #f17172 144deg 162deg, #cee9dc 162deg 180deg, #a4ceb7 180deg 198deg, #c09f7e 198deg 216deg,
+  #f7e8c9 216deg 234deg, #ffbdb9 234deg 252deg, #f17172 252deg 270deg, #cee9dc 270deg 288deg, #a4ceb7 288deg 306deg, #c09f7e 306deg 324deg,
+  #f7e8c9 324deg 342deg, #ffbdb9 342deg 360deg ); }
 
 /* 备选卡片名称：在备选logo底部显示（所有商家） */
 .short-caption {
@@ -750,20 +952,20 @@
 .offscreen-canvas { position: absolute; width: 1px; height: 1px; left: -9999px; top: -9999px; opacity: 0; }
 .xr-hidden { position: absolute; width: 1px; height: 1px; left: -9999px; top: -9999px; opacity: 0; }
 
-/* 备选与分享：并排布局容器 */
-.short-share-row { display: flex; align-items: flex-start; justify-content: flex-start; gap: 12rpx; padding: 0 12rpx 0 8rpx; }
+/* 备选与分享：并排布局容器（统一白底） */
+.short-share-row { display: flex; align-items: flex-start; justify-content: flex-start; gap: 16rpx; padding: 16rpx; background: #ffffff; border-radius: 16rpx; box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.08); }
 
 /* 备选区压缩为50%尺寸并靠左 */
 .shortlist.compact { flex: 0 0 50%; margin: 0; transform: none; }
-.shortlist.compact .short-title { font-size: 24rpx; margin-bottom: 8rpx; }
+.shortlist.compact .short-title { font-size: 24rpx; margin-bottom: 8rpx; color: #333; }
 .shortlist.compact .short-grid.compact { gap: 12rpx; }
 .short-grid-2 { grid-template-columns: repeat(2, 1fr); }
 .shortlist.compact .short-slot { width: 100rpx; height: 100rpx; border-radius: 12rpx; }
 .shortlist.compact .short-caption { height: 36rpx; font-size: 20rpx; line-height: 36rpx; }
 .shortlist.compact .short-confirm { height: 36rpx; font-size: 22rpx; line-height: 36rpx; }
 
-/* 分享面板：缩小尺寸并靠右放置在备选区右侧 */
-.share-panel { flex: 1.2; max-width: 55%; background: rgba(255,255,255,0.98); border-radius: 16rpx; box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.08); padding: 16rpx; }
+/* 分享面板：缩小尺寸并靠右放置在备选区右侧（背景由父容器提供） */
+.share-panel { flex: 1.2; max-width: 55%; background: transparent; border-radius: 12rpx; box-shadow: none; padding: 12rpx; border-left: 2rpx solid #f2f2f2; }
 .share-panel .share-title { font-size: 20rpx; color: #666; margin-bottom: 6rpx; }
 .share-panel .share-text { font-size: 18rpx; color: #FF6B35; margin-bottom: 10rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .share-panel .share-actions { display: flex; gap: 12rpx; }
@@ -938,6 +1140,20 @@
 .nearby-loading .dot2 { animation: dotsFade 1.2s infinite; animation-delay: 0.2s; }
 .nearby-loading .dot3 { animation: dotsFade 1.2s infinite; animation-delay: 0.4s; }
 
+/* 新增：虚线框内流动渐变背景，提升加载态的精致度 */
+.nearby-loading { position: relative; overflow: hidden; }
+.nearby-loading .shimmer-bg {
+  position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(45,156,219,0.18) 30%, rgba(255,255,255,0) 60%),
+    linear-gradient(135deg, rgba(255,138,0,0.08), rgba(124,77,255,0.08));
+  background-size: 200% 100%, 100% 100%;
+  animation: shimmerMove 2.4s linear infinite;
+  pointer-events: none;
+}
+.nearby-loading .loading-line { position: relative; z-index: 1; }
+@keyframes shimmerMove { from { background-position: 0% 0, 0 0; } to { background-position: 200% 0, 0 0; } }
+
 /* 防止与自定义tabBar重叠，预留更大的底部安全区 */
 .container { padding-bottom: 120rpx; }
 
@@ -1074,10 +1290,10 @@
   top: 0;
   left: 0;
   right: 0;
-  bottom: 540rpx; /* 精确调整底部位置，确保备选清单标题和三个格子完全显示，增加安全边距 */
-  background: rgba(255, 255, 255, 0.5); /* 进一步降低透明度，提高备选区可见度 */
-  backdrop-filter: blur(12rpx); /* 减少模糊效果，确保备选区清晰可见 */
-  -webkit-backdrop-filter: blur(12rpx);
+  bottom: 0; /* 覆盖到页面底部，确保备选清单区与转发决策区都在毛玻璃效果下 */
+  background: rgba(255, 255, 255, 0.45); /* 略降低透明度，兼顾阅读性与氛围 */
+  backdrop-filter: blur(16rpx); /* 提升模糊强度，营造更明显毛玻璃效果 */
+  -webkit-backdrop-filter: blur(16rpx);
   z-index: 998; /* 低于决策浮层但高于其他内容 */
   pointer-events: auto; /* 确保遮罩层可以接收点击事件 */
 }

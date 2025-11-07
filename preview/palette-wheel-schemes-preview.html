@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Palette & Roulette Preview (s1~s9)</title>
+  <link rel="stylesheet" href="../pages/index/index.wxss">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif; padding: 16px; color: #1f2d3d; }
+    .grid { display: grid; grid-template-columns: repeat(3, 120px); gap: 16px; align-items: start; }
+    .cell { display: flex; flex-direction: column; align-items: center; }
+    .label { margin-top: 8px; font-size: 14px; color: #333; }
+    /* 小色盘预览尺寸（不影响项目样式） */
+    .preview-wheel { width: 100px; height: 100px; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+    /* 大转盘结构预览：模拟容器与尺寸，便于在浏览器中目视检查 */
+    .roulette-preview { position: relative; width: 340px; height: 340px; margin-top: 24px; }
+    .roulette-preview .roulette-wheel { position: absolute; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; }
+    /* 浏览器环境不识别 rpx，这里覆盖 ::before 的 ring 厚度（px）用于预览，仅在此页面生效 */
+    .roulette-preview .roulette-wheel::before { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 7px rgba(255,255,255,0.55); pointer-events: none; }
+    /* 中心按钮：使用像素单位覆盖尺寸，其他视觉效果沿用项目 WXSS */
+    .roulette-preview .roulette-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 140px; height: 140px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .roulette-preview .start-button { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+  </style>
+</head>
+<body>
+  <h1>右上角小色盘 9 组配色预览</h1>
+  <p>此页用于目视检查 palette-wheel 的 s1~s9 渐变是否与项目 WXSS 定义一致。尺寸不代表小色盘在小程序中的真实大小。</p>
+  <div class="grid">
+    <div class="cell"><div class="palette-wheel wt-restaurant palette-s1 preview-wheel"></div><div class="label">palette-s1</div></div>
+    <div class="cell"><div class="palette-wheel wt-restaurant palette-s2 preview-wheel"></div><div class="label">palette-s2</div></div>
+    <div class="cell"><div class="palette-wheel wt-restaurant palette-s3 preview-wheel"></div><div class="label">palette-s3</div></div>
+    <div class="cell"><div class="palette-wheel wt-restaurant palette-s4 preview-wheel"></div><div class="label">palette-s4</div></div>
+    <div class="cell"><div class="palette-wheel wt-restaurant palette-s5 preview-wheel"></div><div class="label">palette-s5</div></div>
+    <div class="cell"><div class="palette-wheel wt-restaurant palette-s6 preview-wheel"></div><div class="label">palette-s6</div></div>
+    <div class="cell"><div class="palette-wheel wt-restaurant palette-s7 preview-wheel"></div><div class="label">palette-s7</div></div>
+    <div class="cell"><div class="palette-wheel wt-restaurant palette-s8 preview-wheel"></div><div class="label">palette-s8</div></div>
+    <div class="cell"><div class="palette-wheel wt-restaurant palette-s9 preview-wheel"></div><div class="label">palette-s9</div></div>
+  </div>
+
+  <h1 style="margin-top:32px">大转盘（包边 + 中心毛玻璃）预览</h1>
+  <p>此处模拟首页转盘结构，检查白色半透明包边与中心毛玻璃按钮的视觉效果。背景使用 palette-s1。</p>
+  <div class="roulette-preview">
+    <div class="roulette-wheel palette-s1"></div>
+    <div class="roulette-center">
+      <div class="start-button"><span>开始</span></div>
+    </div>
+  </div>
+</body>
+</html>

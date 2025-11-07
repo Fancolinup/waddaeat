@@ -103,6 +103,9 @@ class CloudImageManager {
       takeout: '/images/takeout.png',
       beverage: '/images/beverage.png',
       canteen: '/images/canteen.png',
+      icon_home: '/images/icon_home.png',
+      icon_coupon: '/images/icon_coupon.png',
+      icon_profile: '/images/icon_profile.png',
       placeholder: '/images/placeholder.png'
     };
     if (!imageName || localMap[imageName]) {
@@ -136,6 +139,9 @@ class CloudImageManager {
       takeout: '/images/takeout.png',
       beverage: '/images/beverage.png',
       canteen: '/images/canteen.png',
+      icon_home: '/images/icon_home.png',
+      icon_coupon: '/images/icon_coupon.png',
+      icon_profile: '/images/icon_profile.png',
       placeholder: '/images/placeholder.png'
     };
     if (!imageName || localMap[imageName]) {
@@ -169,6 +175,9 @@ class CloudImageManager {
       takeout: '/images/takeout.png',
       beverage: '/images/beverage.png',
       canteen: '/images/canteen.png',
+      icon_home: '/images/icon_home.png',
+      icon_coupon: '/images/icon_coupon.png',
+      icon_profile: '/images/icon_profile.png',
       placeholder: '/images/placeholder.png'
     };
 

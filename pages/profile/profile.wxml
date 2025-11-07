@@ -54,17 +54,6 @@
     </view>
   </view>
 
-  <!-- 内容互动区（收藏卡片） -->
-  <view class="section">
-    <view class="card glass list-item" hover-class="pressed" bindtap="openFavorites">
-      <view class="icon fav-icon" aria-hidden="true"></view>
-      <view class="content">
-        <view class="title">我的收藏</view>
-        <view class="desc">已收藏 {{favoritesCount}} 项（语录/投票）</view>
-      </view>
-      <view class="chevron">›</view>
-    </view>
-  </view>
 
   <!-- 分享功能区：文案放入按钮内部主行合适位置 -->
   <view class="section">
