@@ -11,7 +11,13 @@ Page({
     topTastes: [],
     topRestaurants: [],
     showFavorites: false,
-    favoritesList: []
+    favoritesList: [],
+    testProducts: [
+      { id: 't1', name: '麦当劳 · 双层吉士汉堡', price: 29, coupon: '减3元', image: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' },
+      { id: 't2', name: '星巴克 · 拿铁(中杯)', price: 32, coupon: '减5元', image: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' },
+      { id: 't3', name: '喜茶 · 芝芝葡萄', price: 21, coupon: '满20减2', image: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' },
+      { id: 't4', name: '海底捞 · 自热火锅', price: 39, coupon: '', image: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' },
+    ]
   },
 
   onShow() {

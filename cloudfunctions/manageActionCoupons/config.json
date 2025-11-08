@@ -1,0 +1,5 @@
+{
+  "triggers": [
+    { "name": "action_coupons_seed_once", "type": "timer", "config": "0 0 4 * * *" }
+  ]
+}

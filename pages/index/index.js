@@ -12,6 +12,7 @@ const pinyin = require('../../restaurant_pinyin.js');
 // removed: const shareWording = require('../../shareWording.json');
 // 高德微信SDK
 const { AMapWX } = require('../../libs/amap-wx.130.js');
+const meituanCityMap = require('../../utils/meituanCityMap');
 // 高德餐饮类型编码（按用户提供）
 const AMAP_TYPES = '050100|050101|050102|050103|050104|050105|050106|050107|050108|050109|050110|050111|050112|050113|050114|050115|050116|050117|050118|050119|050120|050121|050122|050123|050200|050201|050202|050203|050204|050205|050206|050207|050208|050209|050210|050211|050212|050213|050214|050215|050216|050217|050300|050301|050302|050303|050304|050305|050306|050307|050308|050309|050310|050311';
 
@@ -720,6 +721,14 @@ Page({
       }
       // 后台静默预加载本轮选项图标，减少图片显示延迟
       try { this.preloadSegmentIcons(segments); } catch(_) {}
+      // 异步将 cloud:// 段图标转换为临时HTTPS，避免渲染层误判为本地路径
+      try {
+        this.convertSegmentIconsToTempHttps(segments).then(seg2 => {
+          if (Array.isArray(seg2) && seg2.length) {
+            this.setData({ segments: seg2 });
+          }
+        }).catch(() => {});
+      } catch (_) {}
 
       // 根据当前 palette + 扇区数生成动态背景（非餐厅使用动态、餐厅保持 CSS 固定20片）
       try {
@@ -732,6 +741,51 @@ Page({
     } catch(e) {
       console.error(`[${ts()}] 初始化轮盘失败`, e);
       this.setData({ segments: [], selected: null, showDecisionLayer: false, displayOrder: [] });
+    }
+  },
+
+  // 将 segments 中 cloud:// icon 批量转换为临时HTTPS链接（异步）
+  async convertSegmentIconsToTempHttps(segments) {
+    try {
+      const list = Array.isArray(segments) ? segments : [];
+      const fileIds = list
+        .map(s => (s && typeof s.icon === 'string') ? s.icon : '')
+        .filter(src => src && src.indexOf('cloud://') === 0);
+      if (!fileIds.length || !(wx && wx.cloud && wx.cloud.getTempFileURL)) return segments;
+      const r = await wx.cloud.getTempFileURL({ fileList: fileIds });
+      const map = {};
+      const fl = (r && r.fileList) || [];
+      for (const item of fl) {
+        if (item && item.fileID) map[item.fileID] = item.tempFileURL || '';
+      }
+      return list.map(s => {
+        if (typeof s.icon === 'string' && s.icon.indexOf('cloud://') === 0) {
+          const t = map[s.icon];
+          return { ...s, icon: (t && t.indexOf('http') === 0) ? t : s.icon };
+        }
+        return s;
+      });
+    } catch (e) {
+      console.warn('[Index] 段图标临时URL转换失败', e);
+      return segments;
+    }
+  },
+
+  // 将 selected.icon 为 cloud:// 的情况转换为临时HTTPS链接（异步），避免渲染层错误
+  async convertSelectedIconToTempHttps() {
+    try {
+      const sel = this.data.selected;
+      const icon = sel && typeof sel.icon === 'string' ? sel.icon : '';
+      if (!icon || icon.indexOf('cloud://') !== 0) return;
+      if (!(wx && wx.cloud && wx.cloud.getTempFileURL)) return;
+      const r = await wx.cloud.getTempFileURL({ fileList: [icon] });
+      const fl = (r && r.fileList) || [];
+      const t = (fl[0] && fl[0].tempFileURL) || '';
+      if (t && t.indexOf('http') === 0) {
+        this.setData({ 'selected.icon': t });
+      }
+    } catch (e) {
+      console.warn('[Index] 选中图标临时URL转换失败', e);
     }
   },
 
@@ -935,8 +989,15 @@ Page({
       const loc = this.data.userLocation || wx.getStorageSync('userLocation') || {};
       const lat = (loc && typeof loc.latitude === 'number') ? loc.latitude : undefined;
       const lng = (loc && typeof loc.longitude === 'number') ? loc.longitude : undefined;
-      const wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: qName, latitude: lat, longitude: lng } });
-      const osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, searchText: qName, latitude: lat, longitude: lng } });
+      const cityId = (() => {
+        const adcode = String(loc?.adcode || '').trim();
+        const cityName = String(loc?.cityName || '').trim();
+        if (adcode && meituanCityMap?.adcodeToId?.[adcode]) return meituanCityMap.adcodeToId[adcode];
+        if (cityName && meituanCityMap?.nameToId?.[cityName]) return meituanCityMap.nameToId[cityName];
+        return meituanCityMap?.nameToId?.['上海市'] || meituanCityMap?.nameToId?.['上海'] || 310100;
+      })();
+      const wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, cityId, searchText: qName, latitude: lat, longitude: lng } });
+      const osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, cityId, searchText: qName, latitude: lat, longitude: lng } });
       const list1 = this._mapMeituanItemsToProducts(wmRes && wmRes.result);
       const list2 = this._mapMeituanItemsToProducts(osRes && osRes.result);
       // 合并并按 skuViewId 去重
@@ -959,7 +1020,7 @@ Page({
           merged = merged.map(x => {
             if (typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0) {
               const t = map[x.headUrl];
-              return { ...x, headUrl: (t && t.indexOf('http') === 0) ? t : this.data.placeholderImageUrl };
+              return { ...x, headUrl: (t && t.indexOf('http') === 0) ? t : (x.headUrl || this.data.placeholderImageUrl) };
             }
             return x;
           });
@@ -1693,14 +1754,39 @@ Page({
           
           // 立即显示结果浮层，但不再先用占位图，允许短暂白屏
           this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
+          // 显示结果浮层后日志：云端路径与展示状态（初次展示可能为白屏，icon随后赋值）
+          try {
+            const rawIcon = (typeof hit.icon === 'string') ? hit.icon : '';
+            console.info(`[${ts()}] 结果浮层出现`, { name: hit.name, rawIcon, showDecisionLayer: this.data.showDecisionLayer });
+          } catch (logErr) { console.warn('[Index] 结果浮层出现日志异常', logErr); }
           if (Array.isArray(this._vibeTimers)) { this._vibeTimers.forEach(t => clearTimeout(t)); this._vibeTimers = []; }
           try { this.autoRefreshWheelIfNeeded && this.autoRefreshWheelIfNeeded(); } catch(_) {}
           
-          // 命中结果图标：统一使用本地兜底，不再获取云端临时链接
-          const wt = this.data.wheelType;
-          const typeName = (wt === 'takeout') ? 'takeout' : (wt === 'beverage') ? 'beverage' : 'canteen';
-          const finalIcon = cloudImageManager.getCloudImageUrlSync(typeName, 'png');
+          // 命中结果图标：优先使用 cloud:// 的原始 icon，其次根据品牌拼音生成统一 icons 目录下的云端 fileID，兜底占位图
+          let finalIcon = '';
+          if (typeof iconStr === 'string' && iconStr.indexOf('cloud://') === 0) {
+            finalIcon = iconStr;
+          } else {
+            const map = this.getPinyinMap && this.getPinyinMap();
+            let slug = '';
+            if (map && hit.name) {
+              const raw = String(hit.name);
+              const cleaned = this.cleanRestaurantName ? this.cleanRestaurantName(raw) : raw;
+              const candidates = [cleaned, cleaned.replace(/\s+/g, ''), cleaned.toLowerCase(), cleaned.replace(/\s+/g, '').toLowerCase(), raw, raw.replace(/\s+/g, ''), raw.toLowerCase(), raw.replace(/\s+/g, '').toLowerCase()];
+              for (const c of candidates) {
+                if (map[c]) { slug = map[c]; break; }
+              }
+            }
+            if (slug) {
+              // 使用 CloudImageManager 的目录支持，统一走 logos 目录生成 cloud:// fileID
+              finalIcon = cloudImageManager.getCloudImageUrlInDirSync('logos', slug, 'png');
+            } else {
+              finalIcon = cloudImageManager.getPlaceholderUrlSync();
+            }
+          }
           this.setData({ 'selected.icon': finalIcon });
+          // 异步转换为临时HTTPS，避免渲染层将 cloud:// 视为本地路径
+          try { this.convertSelectedIconToTempHttps(); } catch(_) {}
         } catch (_) {
           this.setData({ selected: hit, showDecisionLayer: true, showShareArea: false, isSpinning: false, logoRetryMap: {} });
         }
@@ -2149,6 +2235,18 @@ Page({
     }
   },
 
+  // 结果浮层 logo 加载成功日志
+  onSelectedLogoLoad: function(e) {
+    try {
+      const sel = this.data.selected || {};
+      const src = sel && sel.icon;
+      console.info(`[${ts()}] 结果浮层logo加载成功`, { name: sel && sel.name, src, detail: e && e.detail });
+      this.setData({ selectedLogoLoaded: true });
+    } catch (err) {
+      console.warn('[Index] onSelectedLogoLoad 日志异常', err);
+    }
+  },
+
   // 遮罩层点击事件 - 关闭决策浮层
   onOverlayTap: function() {
     this.setData({
@@ -2517,7 +2615,16 @@ Page({
           rating: ratingNum,
           cost: costNum,
           // 保留原始Amap数据用于后续日志与导航
-          amapData: { latitude, longitude, address, original: p }
+          amapData: {
+            latitude,
+            longitude,
+            address,
+            cityName: location.cityName || '',
+            adcode: location.adcode || '',
+            district: location.district || '',
+            street: location.street || '',
+            original: p
+          }
         };
       });
 
@@ -2801,8 +2908,15 @@ Page({
 
         // 拉取外卖与到店商品（静默失败）
         let wmRes = null, osRes = null;
-        try { wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: qName, latitude: lat, longitude: lng } }); } catch (e1) { /* 静默 */ }
-        try { osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, searchText: qName, latitude: lat, longitude: lng } }); } catch (e2) { /* 静默 */ }
+        const cityId2 = (() => {
+          const adcode = String(this?.data?.userLocation?.adcode || '').trim();
+          const cityName = String(this?.data?.userLocation?.cityName || '').trim();
+          if (adcode && meituanCityMap?.adcodeToId?.[adcode]) return meituanCityMap.adcodeToId[adcode];
+          if (cityName && meituanCityMap?.nameToId?.[cityName]) return meituanCityMap.nameToId[cityName];
+          return meituanCityMap?.nameToId?.['上海市'] || meituanCityMap?.nameToId?.['上海'] || 310100;
+        })();
+        try { wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, cityId: cityId2, searchText: qName, latitude: lat, longitude: lng } }); } catch (e1) { /* 静默 */ }
+        try { osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, cityId: cityId2, searchText: qName, latitude: lat, longitude: lng } }); } catch (e2) { /* 静默 */ }
 
         // 标准化解析响应
         const normalizeList = (res, source) => {

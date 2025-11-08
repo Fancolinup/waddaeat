@@ -65,6 +65,30 @@
     </button>
   </view>
 
+  <!-- 测试商品展示区 -->
+  <view class="section">
+    <view class="card glass">
+      <view class="card-header">
+        <text class="title">测试商品展示区</text>
+        <text class="desc">展示示例商品卡片布局</text>
+      </view>
+      <view class="test-grid">
+        <block wx:for="{{testProducts}}" wx:key="id">
+          <view class="product-card" hover-class="pressed">
+            <image class="thumb" mode="aspectFill" src="{{item.image}}" />
+            <view class="info">
+              <view class="name">{{item.name}}</view>
+              <view class="meta-row">
+                <text class="price">￥{{item.price}}</text>
+                <text class="coupon" wx:if="{{item.coupon}}">{{item.coupon}}</text>
+              </view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </view>
+
   <!-- 收藏浮层 -->
   <view class="favorites-mask" wx:if="{{showFavorites}}" catchtouchmove="true" bindtap="closeFavorites">
     <view class="favorites-panel" catchtap="noop">

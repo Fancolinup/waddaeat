@@ -130,5 +130,15 @@ module.exports = {
     "轻食沙拉": "qingshishala",
     "水饺馄饨": "shuijiaohuntun",
     "米粉米线": "mifenmixian",
-    "麻辣香锅": "malaxiangguo"
+    "麻辣香锅": "malaxiangguo",
+    // 平台活动拼音映射（Eleme）
+    "快闪": "eleme_kuaishan",
+    "爆款特价": "eleme_baokuantejia",
+    "爆火好店": "eleme_baohuohaodian",
+    "极限暴涨": "eleme_jixianbaozhang",
+    "天天领红包": "eleme_tiantianlinghongbao",
+    "超抢手": "eleme_chaoqiangshou",
+    "城市大额红包": "eleme_chengshidaehongbao",
+    "红包天天领不停": "eleme_hongbaotiantianlingbuting",
+    "囤圈圈": "eleme_tunquanquan",
 };

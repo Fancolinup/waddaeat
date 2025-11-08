@@ -67,7 +67,8 @@ Page({
             name,
             category: r.category || r.type || '',
             rating: r.rating || 0,
-            logoPath: this.getRestaurantLogo(name),
+            // 优先使用云端 Waddaeat/logos 路径（cloud://），后续统一转换为HTTPS
+            logoPath: this.getBrandLogoCloudFileId(name) || cloudImageManager.getPlaceholderUrlSync(),
             hdLogoPath: this.getRestaurantHDLogo(name),
             selected: false
           };
@@ -80,6 +81,34 @@ Page({
         if (fallbackUsed) {
           list = this.enrichWithPinyinMap(list);
           console.log('检测到 JSON_FALLBACK_USED=true，使用拼音映射扩充品牌，最终数量:', list.length);
+        }
+
+        // 统一将 cloud:// 路径转换为临时HTTPS，兼容 iOS 真机渲染
+        try {
+          const cloudIds = (list || []).filter(x => typeof x.logoPath === 'string' && x.logoPath.indexOf('cloud://') === 0).map(x => x.logoPath);
+          if (cloudIds.length && wx.cloud && wx.cloud.getTempFileURL) {
+            wx.cloud.getTempFileURL({ fileList: cloudIds }).then(res => {
+              const map = {};
+              const fl = (res && res.fileList) || [];
+              for (const item of fl) { if (item && item.fileID) map[item.fileID] = item.tempFileURL || ''; }
+              list = list.map(x => {
+                if (typeof x.logoPath === 'string' && x.logoPath.indexOf('cloud://') === 0) {
+                  const tmp = map[x.logoPath];
+                  return { ...x, logoPath: (tmp && tmp.indexOf('http') === 0) ? tmp : cloudImageManager.ensureHttps(x.logoPath) };
+                }
+                return x;
+              });
+              this.setData({ restaurants: list, isLoading: false });
+              console.log('餐厅数据加载完成(全量):', list.length);
+            }).catch(eConv => {
+              console.warn('[Welcome] 云logo转HTTPS失败', eConv);
+              this.setData({ restaurants: list, isLoading: false });
+              console.log('餐厅数据加载完成(全量):', list.length);
+            });
+            return; // 提前返回，避免在 then 之前设置数据
+          }
+        } catch (eConv) {
+          console.warn('[Welcome] 云logo转HTTPS失败', eConv);
         }
 
         this.setData({
@@ -115,7 +144,7 @@ Page({
             name,
             category: '',
             rating: 0,
-            logoPath: this.getRestaurantLogo(name),
+            logoPath: this.getBrandLogoCloudFileId(name) || cloudImageManager.getPlaceholderUrlSync(),
             hdLogoPath: this.getRestaurantHDLogo(name),
             selected: false
           });
@@ -159,13 +188,41 @@ Page({
     ];
     
     // 为每个餐厅添加 sid 与图标路径
-    const restaurantsWithLogo = defaultRestaurants.map(restaurant => ({
+    let restaurantsWithLogo = defaultRestaurants.map(restaurant => ({
       ...restaurant,
       sid: String(restaurant.id),
-      logoPath: this.getRestaurantLogo(restaurant.name),
+      logoPath: this.getBrandLogoCloudFileId(restaurant.name) || this.getRestaurantLogo(restaurant.name),
       hdLogoPath: this.getRestaurantHDLogo(restaurant.name),
       selected: false
     }));
+
+    // 统一将 cloud:// 路径转换为临时HTTPS
+    try {
+      const cloudIds = (restaurantsWithLogo || []).filter(x => typeof x.logoPath === 'string' && x.logoPath.indexOf('cloud://') === 0).map(x => x.logoPath);
+      if (cloudIds.length && wx.cloud && wx.cloud.getTempFileURL) {
+        wx.cloud.getTempFileURL({ fileList: cloudIds }).then(res => {
+          const map = {};
+          const fl = (res && res.fileList) || [];
+          for (const item of fl) { if (item && item.fileID) map[item.fileID] = item.tempFileURL || ''; }
+          restaurantsWithLogo = restaurantsWithLogo.map(x => {
+            if (typeof x.logoPath === 'string' && x.logoPath.indexOf('cloud://') === 0) {
+              const tmp = map[x.logoPath];
+              return { ...x, logoPath: (tmp && tmp.indexOf('http') === 0) ? tmp : cloudImageManager.ensureHttps(x.logoPath) };
+            }
+            return x;
+          });
+          this.setData({ restaurants: restaurantsWithLogo, isLoading: false });
+          console.log('餐厅数据加载完成（默认）:', restaurantsWithLogo.length);
+        }).catch(eConv => {
+          console.warn('[Welcome] 默认数据云logo转HTTPS失败', eConv);
+          this.setData({ restaurants: restaurantsWithLogo, isLoading: false });
+          console.log('餐厅数据加载完成（默认）:', restaurantsWithLogo.length);
+        });
+        return; // 提前返回，避免在 then 之前设置数据
+      }
+    } catch (eConv) {
+      console.warn('[Welcome] 默认数据云logo转HTTPS失败', eConv);
+    }
     
     this.setData({
       restaurants: restaurantsWithLogo,
@@ -277,6 +334,19 @@ Page({
     return map;
   },
 
+  // 新增：根据品牌名生成 Waddaeat/logos 下的云文件ID（不含 HTTPS 转换）
+  getBrandLogoCloudFileId(name) {
+    try {
+      const slug = this.data.pinyinMap && name ? (this.data.pinyinMap[name] || '') : '';
+      if (!slug || slug === 'placeholder') return '';
+      // 使用 Waddaeat/logos 资源库
+      const fileId = `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/logos/${slug}.png`;
+      return fileId;
+    } catch (e) {
+      return '';
+    }
+  },
+
   // 获取分包A高清图标文件名列表（拼音，不含后缀）
   getPackageAFullIcons() {
     return [
@@ -295,7 +365,9 @@ Page({
   getRestaurantLogo: function (restaurantName) {
     const pinyin = this.data.pinyinMap[restaurantName];
     if (!pinyin || pinyin === 'placeholder') {
-      return cloudImageManager.getCloudImageUrl('placeholder');
+      // 若无拼音，尝试云端 logos；失败则占位
+      const fid = this.getBrandLogoCloudFileId(restaurantName);
+      return fid || cloudImageManager.getCloudImageUrl('placeholder');
     }
     const aIcons = this.getPackageAFullIcons();
     if (aIcons.includes(pinyin)) {
@@ -305,7 +377,9 @@ Page({
     if (bIcons.includes(pinyin)) {
       return cloudImageManager.getCloudImageUrl(pinyin);
     }
-    return cloudImageManager.getCloudImageUrl('placeholder');
+    // 分包未覆盖时，优先使用 Waddaeat/logos 云资源
+    const fid = this.getBrandLogoCloudFileId(restaurantName);
+    return fid || cloudImageManager.getCloudImageUrl('placeholder');
   },
 
   // 获取分包高清品牌图路径（与 getRestaurantLogo 一致）

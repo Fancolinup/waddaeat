@@ -60,7 +60,7 @@
     <scroll-view class="dl-content" scroll-y="true">
       <view class="dl-body">
         <!-- 根据转盘类型切换logo呈现方式：餐厅/茶饮/外卖统一使用云端图片 -->
-        <image wx:if="{{selected && selected.icon}}" class="dl-logo" src="{{selected.icon}}" mode="aspectFill" binderror="onSelectedLogoError" lazy-load="true" />
+        <image wx:if="{{selected && selected.icon}}" class="dl-logo" src="{{selected.icon}}" mode="aspectFill" binderror="onSelectedLogoError" bindload="onSelectedLogoLoad" lazy-load="true" />
         <view class="dl-info">
           <view class="dl-name">{{selected && selected.name}}</view>
           <view class="dl-type" wx:if="{{wheelType !== 'beverage'}}">{{selected && (selected.type || '餐厅')}}</view>

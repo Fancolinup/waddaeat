@@ -109,6 +109,44 @@ const MOCK_NEARBY_RESTAURANTS = [
 // 高德餐饮类型编码（与首页一致）
 const AMAP_TYPES = '050100|050101|050102|050103|050104|050105|050106|050107|050108|050109|050110|050111|050112|050113|050114|050115|050116|050117|050118|050119|050120|050121|050122|050123|050200|050201|050202|050203|050204|050205|050206|050207|050208|050209|050210|050211|050212|050213|050214|050215|050216|050217|050300|050301|050302|050303|050304|050305|050306|050307|050308|050309|050310|050311';
 
+// 统一高德 REST KEY（与本文件 v5 使用一致）
+const AMAP_REST_KEY = '181d090075117c4211b8402639cd68fe';
+
+// 逆地理编码：根据经纬度获取城市/行政区/街道等信息
+function reverseGeocode(longitude, latitude) {
+  return new Promise((resolve) => {
+    if (typeof longitude !== 'number' || typeof latitude !== 'number') {
+      resolve(null);
+      return;
+    }
+    const locStr = `${longitude},${latitude}`;
+    wx.request({
+      url: `https://restapi.amap.com/v3/geocode/regeo?location=${locStr}&extensions=all&key=${AMAP_REST_KEY}`,
+      method: 'GET',
+      success: (res) => {
+        try {
+          const data = res && res.data ? res.data : null;
+          if (data && data.status === '1' && data.regeocode && data.regeocode.addressComponent) {
+            const ac = data.regeocode.addressComponent;
+            const streetNumber = ac.streetNumber && ac.streetNumber.street ? `${ac.streetNumber.street}${ac.streetNumber.number || ''}` : '';
+            resolve({
+              province: ac.province || '',
+              cityName: ac.city || ac.township || ac.province || '',
+              adcode: ac.adcode || '',
+              district: ac.district || '',
+              street: streetNumber || (data.regeocode.roads && data.regeocode.roads[0] && data.regeocode.roads[0].name) || '',
+              raw: data.regeocode
+            });
+            return;
+          }
+        } catch (e) {}
+        resolve(null);
+      },
+      fail: () => resolve(null)
+    });
+  });
+}
+
 /**
  * 检查位置授权状态
  * @returns {Promise<boolean>} 是否已授权
@@ -167,14 +205,31 @@ function requestLocationAuth() {
 function chooseUserLocation() {
   return new Promise((resolve, reject) => {
     wx.chooseLocation({
-      success(res) {
+      success: async (res) => {
         console.info('用户选择的位置:', res);
-        resolve({
+        const baseLoc = {
           latitude: res.latitude,
           longitude: res.longitude,
           name: res.name || '选择的位置',
           address: res.address || ''
-        });
+        };
+        // 追加逆地理信息
+        try {
+          const rg = await reverseGeocode(res.longitude, res.latitude);
+          if (rg) {
+            resolve({
+              ...baseLoc,
+              cityName: rg.cityName || '',
+              adcode: rg.adcode || '',
+              district: rg.district || '',
+              street: rg.street || '',
+              province: rg.province || '',
+              regeocode: rg.raw
+            });
+            return;
+          }
+        } catch (e) {}
+        resolve(baseLoc);
       },
       fail(err) {
         console.error('选择位置失败:', err);
@@ -221,7 +276,7 @@ function searchNearbyRestaurants(location, radius = 1000) {
     }
 
     const centerStr = `${location.longitude},${location.latitude}`;
-    const v5Url = `https://restapi.amap.com/v5/place/around?location=${centerStr}&radius=${radius}&types=${encodeURIComponent(AMAP_TYPES)}&extensions=all&sortrule=weight&key=181d090075117c4211b8402639cd68fe`;
+    const v5Url = `https://restapi.amap.com/v5/place/around?location=${centerStr}&radius=${radius}&types=${encodeURIComponent(AMAP_TYPES)}&extensions=all&sortrule=weight&key=${AMAP_REST_KEY}`;
     wx.request({
       url: v5Url,
       method: 'GET',
@@ -252,7 +307,16 @@ function searchNearbyRestaurants(location, radius = 1000) {
                 longitude,
                 address,
                 icon: '',
-                amapData: { latitude, longitude, address, original: p }
+                amapData: {
+                  latitude,
+                  longitude,
+                  address,
+                  cityName: location.cityName || '',
+                  adcode: location.adcode || '',
+                  district: location.district || '',
+                  street: location.street || '',
+                  original: p
+                }
               };
             });
             console.info('[locationService] v5 搜索到附近餐厅:', out.length);
@@ -263,19 +327,59 @@ function searchNearbyRestaurants(location, radius = 1000) {
         } catch (e) {
           console.warn('[locationService] v5 解析失败:', e);
         }
-        // 回退：使用模拟数据（按半径过滤）
-        const nearbyRestaurants = MOCK_NEARBY_RESTAURANTS.filter(restaurant => 
+        // 回退：使用模拟数据（按半径过滤，并补充 amapData 与城市信息）
+        const filtered = MOCK_NEARBY_RESTAURANTS.filter(restaurant => 
           restaurant.distance <= radius
         ).sort((a, b) => a.distance - b.distance);
-        console.info('[locationService] 回退模拟数据，餐厅数:', nearbyRestaurants.length);
-        resolve(nearbyRestaurants);
+        const fallback = filtered.map((r, idx) => ({
+          id: r.id || `mock_${idx}`,
+          name: r.name,
+          distance: r.distance,
+          category: r.category || '餐饮',
+          latitude: r.latitude,
+          longitude: r.longitude,
+          address: r.address,
+          icon: '',
+          amapData: {
+            latitude: r.latitude,
+            longitude: r.longitude,
+            address: r.address,
+            cityName: location.cityName || '',
+            adcode: location.adcode || '',
+            district: location.district || '',
+            street: location.street || '',
+            original: { source: 'mock' }
+          }
+        }));
+        console.info('[locationService] 回退模拟数据，餐厅数:', fallback.length);
+        resolve(fallback);
       },
       fail: (err) => {
         console.warn('[locationService] v5 请求失败，回退模拟数据:', err);
-        const nearbyRestaurants = MOCK_NEARBY_RESTAURANTS.filter(restaurant => 
+        const filtered = MOCK_NEARBY_RESTAURANTS.filter(restaurant => 
           restaurant.distance <= radius
         ).sort((a, b) => a.distance - b.distance);
-        resolve(nearbyRestaurants);
+        const fallback = filtered.map((r, idx) => ({
+          id: r.id || `mock_${idx}`,
+          name: r.name,
+          distance: r.distance,
+          category: r.category || '餐饮',
+          latitude: r.latitude,
+          longitude: r.longitude,
+          address: r.address,
+          icon: '',
+          amapData: {
+            latitude: r.latitude,
+            longitude: r.longitude,
+            address: r.address,
+            cityName: location.cityName || '',
+            adcode: location.adcode || '',
+            district: location.district || '',
+            street: location.street || '',
+            original: { source: 'mock' }
+          }
+        }));
+        resolve(fallback);
       }
     });
   });

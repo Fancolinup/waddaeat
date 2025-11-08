@@ -1,5 +1,6 @@
 // pages/brand/detail.js
 const restaurantData = require('../../restaurant_data.js');
+const meituanCityMap = require('../../utils/meituanCityMap');
 
 Page({
   data: {
@@ -55,13 +56,55 @@ Page({
       if (current && typeof current === 'string' && current.startsWith('https://') && current !== 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png') {
         return;
       }
+      // 优先使用云端 Waddaeat/logos 资源
+      const fid = this.getBrandLogoCloudFileId(name);
+      if (fid && fid.indexOf('cloud://') === 0 && wx.cloud && wx.cloud.getTempFileURL) {
+        console.info('[品牌详情] 请求云logo临时URL', { fid });
+        wx.cloud.getTempFileURL({ fileList: [fid] }).then(res => {
+          console.info('[品牌详情] 云logo临时URL返回', res);
+          const temp = (res && res.fileList && res.fileList[0] && res.fileList[0].tempFileURL) || '';
+          const ok = typeof temp === 'string' && temp.startsWith('https://');
+          if (ok) {
+            this.setData({ brandLogo: temp });
+          } else {
+            console.warn('[品牌详情] 云logo临时URL非HTTPS或为空，改为强制HTTPS', { fid, temp });
+            const { cloudImageManager } = require('../../utils/cloudImageManager.js');
+            this.setData({ brandLogo: cloudImageManager.ensureHttps(fid) });
+          }
+        }).catch(err => {
+          console.warn('[品牌详情] 云logo转HTTPS失败，改为强制HTTPS', { fid, err });
+          const { cloudImageManager } = require('../../utils/cloudImageManager.js');
+          this.setData({ brandLogo: cloudImageManager.ensureHttps(fid) });
+        });
+        return;
+      }
+      if (fid && typeof fid === 'string') {
+        // 非 cloud://（可能为 https 或空），直接使用或占位
+        const url = fid.startsWith('http://') ? ('https://' + fid.slice(7)) : fid;
+        console.debug('[品牌详情] 使用非云logo', { fid, url });
+        const { cloudImageManager } = require('../../utils/cloudImageManager.js');
+        this.setData({ brandLogo: cloudImageManager.ensureHttps(url) || cloudImageManager.getPlaceholderUrlSync() });
+        return;
+      }
+      // 兜底占位图
       const { cloudImageManager } = require('../../utils/cloudImageManager.js');
-      // 统一使用本地占位图，避免临时HTTPS过期导致logo消失
       const final = cloudImageManager.getPlaceholderUrlSync();
       this.setData({ brandLogo: final });
     } catch (e) {
       const { cloudImageManager } = require('../../utils/cloudImageManager.js');
-      this.setData({ brandLogo: cloudImageManager.getPlaceholderUrlSync() });
+      this.setData({ brandLogo: cloudImageManager.ensureHttps(this.data.brandLogo) || cloudImageManager.getPlaceholderUrlSync() });
+    }
+  },
+
+  // 根据品牌名返回 Waddaeat/logos 下的云文件ID
+  getBrandLogoCloudFileId(name) {
+    try {
+      const map = restaurantData && restaurantData.pinyinMap ? restaurantData.pinyinMap : {};
+      const slug = (name && map[name]) ? map[name] : '';
+      if (!slug || slug === 'placeholder') return '';
+      return `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/logos/${slug}.png`;
+    } catch (_) {
+      return '';
     }
   },
 
@@ -126,7 +169,14 @@ Page({
           const loc = this.data.userLocation || wx.getStorageSync('userLocation') || {};
           const lat = (loc && typeof loc.latitude === 'number') ? loc.latitude : undefined;
           const lng = (loc && typeof loc.longitude === 'number') ? loc.longitude : undefined;
-          const res = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, searchText: qName, latitude: lat, longitude: lng } });
+          const cityId = (() => {
+            const adcode = String(loc?.adcode || '').trim();
+            const cityName = String(loc?.cityName || '').trim();
+            if (adcode && meituanCityMap?.adcodeToId?.[adcode]) return meituanCityMap.adcodeToId[adcode];
+            if (cityName && meituanCityMap?.nameToId?.[cityName]) return meituanCityMap.nameToId[cityName];
+            return meituanCityMap?.nameToId?.['上海市'] || meituanCityMap?.nameToId?.['上海'] || 310100;
+          })();
+          const res = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, cityId, searchText: qName, latitude: lat, longitude: lng } });
           console.debug('[品牌详情] 云函数响应 result', res && res.result);
           const result = res && res.result;
           let realtime = this.transformProducts(result);
@@ -135,15 +185,22 @@ Page({
           try {
             const fileIds2 = realtime.filter(x => typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0).map(x => x.headUrl);
             if (fileIds2.length && wx.cloud && wx.cloud.getTempFileURL) {
-              console.debug('[品牌详情] 请求临时文件URL数量', fileIds2.length);
+              console.info('[品牌详情] 请求临时文件URL数量', { count: fileIds2.length, fileIds: fileIds2 });
               const r3 = await wx.cloud.getTempFileURL({ fileList: fileIds2 });
+              console.info('[品牌详情] 批量临时URL返回', r3);
               const m3 = {};
               const fl3 = (r3 && r3.fileList) || [];
               for (const item of fl3) { if (item && item.fileID) m3[item.fileID] = item.tempFileURL || ''; }
               realtime = realtime.map(x => {
                 if (typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0) {
                   const tmp3 = m3[x.headUrl];
-                  return { ...x, headUrl: (tmp3 && tmp3.indexOf('http') === 0) ? tmp3 : 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' };
+                  const ok = typeof tmp3 === 'string' && tmp3.startsWith('https://');
+                  if (!ok) {
+                    console.warn('[品牌详情] 头图临时URL非HTTPS或为空，改为强制HTTPS', { fileId: x.headUrl, temp: tmp3 });
+                    const { cloudImageManager } = require('../../utils/cloudImageManager.js');
+                    return { ...x, headUrl: cloudImageManager.ensureHttps(x.headUrl) };
+                  }
+                  return { ...x, headUrl: tmp3 };
                 }
                 return x;
               });

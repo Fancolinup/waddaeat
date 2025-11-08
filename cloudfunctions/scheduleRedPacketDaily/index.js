@@ -65,6 +65,7 @@ exports.main = async (event, context) => {
       name: 'buildRedPacketCouponsWorker',
       data: {
         platform,
+        bizLine: 1,
         onlyPending: false,
         maxRetries: Math.min(maxRetries, 2),
         delayMs: Math.min(delayMs, 1000),
@@ -80,6 +81,7 @@ exports.main = async (event, context) => {
       name: 'buildRedPacketCouponsWorker',
       data: {
         platform,
+        bizLine: 1,
         onlyPending: true,
         maxRetries: Math.min(maxRetries, 2),
         delayMs: Math.min(delayMs, 1000),

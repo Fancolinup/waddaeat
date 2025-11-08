@@ -9,7 +9,7 @@
   <scroll-view class="brand-scroll" scroll-x="true" enable-flex="true" show-scrollbar="false">
     <view class="brand-item" wx:for="{{partnerBrands}}" wx:key="name" data-name="{{item.name}}" data-logo="{{item.logo}}" bindtap="onPartnerBrandTap">
       <view class="brand-logo-wrap">
-        <image class="brand-logo" src="{{item.logo || 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png'}}" mode="aspectFill" lazy-load="true" data-name="{{item.name}}" data-logo="{{item.logo}}" binderror="onBrandLogoError" />
+        <image class="brand-logo" src="{{item.logo || '/images/canteen.png'}}" mode="aspectFill" lazy-load="true" data-name="{{item.name}}" data-logo="{{item.logo}}" binderror="onBrandLogoError" bindload="onBrandLogoLoad" />
       </view>
       <view class="brand-name">{{item.name}}</view>
     </view>
@@ -23,7 +23,7 @@
     <swiper class="banner-swiper" autoplay="true" interval="3500" circular="true">
       <swiper-item wx:for="{{platformBanners}}" wx:key="actId" wx:for-item="b" wx:for-index="bi">
         <view class="banner-slide" data-idx="{{bi}}" bindtap="onTapPlatformBanner" hover-class="none" hover-stop-propagation="true" style="-webkit-tap-highlight-color: transparent;">
-          <image class="banner-bg" src="{{b.headUrl}}" mode="aspectFill" binderror="onPlatformBannerImageError" style="-webkit-tap-highlight-color: transparent;" />
+          <image class="banner-bg" src="{{b.headUrl}}" mode="aspectFill" data-idx="{{bi}}" binderror="onPlatformBannerImageError" bindload="onPlatformBannerImageLoad" style="-webkit-tap-highlight-color: transparent;" />
         </view>
       </swiper-item>
     </swiper>
@@ -45,13 +45,13 @@
   <loading wx:if="{{selectedCategory === 'instore' && instoreLoading}}" show="{{true}}" text="到店优惠加载中..." type="spinner" mask="{{true}}" opacity="{{0.5}}" />
 
   <!-- 优惠领券区（分页：2x2 网格，每屏4张） -->
-  <view class="coupon-section {{couponRefreshing ? 'refreshing' : ''}}">
-    <swiper class="coupon-swiper" current="{{couponSwiperCurrent}}" bindchange="onCouponSwiperChange">
-      <swiper-item wx:for="{{couponPages}}" wx:key="pi" wx:for-index="pi" wx:for-item="page">
-        <view class="grid">
-          <view class="grid-card" wx:for="{{page}}" wx:key="skuViewId" wx:for-item="c" data-id="{{c.skuViewId}}" bindtap="onReceiveCoupon" hover-class="none">
-            <!-- 新布局：上方2/3为商品图；下方1/3为信息区 -->
-            <image class="card-image" src="{{c.headUrl}}" mode="aspectFill" />
+  <swiper class="coupon-swiper" current="{{couponSwiperCurrent}}" bindchange="onCouponSwiperChange" indicator-dots="{{false}}" autoplay="{{false}}" circular="{{false}}" duration="300">
+    <swiper-item wx:for="{{couponPages}}" wx:key="pi" wx:for-index="pi" wx:for-item="page">
+      <view class="grid">
+        <!-- 到店优惠：带信息区卡片 -->
+        <block wx:if="{{selectedCategory==='instore'}}">
+          <view class="grid-card" wx:for="{{page}}" wx:key="__idx" wx:for-item="c" data-id="{{c.skuViewId}}" bindtap="onReceiveCoupon" hover-class="none">
+            <image class="card-image" mode="aspectFill" src="{{c.imageUrl}}" data-idx="{{c.__idx}}" binderror="onInstoreImageError" bindload="onCouponImageLoad" />
             <view class="card-info">
               <view class="line1">
                 <text class="brand">{{c.brandName}}</text>
@@ -59,27 +59,28 @@
               </view>
               <view class="line2">
                 <view class="prices">
-                  <text wx:if="{{c.sellPrice}}" class="price-sale">¥{{c.sellPrice}}</text>
-                  <text wx:if="{{c.originalPrice}}" class="price-original">¥{{c.originalPrice}}</text>
+                  <text class="price-sale">¥{{c.sellPrice}}</text>
+                  <text class="price-original">¥{{c.originalPrice}}</text>
                 </view>
-                <text wx:if="{{c.label1}}" class="tag">{{c.label1}}</text>
+                <text class="tag">{{c.label1}}</text>
               </view>
             </view>
           </view>
-        </view>
-      </swiper-item>
-    </swiper>
-    <!-- 自定义导航圆点，位于优惠领券区底部，不与卡片重叠 -->
-    <view class="coupon-indicators">
-      <block wx:for="{{couponPages}}" wx:key="pi" wx:for-index="pi">
-        <view class="indicator-dot {{couponSwiperCurrent === pi ? 'active' : ''}}"></view>
-      </block>
-    </view>
+        </block>
+        <!-- 红包领券：纯图片卡片 -->
+        <block wx:else>
+          <view class="grid-card" wx:for="{{page}}" wx:key="__idx" wx:for-item="c" data-idx="{{c.__idx}}" bindtap="onReceiveActionCoupon" hover-class="none">
+            <image class="card-image" mode="aspectFill" src="{{c.imageUrl}}" data-idx="{{c.__idx}}" binderror="onCouponImageError" bindload="onCouponImageLoad" />
+          </view>
+        </block>
+      </view>
+    </swiper-item>
+  </swiper>
+  <!-- 自定义导航圆点，位于优惠领券区底部，不与卡片重叠 -->
+  <view class="coupon-indicators">
+    <block wx:for="{{couponPages}}" wx:key="pi" wx:for-index="pi">
+      <view class="indicator-dot {{couponSwiperCurrent===pi?'active':''}}" data-index="{{pi}}" bindtap="onTapCouponDot"></view>
+    </block>
   </view>
-
-  <!-- 已按需求移除领券中心的附近优惠模块（保留今日选择页的附近优惠不变） -->
-
-  <view class="page-bottom-spacer"></view>
-
   </view> <!-- /coupon-content-shift -->
 </view>

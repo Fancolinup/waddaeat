@@ -123,7 +123,58 @@
             padding: 8px;
             font-weight: bold;
         }
-    </style>
+        .test-products {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .test-products h3 {
+            color: white;
+            margin: 0 0 15px 0;
+        }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .product-card {
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 12px;
+            overflow: hidden;
+            backdrop-filter: blur(6px);
+        }
+        .product-img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            background: rgba(255,255,255,0.3);
+            display: block;
+        }
+        .product-info {
+            padding: 10px;
+            color: white;
+        }
+        .product-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .price-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sell-price {
+            color: #ffd166;
+            font-weight: bold;
+        }
+        .original-price {
+            color: rgba(255,255,255,0.7);
+            text-decoration: line-through;
+            font-size: 12px;
+        }
+</style>
 </head>
 <body>
     <div class="profile-page">
@@ -152,33 +203,75 @@
             </div>
         </div>
 
+
+            <h3>等级测试控制</h3>
+            <div class="control-group">
+                <label>当前积分:</label>
+                <input type="number" id="pointsInput" value="0" min="0" max="500">
+            </div>
+            <button onclick="updateLevel()" style="width: 100%; padding: 10px; border: none; border-radius: 8px; background: #4CAF50; color: white; font-weight: bold;">更新等级</button>
+        </div>
+
+        <!-- 用户信息区 -->
+        <div class="user-card">
+            <div class="avatar">👤</div>
+            <div class="user-info">
+                <div class="name-badge">
+                    <span class="nickname">神秘用户</span>
+                    <span class="level-badge" id="levelBadge">P5-应届牛马</span>
+                </div>
+                <div class="points-row">
+                    <span class="meta">积分</span>
+                    <span class="points-val" id="pointsDisplay">0</span>
+                </div>
+            </div>
+        </div>
+
         <!-- 等级配置信息 -->
         <div class="level-info">
             <h3>等级配置</h3>
             <div id="levelsList"></div>
         </div>
+
+        <!-- 测试商品展示区 -->
+        <div class="test-products">
+            <h3>测试商品展示区</h3>
+            <div class="product-grid" id="testProductGrid"></div>
+        </div>
     </div>
 
     <script>
-        // 等级配置数据
         const levelsConfig = {
-            "actions": {
-                "spin": 5,
-                "vote": 3,
-                "bookmark": 2,
-                "share": 10
-            },
-            "levels": [
-                { "name": "P5-应届牛马", "min": 0 },
-                { "name": "P6-PPT大师", "min": 30 },
-                { "name": "P7-吵架王中王", "min": 60 },
-                { "name": "P8-精致指挥家", "min": 100 },
-                { "name": "P9-演讲大师", "min": 150 },
-                { "name": "P10-金色传说", "min": 300 }
+            actions: { spin: 5, vote: 3, bookmark: 2, share: 10 },
+            levels: [
+                { name: 'P5-应届牛马', min: 0 },
+                { name: 'P6-PPT大师', min: 30 },
+                { name: 'P7-吵架王中王', min: 60 },
+                { name: 'P8-精致指挥家', min: 100 },
+                { name: 'P9-演讲大师', min: 150 },
+                { name: 'P10-金色传说', min: 300 }
             ]
         };
+        function displayLevelsConfig() {
+            const levelsList = document.getElementById('levelsList');
+            levelsList.innerHTML = '';
+            
+            levelsConfig.levels.forEach((level, index) => {
+                const div = document.createElement('div');
+                div.className = 'level-item';
+                div.innerHTML = `<strong>${level.name}</strong> - 需要 ${level.min} 分`;
+                levelsList.appendChild(div);
+            });
+        }
 
-        // 计算等级函数
+        // 测试商品数据
+        const testProducts = [
+            { id: 1, name: '万达广场超值套餐', cover: 'https://picsum.photos/seed/mt1/300/200', price: 29.9, originalPrice: 58 },
+            { id: 2, name: '美团精选寿司拼盘', cover: 'https://picsum.photos/seed/mt2/300/200', price: 49.9, originalPrice: 98 },
+            { id: 3, name: '必胜客工作日晚餐券', cover: 'https://picsum.photos/seed/mt3/300/200', price: 39.9, originalPrice: 79 },
+            { id: 4, name: '海底捞拼桌优惠', cover: 'https://picsum.photos/seed/mt4/300/200', price: 59.9, originalPrice: 120 }
+        ];
+
         function recalculateUserLevel(points) {
             const levels = levelsConfig.levels || [];
             let current = levels[0] ? levels[0].name : 'P5-应届牛马';
@@ -192,32 +285,35 @@
             return current;
         }
 
-        // 更新等级显示
         function updateLevel() {
             const points = parseInt(document.getElementById('pointsInput').value) || 0;
             const level = recalculateUserLevel(points);
-            
             document.getElementById('pointsDisplay').textContent = points;
             document.getElementById('levelBadge').textContent = level;
-        }
-
-        // 显示等级配置
-        function displayLevelsConfig() {
-            const levelsList = document.getElementById('levelsList');
-            levelsList.innerHTML = '';
-            
-            levelsConfig.levels.forEach((level, index) => {
-                const div = document.createElement('div');
-                div.className = 'level-item';
-                div.innerHTML = `<strong>${level.name}</strong> - 需要 ${level.min} 分`;
-                levelsList.appendChild(div);
-            });
+            displayLevelsConfig();
         }
 
         // 页面加载时初始化
-        document.addEventListener('DOMContentLoaded', function() {
+        function renderTestProducts() {
+            const grid = document.getElementById('testProductGrid');
+            grid.innerHTML = testProducts.map(p => `
+                <div class="product-card">
+                    <img class="product-img" src="${p.cover}" alt="${p.name}" />
+                    <div class="product-info">
+                        <div class="product-name">${p.name}</div>
+                        <div class="price-row">
+                            <span class="sell-price">￥${p.price}</span>
+                            <span class="original-price">￥${p.originalPrice}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
             displayLevelsConfig();
             updateLevel();
+            renderTestProducts();
         });
     </script>
 </body>

@@ -58,6 +58,7 @@ exports.main = async (event, context) => {
   // 经纬度：默认人民广场（可通过调用传入覆盖）
   const latitude = typeof event.latitude === 'number' ? event.latitude : 31.23136;
   const longitude = typeof event.longitude === 'number' ? event.longitude : 121.47004;
+  const cityId = typeof event.cityId === 'number' ? event.cityId : 310100; // 缺省上海
 
   const url = 'https://media.meituan.com/cps_open/common/api/v1/query_coupon';
   const urlPath = '/cps_open/common/api/v1/query_coupon';
@@ -68,6 +69,7 @@ exports.main = async (event, context) => {
     ...(bizLine ? { bizLine } : {}),
     latitude,
     longitude,
+    cityId,
     searchText
   };
 
