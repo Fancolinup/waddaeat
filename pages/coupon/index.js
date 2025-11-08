@@ -787,22 +787,45 @@ Page({
   },
   async loadPlatformBanners() {
     try {
-      const res = await wx.cloud.callFunction({ name: 'manageMeituanPlatformBanner', data: { refresh: false } });
+      const res = await wx.cloud.callFunction({ name: 'manageMeituanPlatformBanner', data: { refresh: false, actIds: [689, 701, 648, 645, 638, 569] } });
       const list = Array.isArray(res?.result?.banners) ? res.result.banners : [];
       const normalized = list.map(b => {
         const actId = b.actId || b.activityId || b.id || '';
-        let headUrl = '';
-        if (actId) {
-          headUrl = cloudImageManager.getCloudImageUrlInDirSync('platform_actions', actId, 'png');
-        } else {
-          headUrl = b.headUrl || '';
-          if (typeof headUrl === 'string' && headUrl.startsWith('http://')) {
-            headUrl = 'https://' + headUrl.slice(7);
-          }
-        }
+        // 强制：使用 actId 拼接云端 fileID（平台活动图片）
+        const headUrl = actId ? `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${actId}.png` : cloudImageManager.getPlaceholderUrlSync();
         return { ...b, actId, headUrl };
       });
+
+      // 若首次读取为空，不视为错误，主动触发一次刷新再回填
+      if (!normalized.length) {
+        console.info('[PlatformBanner] 首次读取为空，尝试刷新');
+        const res2 = await wx.cloud.callFunction({ name: 'manageMeituanPlatformBanner', data: { refresh: true, actIds: [689, 701, 648, 645, 638, 569] } });
+        const list2 = Array.isArray(res2?.result?.banners) ? res2.result.banners : [];
+        const normalized2 = list2.map(b => {
+          const actId = b.actId || b.activityId || b.id || '';
+          // 强制：使用 actId 拼接云端 fileID（平台活动图片）
+          const headUrl = actId ? `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${actId}.png` : cloudImageManager.getPlaceholderUrlSync();
+          return { ...b, actId, headUrl };
+        });
+        const defaultActIds = [689, 701, 648, 645, 638, 569];
+        const final = normalized.length ? normalized : [689, 701, 648, 645, 638, 569].map(id => ({ actId: String(id), headUrl: `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${id}.png`, name: '平台活动' }));
+        if (final && final.length) {
+          const f = final[0];
+          const map = (f && typeof f === 'object') ? (f.referralLinkMap || f.linkMap || f.urlMap || (f.links && f.links.referralLinkMap) || {}) : {};
+          const wa = map['4'] || map[4] || map.weapp || map.mini;
+          console.info('[PlatformBanner] 刷新后首条数据', { actId: f.actId, headUrl: f.headUrl, weapp: wa });
+        }
+        this.setData({ platformBanners: final });
+        return;
+      }
+
       const final = normalized.length ? normalized : [{ actId: 'placeholder', headUrl: cloudImageManager.getPlaceholderUrlSync(), name: '平台活动' }];
+      if (final && final.length) {
+        const f = final[0];
+        const map = (f && typeof f === 'object') ? (f.referralLinkMap || f.linkMap || f.urlMap || (f.links && f.links.referralLinkMap) || {}) : {};
+        const wa = map['4'] || map[4] || map.weapp || map.mini;
+        console.info('[PlatformBanner] 首条数据', { actId: f.actId, headUrl: f.headUrl, weapp: wa });
+      }
       this.setData({ platformBanners: final });
     } catch (err) {
       console.warn('[PlatformBanner] 读取失败，尝试刷新', err);
@@ -811,22 +834,18 @@ Page({
         const list2 = Array.isArray(res2?.result?.banners) ? res2.result.banners : [];
         const normalized2 = list2.map(b => {
           const actId = b.actId || b.activityId || b.id || '';
-          let headUrl = '';
-          if (actId) {
-            headUrl = cloudImageManager.getCloudImageUrlInDirSync('platform_actions', actId, 'png');
-          } else {
-            headUrl = b.headUrl || '';
-            if (typeof headUrl === 'string' && headUrl.startsWith('http://')) {
-              headUrl = 'https://' + headUrl.slice(7);
-            }
-          }
+          // 强制：使用 actId 拼接云端 fileID（平台活动图片）
+          const headUrl = actId ? `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${actId}.png` : cloudImageManager.getPlaceholderUrlSync();
           return { ...b, actId, headUrl };
         });
-        const final2 = normalized2.length ? normalized2 : [{ actId: 'placeholder', headUrl: cloudImageManager.getPlaceholderUrlSync(), name: '平台活动' }];
-        this.setData({ platformBanners: final2 });
+        const defaultActIds = [689, 701, 648, 645, 638, 569];
+        const fallbackList = defaultActIds.map(id => ({ actId: String(id), headUrl: `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${id}.png`, name: '平台活动' }));
+        this.setData({ platformBanners: fallbackList });
       } catch (err2) {
         console.warn('[PlatformBanner] 刷新失败', err2);
-        this.setData({ platformBanners: [{ actId: 'placeholder', headUrl: cloudImageManager.getPlaceholderUrlSync(), name: '平台活动' }] });
+        const defaultActIds = [689, 701, 648, 645, 638, 569];
+        const fallbackList = defaultActIds.map(id => ({ actId: String(id), headUrl: `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${id}.png`, name: '平台活动' }));
+        this.setData({ platformBanners: fallbackList });
       }
     }
   },
@@ -883,7 +902,7 @@ Page({
         // 云端缺 logo 时使用本地拼音映射获取 cloud:// 品牌图
         if (!logo || logo === cloudImageManager.getPlaceholderUrlSync()) {
           try {
-            const alt = this.getBrandLogo ? this.getBrandLogo(name) : cloudImageManager.getCloudImageUrlSync(name);
+            const alt = this.getBrandLogo ? this.getBrandLogo(name) : cloudImageManager.getCloudImageUrlInDirSync('logos', name, 'png');
             if (typeof alt === 'string' && alt.trim()) { logo = alt; }
           } catch (eAlt) { /* ignore */ }
         }

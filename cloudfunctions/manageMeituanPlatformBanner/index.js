@@ -115,12 +115,13 @@ exports.main = async (event, context) => {
         const timeInfo = dataRoot?.couponValidTimeInfo || {};
         const endTimeStr = dataRoot?.couponValidETime || timeInfo?.couponValidETime || '';
         const endTimeTs = endTimeStr ? (new Date(endTimeStr)).getTime() : 0;
+        const safeEndTs = endTimeTs || (nowTs + 30 * 24 * 3600 * 1000);
 
         const payload = {
           actId,
           headUrl,
           couponValidETime: endTimeStr,
-          couponValidETimestamp: endTimeTs,
+          couponValidETimestamp: safeEndTs,
           referralLinkMap: referral,
           updatedAt: new Date(),
           source: 'platform-banner-refresh'
@@ -129,6 +130,23 @@ exports.main = async (event, context) => {
         console.log('[PlatformBanner] 写入：', actId, { id: resUpsert._id, created: !!resUpsert.created, updated: !!resUpsert.updated });
       } catch (e) {
         console.warn('[PlatformBanner] actId 刷新失败：', actId, e);
+        // Fallback：即便下游云函数不可用，也写入最小记录，确保前端不再回退 placeholder
+        try {
+          const safeEndTs = nowTs + 30 * 24 * 3600 * 1000;
+          const payload = {
+            actId,
+            headUrl: '',
+            couponValidETime: '',
+            couponValidETimestamp: safeEndTs,
+            referralLinkMap: {},
+            updatedAt: new Date(),
+            source: 'platform-banner-fallback'
+          };
+          const resUpsert = await upsertToCollection(db, 'MeituanPlatformBanner', { actId }, payload);
+          console.log('[PlatformBanner] 写入占位记录：', actId, { id: resUpsert._id });
+        } catch (e2) {
+          console.warn('[PlatformBanner] 占位写入失败：', actId, e2);
+        }
       }
       /* eslint-enable no-await-in-loop */
     }
@@ -140,7 +158,13 @@ exports.main = async (event, context) => {
     // 简单读取全部后在内存中过滤（数据量小）
     const batch = await coll.get();
     const docs = batch?.data || [];
-    const valid = docs.filter(d => (d.couponValidETimestamp || 0) > nowTs && d.headUrl).sort((a, b) => {
+    const valid = docs.filter(d => {
+      const hasAct = !!(d.actId || d.activityId || d.id);
+      const hasImg = !!d.headUrl;
+      const ts = Number(d.couponValidETimestamp || 0);
+      const stillValid = ts ? ts > nowTs : true;
+      return stillValid && (hasImg || hasAct);
+    }).sort((a, b) => {
       // 按 actIds 原始顺序排序
       const ia = actIds.indexOf(Number(a.actId));
       const ib = actIds.indexOf(Number(b.actId));

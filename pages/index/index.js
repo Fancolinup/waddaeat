@@ -403,7 +403,7 @@ Page({
 
       // 直配命中
       if (pkgA.includes(key) || pkgB.includes(key)) {
-        return cloudImageManager.getCloudImageUrlSync(key);
+        return cloudImageManager.getCloudImageUrlInDirSync('logos', key, 'png');
       }
 
       // 常见归一化尝试
@@ -416,7 +416,7 @@ Page({
 
       for (const v of variants) {
         if (pkgA.includes(v) || pkgB.includes(v)) {
-          return cloudImageManager.getCloudImageUrlSync(v);
+          return cloudImageManager.getCloudImageUrlInDirSync('logos', v, 'png');
         }
       }
 
@@ -1445,7 +1445,7 @@ Page({
 
       // 直配命中
       if (pkgA.includes(key) || pkgB.includes(key)) {
-        return cloudImageManager.getCloudImageUrlSync(key);
+        return cloudImageManager.getCloudImageUrlInDirSync('logos', key, 'png');
       }
 
       // 常见归一化尝试
@@ -1458,7 +1458,7 @@ Page({
 
       for (const v of variants) {
         if (pkgA.includes(v) || pkgB.includes(v)) {
-          return cloudImageManager.getCloudImageUrlSync(v);
+          return cloudImageManager.getCloudImageUrlInDirSync('logos', v, 'png');
         }
       }
 
@@ -1765,7 +1765,8 @@ Page({
           // 命中结果图标：优先使用 cloud:// 的原始 icon，其次根据品牌拼音生成统一 icons 目录下的云端 fileID，兜底占位图
           let finalIcon = '';
           if (typeof iconStr === 'string' && iconStr.indexOf('cloud://') === 0) {
-            finalIcon = iconStr;
+            // 命中 cloud:// 原始图标时，纠正目录为 logos，避免误用 icons
+            finalIcon = iconStr.includes('/Waddaeat/icons/') ? iconStr.replace('/Waddaeat/icons/', '/Waddaeat/logos/') : iconStr;
           } else {
             const map = this.getPinyinMap && this.getPinyinMap();
             let slug = '';
@@ -1785,6 +1786,7 @@ Page({
             }
           }
           this.setData({ 'selected.icon': finalIcon });
+          try { console.info(`[${ts()}] 结果浮层icon最终`, finalIcon); } catch (_) {}
           // 异步转换为临时HTTPS，避免渲染层将 cloud:// 视为本地路径
           try { this.convertSelectedIconToTempHttps(); } catch(_) {}
         } catch (_) {
