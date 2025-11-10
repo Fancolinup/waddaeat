@@ -98,7 +98,7 @@ exports.main = async (event, context) => {
         // 仅调用推广链接接口，按用户要求不依赖优惠券接口
         const linkRes = await cloud.callFunction({
           name: 'getMeituanReferralLink',
-          data: { actId, linkTypeList, maxRetries: 10, delayMs: 10000, timeoutMs: 8000, ...(appKey && secret ? { appKey, secret } : {}) }
+          data: { actId, linkTypeList, maxRetries: 10, delayMs: 10000, timeoutMs: 2900, ...(appKey && secret ? { appKey, secret } : {}) }
         });
         const rr = linkRes?.result || {};
         // 兼容返回结构：可能为 data 或 data.data

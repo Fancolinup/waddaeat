@@ -13,9 +13,9 @@ function normalizeHttps(url) {
 async function ensureCollection(db, name) {
   try {
     await db.createCollection(name);
-    console.log('[ActionCoupon] 已创建集合：', name);
+    console.log('[ElemeActionCoupon] 已创建集合：', name);
   } catch (e) {
-    console.log('[ActionCoupon] 集合检查：', name, e && e.message);
+    console.log('[ElemeActionCoupon] 集合检查：', name, e && e.message);
   }
 }
 
@@ -37,22 +37,22 @@ function buildSeedItems(envId) {
   const prefix = `cloud://${envId}/Waddaeat/platform_actions`;
   // 用户指定的 Eleme 活动与跳转路径，图片按 eleme_活动名拼音 命名
   const items = [
-    { actId: 10001, name: '快闪', imageCloudPath: `${prefix}/eleme_kuaishan.png`, referralLinkMap: { 4: { appId: 'wxde8ac0a21135c07d', path: 'ele-recommend-price/pages/guest/index?scene=94708d979cde4231aea7197699d1d287' } } },
-    { actId: 10002, name: '爆款特价', imageCloudPath: `${prefix}/eleme_baokuantejia.png`, referralLinkMap: { 4: { appId: 'wxde8ac0a21135c07d', path: 'ad-bdlm-sub/pages/daily-special-price-foods-guide/index?scene=ac86a7c3f45a4621972d3858bf9e12de' } } },
-    { actId: 10003, name: '爆火好店', imageCloudPath: `${prefix}/eleme_baohuohaodian.png`, referralLinkMap: { 4: { appId: 'wxde8ac0a21135c07d', path: 'pages/sharePid/web/index?o2i_sharefrom=wxminiapp&scene=u.ele.me%2Fku5849lT' } } },
-    { actId: 10004, name: '极限暴涨', imageCloudPath: `${prefix}/eleme_jixianbaozhang.png`, referralLinkMap: { 4: { appId: 'wxde8ac0a21135c07d', path: 'pages/sharePid/web/index?o2i_sharefrom=wxminiapp&scene=u.ele.me%2F6QKQE2t3' } } },
-    { actId: 10005, name: '天天领红包', imageCloudPath: `${prefix}/eleme_tiantianlinghongbao.png`, referralLinkMap: { 4: { appId: 'wxde8ac0a21135c07d', path: 'commercialize/pages/taoke-guide/index?scene=bd978bfb20ee4f2c8ccb27ba1d1f8ede' } } },
-    { actId: 10006, name: '超抢手', imageCloudPath: `${prefix}/eleme_chaoqiangshou.png`, referralLinkMap: { 4: { appId: 'wxde8ac0a21135c07d', path: 'ad-bdlm-sub/pages/daily-special-price-foods-guide/index?scene=3333a8dcb92046fc99087848cef0d871' } } },
-    { actId: 10007, name: '城市大额红包', imageCloudPath: `${prefix}/eleme_chengshidaehongbao.png`, referralLinkMap: { 4: { appId: 'wxde8ac0a21135c07d', path: 'ad-bdlm-sub/pages/wh-coupon-guide/index?scene=9de4c78e23034247b484f3a692b3aa00' } } },
-    { actId: 10008, name: '红包天天领不停', imageCloudPath: `${prefix}/eleme_hongbaotiantianlingbuting.png`, referralLinkMap: { 4: { appId: 'wxde8ac0a21135c07d', path: 'ad-bdlm-sub/pages/wh-coupon-guide/index?scene=ff26056c83ee4e9b82945fa8d5361fb4' } } },
-    { actId: 10009, name: '囤圈圈', imageCloudPath: `${prefix}/eleme_tunquanquan.png`, referralLinkMap: { 4: { appId: 'wxde8ac0a21135c07d', path: 'ad-bdlm-sub/pages/coupon-hoard-guide/index?scene=405a036e6a8744429bdcbb8de3e16b18' } } }
+    { actId: 10001, name: '快闪', imageCloudPath: `${prefix}/eleme_kuaishan.png`, referralLinkMap: { 4: { appId: 'wxece3a9a4c82f58c9', path: 'ele-recommend-price/pages/guest/index?scene=94708d979cde4231aea7197699d1d287' } } },
+    { actId: 10002, name: '爆款特价', imageCloudPath: `${prefix}/eleme_baokuantejia.png`, referralLinkMap: { 4: { appId: 'wxece3a9a4c82f58c9', path: 'ad-bdlm-sub/pages/daily-special-price-foods-guide/index?scene=ac86a7c3f45a4621972d3858bf9e12de' } } },
+    { actId: 10003, name: '爆火好店', imageCloudPath: `${prefix}/eleme_baohuohaodian.png`, referralLinkMap: { 4: { appId: 'wxece3a9a4c82f58c9', path: 'pages/sharePid/web/index?o2i_sharefrom=wxminiapp&scene=u.ele.me%2Fku5849lT' } } },
+    { actId: 10004, name: '极限暴涨', imageCloudPath: `${prefix}/eleme_jixianbaozhang.png`, referralLinkMap: { 4: { appId: 'wxece3a9a4c82f58c9', path: 'pages/sharePid/web/index?o2i_sharefrom=wxminiapp&scene=u.ele.me%2F6QKQE2t3' } } },
+    { actId: 10005, name: '天天领红包', imageCloudPath: `${prefix}/eleme_tiantianlinghongbao.png`, referralLinkMap: { 4: { appId: 'wxece3a9a4c82f58c9', path: 'commercialize/pages/taoke-guide/index?scene=bd978bfb20ee4f2c8ccb27ba1d1f8ede' } } },
+    { actId: 10006, name: '超抢手', imageCloudPath: `${prefix}/eleme_chaoqiangshou.png`, referralLinkMap: { 4: { appId: 'wxece3a9a4c82f58c9', path: 'ad-bdlm-sub/pages/daily-special-price-foods-guide/index?scene=3333a8dcb92046fc99087848cef0d871' } } },
+    { actId: 10007, name: '城市大额红包', imageCloudPath: `${prefix}/eleme_chengshidaehongbao.png`, referralLinkMap: { 4: { appId: 'wxece3a9a4c82f58c9', path: 'ad-bdlm-sub/pages/wh-coupon-guide/index?scene=9de4c78e23034247b484f3a692b3aa00' } } },
+    { actId: 10008, name: '红包天天领不停', imageCloudPath: `${prefix}/eleme_hongbaotiantianlingbuting.png`, referralLinkMap: { 4: { appId: 'wxece3a9a4c82f58c9', path: 'ad-bdlm-sub/pages/wh-coupon-guide/index?scene=ff26056c83ee4e9b82945fa8d5361fb4' } } },
+    { actId: 10009, name: '囤圈圈', imageCloudPath: `${prefix}/eleme_tunquanquan.png`, referralLinkMap: { 4: { appId: 'wxece3a9a4c82f58c9', path: 'ad-bdlm-sub/pages/coupon-hoard-guide/index?scene=405a036e6a8744429bdcbb8de3e16b18' } } }
   ];
   return items;
 }
 
 exports.main = async (event, context) => {
   const db = cloud.database();
-  await ensureCollection(db, 'ActionCoupon');
+  await ensureCollection(db, 'ElemeActionCoupon');
 
   // 允许通过 event.seedItems 覆盖默认种子
   let envId = '';
@@ -64,11 +64,59 @@ exports.main = async (event, context) => {
     ? event.seedItems
     : buildSeedItems(envId || 'cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427');
 
+  // 新增：服务器侧读取列表，绕过客户端集合读取权限问题
+  if (event && event.action === 'list') {
+    try {
+      const coll = db.collection('ElemeActionCoupon');
+      let total = 0;
+      try {
+        const c = await coll.count();
+        total = (c && typeof c.total === 'number') ? c.total : 0;
+      } catch (_) {}
+
+      // 集合为空时自动投放种子（可通过 seed=false 关闭）
+      if (total === 0 && event.seed !== false) {
+        for (const it of items) {
+          /* eslint-disable no-await-in-loop */
+          const actId = Number(it.actId);
+          if (!actId || Number.isNaN(actId)) continue;
+          const name = it.name || ('平台活动' + actId);
+          let imageCloudPath = it.imageCloudPath || it.imageUrl || it.image || '';
+          imageCloudPath = typeof imageCloudPath === 'string' && imageCloudPath.startsWith('http') ? imageCloudPath : imageCloudPath;
+          const referralLinkMap = it.referralLinkMap || it.linkMap || {};
+          if (typeof imageCloudPath === 'string') imageCloudPath = normalizeHttps(imageCloudPath);
+          const payload = { actId, name, imageCloudPath, referralLinkMap, updatedAt: new Date(), source: 'seed' };
+          await upsert(db, 'ElemeActionCoupon', { actId }, payload);
+          /* eslint-enable no-await-in-loop */
+        }
+        // 重新统计
+        try {
+          const c2 = await coll.count();
+          total = (c2 && typeof c2.total === 'number') ? c2.total : 0;
+        } catch (_) {}
+      }
+
+      // 批量读取所有文档
+      const docs = [];
+      let offset = 0;
+      while (true) {
+        const res = await coll.skip(offset).limit(20).get();
+        const arr = (res && Array.isArray(res.data)) ? res.data : [];
+        if (!arr.length) break;
+        docs.push(...arr);
+        offset += arr.length;
+      }
+      return { ok: true, total: docs.length, items: docs };
+    } catch (eList) {
+      return { ok: false, error: String(eList && eList.message || eList) };
+    }
+  }
+
   // 严格模式：删除集合中不属于预设 actId 的旧记录
   if (event && event.strict === true) {
     const allowedActIds = new Set(items.map(it => Number(it.actId)).filter(n => !!n && !Number.isNaN(n)));
     try {
-      const coll = db.collection('ActionCoupon');
+      const coll = db.collection('ElemeActionCoupon');
       let offset = 0;
       while (true) {
         const res = await coll.skip(offset).limit(20).get();
@@ -77,14 +125,14 @@ exports.main = async (event, context) => {
         for (const doc of data) {
           const act = Number(doc.actId);
           if (!allowedActIds.has(act)) {
-            try { await coll.doc(doc._id).remove(); } catch (eDel) { console.warn('[ActionCoupon] 删除旧记录失败', doc._id, eDel); }
+            try { await coll.doc(doc._id).remove(); } catch (eDel) { console.warn('[ElemeActionCoupon] 删除旧记录失败', doc._id, eDel); }
           }
         }
         offset += data.length;
       }
-      console.info('[ActionCoupon] 严格模式：已清理非预设 actId 的旧记录');
+      console.info('[ElemeActionCoupon] 严格模式：已清理非预设 actId 的旧记录');
     } catch (eStrict) {
-      console.warn('[ActionCoupon] 严格模式清理失败', eStrict);
+      console.warn('[ElemeActionCoupon] 严格模式清理失败', eStrict);
     }
   }
 
@@ -108,7 +156,7 @@ exports.main = async (event, context) => {
       updatedAt: new Date(),
       source: 'seed'
     };
-    const res = await upsert(db, 'ActionCoupon', { actId }, payload);
+    const res = await upsert(db, 'ElemeActionCoupon', { actId }, payload);
     results.push({ actId, id: res._id, created: !!res.created, updated: !!res.updated });
     /* eslint-enable no-await-in-loop */
   }

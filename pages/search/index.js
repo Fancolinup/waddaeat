@@ -1,149 +1,92 @@
 // pages/search/index.js
+const meituanCityMap = require('../../utils/meituanCityMap');
 Page({
   data: {
     inputText: '',
     results: [],
-    autoFocus: true
+    autoFocus: false,
+    searchLinkLoading: false
   },
   onShow() {
-    wx.nextTick(() => this.setData({ autoFocus: true }));
+    // 返回页面后不自动调起输入法
+    wx.nextTick(() => this.setData({ autoFocus: false }));
   },
   onInput(e) {
     this.setData({ inputText: e.detail.value });
   },
   async onConfirm() {
-    const q = (this.data.inputText || '').trim();
-    console.debug('[search] onConfirm keyword:', q);
-    if (!q) {
-      wx.showToast({ title: '请输入关键词', icon: 'none' });
-      return;
-    }
-    wx.showLoading({ title: '搜索中', mask: true });
     try {
-      const db = wx.cloud.database();
-      const _ = db.command;
-      const tasks = [];
-      // 修复：RegExp 参数必须使用 regexp 字段；并做正则安全转义+模糊匹配
-      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const reg = db.RegExp({ regexp: `.*${escaped}.*`, options: 'i' });
-      console.debug('[search] db.RegExp:', reg);
-      tasks.push(db.collection('MeituanBrandCoupon').where({ brandName: reg }).limit(40).get());
-      tasks.push(db.collection('MeituanOnsiteCoupon').where({ brandName: reg }).limit(40).get());
-      const res = await Promise.all(tasks);
-      console.debug('[search] raw query results size:', res.map(r => (r && Array.isArray(r.data) ? r.data.length : 0)));
-      const all = [];
-      for (const r of res) {
-        const arr = (r && Array.isArray(r.data)) ? r.data : [];
-        for (const it of arr) {
-          // 展开品牌聚合文档中的 items（如马记永的多商品）
-          if (Array.isArray(it.items) && it.items.length > 0) {
-            for (const child of it.items) {
-              const normalizedChild = {
-                _id: child._id || `${it._id}-${child.skuViewId || child.name || Math.random()}`,
-                name: child.name || child.title || (child.raw && child.raw.couponPackDetail && child.raw.couponPackDetail.name) || it.name || it.brandName || '',
-                brandName: child.brandName || (child.raw && child.raw.brandInfo && child.raw.brandInfo.brandName) || it.brandName || '',
-                headUrl: cloudImageManager.ensureHttps(child.headUrl || (child.raw && child.raw.couponPackDetail && child.raw.couponPackDetail.headUrl) || it.headUrl) || cloudImageManager.getPlaceholderUrlSync(),
-                sellPrice: child.sellPrice || (child.raw && child.raw.couponPackDetail && child.raw.couponPackDetail.sellPrice) || '',
-                originalPrice: child.originalPrice || (child.raw && child.raw.couponPackDetail && child.raw.couponPackDetail.originalPrice) || '',
-                label1: child.label1 || (child.raw && child.raw.productLabel && (child.raw.productLabel.historyPriceLabel || child.raw.productLabel.beatMTLabel)) || '',
-                skuViewId: child.skuViewId || '',
-                actId: child.actId || it.actId || '',
-                referralLinkMap: child.referralLinkMap || child.linkMap || child.urlMap || it.referralLinkMap || it.linkMap || it.urlMap || (it.links && it.links.referralLinkMap) || {},
-              };
-              all.push(normalizedChild);
-            }
-            continue;
-          }
-          const normalized = {
-            _id: it._id,
-            name: it.name || it.brandName || (it.raw && it.raw.name) || '',
-            brandName: it.brandName || '',
-            headUrl: cloudImageManager.ensureHttps(it.headUrl || it.image || (it.raw && it.raw.headUrl)) || cloudImageManager.getPlaceholderUrlSync(),
-            sellPrice: it.sellPrice || (it.price && it.price.sell) || '',
-            originalPrice: it.originalPrice || (it.price && it.price.original) || '',
-            label1: it.label1 || it.promotion || '',
-            skuViewId: it.skuViewId || it.skuId || '',
-            actId: it.actId || '',
-            referralLinkMap: it.referralLinkMap || it.linkMap || it.urlMap || (it.links && it.links.referralLinkMap) || {},
-          };
-          all.push(normalized);
-        }
-      }
-      console.debug('[search] normalized results size:', all.length);
-      try {
-        const uniqBrands = Array.from(new Set(all.map(x => x.brandName).filter(Boolean)));
-        const uniqActIds = Array.from(new Set(all.map(x => x.actId).filter(Boolean)));
-        console.debug('[search] uniqBrands:', uniqBrands, 'uniqActIds:', uniqActIds);
-        const urlFetchTasksBrand = [
-          ...uniqBrands.map(bn => db.collection('MeituanBrandCouponURL').where({ brandName: bn }).limit(1).get()),
-          ...uniqBrands.map(bn => db.collection('MeituanOnsiteCouponURL').where({ brandName: bn }).limit(1).get()),
-        ];
-        const urlResBrand = await Promise.all(urlFetchTasksBrand);
-        const brandUrlMap = new Map();
-        for (const ur of urlResBrand) {
-          const d = (ur && Array.isArray(ur.data)) ? ur.data[0] : null;
-          if (d && d.brandName) {
-            const m = d.referralLinkMap || d.linkMap || d.urlMap || d.links?.referralLinkMap || {};
-            if (m && Object.keys(m).length > 0) brandUrlMap.set(d.brandName, m);
-          }
-        }
-        const actIdUrlMap = new Map();
-        if (uniqActIds.length > 0) {
-          const actBatch = await db.collection('MeituanOnsiteCouponURL').where({ actId: _.in(uniqActIds) }).get();
-          const list = (actBatch && Array.isArray(actBatch.data)) ? actBatch.data : [];
-          for (const d of list) {
-            const m = d.referralLinkMap || d.linkMap || d.urlMap || d.links?.referralLinkMap || {};
-            if (d.actId && m && Object.keys(m).length > 0) actIdUrlMap.set(String(d.actId), m);
-          }
-        }
-        for (const x of all) {
-          const hasMap = x.referralLinkMap && Object.keys(x.referralLinkMap).length > 0;
-          if (!hasMap) {
-            const mBrand = x.brandName ? brandUrlMap.get(x.brandName) : null;
-            const mAct = x.actId ? actIdUrlMap.get(String(x.actId)) : null;
-            if (mAct && Object.keys(mAct).length > 0) {
-              x.referralLinkMap = mAct;
-            } else if (mBrand && x.skuViewId) {
-              const perSku = mBrand[x.skuViewId] || mBrand[String(x.skuViewId)];
-              x.referralLinkMap = (perSku && typeof perSku === 'object') ? perSku : {};
-            } else {
-              x.referralLinkMap = {};
-            }
-          }
-        }
-        console.debug('[search] after fill referralLinkMap count:', all.filter(x => x.referralLinkMap && Object.keys(x.referralLinkMap).length > 0).length);
-      } catch (eUrl) {
-        console.warn('[search] 补充 URL 失败：', eUrl);
-      }
+      const q = (this.data.inputText || '').trim();
+      if (!q) { wx.showToast({ title: '请输入关键词', icon: 'none' }); return; }
+      wx.showLoading({ title: '搜索中', mask: true });
+      // 读取用户位置（若无则依赖云函数默认值），并计算 cityId
+      const loc = wx.getStorageSync('userLocation') || {};
+      const lat = (loc && typeof loc.latitude === 'number') ? loc.latitude : undefined;
+      const lng = (loc && typeof loc.longitude === 'number') ? loc.longitude : undefined;
+      const cityId = (() => {
+        const adcode = String(loc?.adcode || '').trim();
+        const cityName = String(loc?.cityName || '').trim();
+        if (adcode && meituanCityMap?.adcodeToId?.[adcode]) return meituanCityMap.adcodeToId[adcode];
+        if (cityName && meituanCityMap?.nameToId?.[cityName]) return meituanCityMap.nameToId[cityName];
+        return meituanCityMap?.nameToId?.['上海市'] || meituanCityMap?.nameToId?.['上海'] || 310100;
+      })();
 
-      // 新增：过滤占位条目——必须有 name 且存在 skuViewId 或 actId
-      const filtered = all.filter(x => {
-        const hasName = x && typeof x.name === 'string' && x.name.trim().length > 0;
-        const hasId = x && (x.skuViewId || x.actId);
-        const brandOnly = (typeof x.name === 'string' && typeof x.brandName === 'string' && x.name.trim() === x.brandName.trim());
-        const hasPrice = Number.isFinite(x.sellPrice) ? x.sellPrice > 0 : !!x.sellPrice;
-        // 必须有 name 和 id；如果仅品牌名且无价格，则剔除
-        if (!hasName || !hasId) return false;
-        if (brandOnly && !hasPrice) return false;
-        return true;
-      });
-      console.debug('[search] filtered size:', filtered.length);
+      // 调用云函数获取商品列表（按期望流程）
+      const res = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { searchText: q, cityId, latitude: lat, longitude: lng } });
+      const result = res && res.result;
+      const items = Array.isArray(result?.data?.data) ? result.data.data : (Array.isArray(result?.data) ? result.data : []);
+      console.debug('[search] getMeituanCoupon items count:', items.length);
 
-      const dedup = [];
-      const seen = new Set();
-      for (const x of filtered) {
-        const key = String(x.skuViewId || x.actId || x._id || `${x.brandName}-${x.name}`);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        dedup.push(x);
-      }
-      console.debug('[search] dedup size:', dedup.length);
+      // 映射商品为卡片数据，过滤无 skuViewId 的条目
+      const products = items.map(it => {
+        const brandName = it?.brandInfo?.brandName || '';
+        const name = it?.couponPackDetail?.name || '';
+        const skuViewId = it?.couponPackDetail?.skuViewId || it?.skuViewId || '';
+        const headUrlRaw = it?.couponPackDetail?.headUrl || '';
+        const headUrl = cloudImageManager.ensureHttps(headUrlRaw) || cloudImageManager.getPlaceholderUrlSync();
+        const originalPrice = it?.couponPackDetail?.originalPrice || 0;
+        const sellPrice = it?.couponPackDetail?.sellPrice || 0;
+        const label1 = it?.productLabel?.historyPriceLabel || it?.productLabel?.beatMTLabel || '';
+        const actId = it?.couponPackDetail?.actId || '';
+        return { _id: skuViewId || `${brandName}-${name}`, name, brandName, headUrl, sellPrice, originalPrice, label1, skuViewId, actId, referralLinkMap: {} };
+      }).filter(x => x.skuViewId);
+      console.debug('[search] mapped products count (with skuViewId):', products.length);
 
-      if (dedup.length === 0) {
+      // 仅当商品数据和推广链接都获取到后才展示卡片；逐条展示一个一个上屏
+      if (!products.length) {
         wx.showToast({ title: '无结果', icon: 'none' });
-        this.setData({ results: [] });
+        this.setData({ results: [], searchLinkLoading: false });
+        wx.hideLoading();
       } else {
-        this.setData({ results: dedup });
+        // 清空结果，进入逐条补链展示流程，并将搜索按钮置为加载中
+        this.setData({ results: [], searchLinkLoading: true });
+        wx.hideLoading();
+        for (const it of products) {
+          try {
+            // 显式传入 delayMs: 500，且仅请求小程序推广链接 linkTypeList: [4]
+            const req = { skuViewId: String(it.skuViewId), linkTypeList: [4], delayMs: 500 };
+            console.info('[search][referral][request]', req);
+            const r = await wx.cloud.callFunction({ name: 'getMeituanReferralLink', data: req });
+            console.info('[search][referral][response]', r && r.result);
+            const root = r?.result?.data || r?.result || {};
+            const dataRoot = (root && typeof root === 'object' && root.data && typeof root.data === 'object') ? root.data : root;
+            const map = dataRoot?.referralLinkMap || {};
+            // 仅在获取到推广链接后展示该商品卡片
+            const weapp = map['4'] || map[4];
+            if (!weapp) {
+              console.warn('[search][referral] 无可用小程序链接，跳过展示', { skuViewId: it.skuViewId, keys: Object.keys(map || {}) });
+              continue;
+            }
+            const list = Array.isArray(this.data.results) ? this.data.results.slice() : [];
+            list.push({ ...it, referralLinkMap: map });
+            this.setData({ results: list });
+          } catch (e) {
+            console.warn('[search][referral][error]', { skuViewId: it.skuViewId, error: e });
+            // 不阻塞其他项，继续逐条尝试
+          }
+        }
++        // 所有补链完成，恢复搜索按钮
++        this.setData({ searchLinkLoading: false });
       }
     } catch (err) {
       console.warn('[search] 搜索失败：', err);
@@ -152,54 +95,51 @@ Page({
       wx.hideLoading();
     }
   },
-  onResultTap(e) {
+  async onResultTap(e) {
     try {
-      console.debug('[search] onResultTap:', e);
-      const id = e.currentTarget.dataset.id;
-      console.debug('[search] tap id:', id);
+      console.info('[search][click] 用户点击商品卡片', e);
+      const id = e.currentTarget?.dataset?.id;
+      console.debug('[search][click] tap id:', id);
       const list = Array.isArray(this.data.results) ? this.data.results : [];
-      const item = list.find(x => String(x.skuViewId) === String(id) || String(x.actId) === String(id) || String(x._id) === String(id)) || {};
-      console.debug('[search] selected item:', item);
-      const map = item.referralLinkMap || item.linkMap || item.urlMap || (item.links && item.links.referralLinkMap) || {};
-      const weapp = map['4'] || map[4] || map.weapp || map.mini;
-      console.debug('[search] referralLinkMap:', map, 'weapp:', weapp);
-      if (wx?.navigateToMiniProgram && typeof weapp === 'object' && weapp.appId) {
-        console.debug('[search] navigateToMiniProgram object:', weapp);
-        wx.navigateToMiniProgram({ appId: weapp.appId, path: weapp.path || '', envVersion: 'release' });
+      const item = list.find(x => String(x.skuViewId) === String(id) || String(x._id) === String(id)) || {};
+      console.debug('[search][click] selected item:', item);
++      // 跳转前确保返回后不自动调起输入法
++      this.setData({ autoFocus: false });
+      const map = item.referralLinkMap || {};
+      const skuViewId = String(item?.skuViewId || '');
+      const actId = String(item?.actId || '');
+      const weapp = map['4'] || map[4];
+      console.debug('[search][referral] 点击后使用预取的链接', { skuViewId, actId, keys: Object.keys(map || {}), weapp });
+      // 对象型 weapp：使用返回的 appId + path 跳转，并打印最终跳转链接
+      if (wx?.navigateToMiniProgram && typeof weapp === 'object') {
+        const appId = String(weapp?.appId || '');
+        const path = String(weapp?.path || '');
+        console.info('[search][referral] 准备跳转（对象）', { appId, path, skuViewId });
+        wx.navigateToMiniProgram({
+          appId,
+          path,
+          envVersion: 'release',
+          success(res) { console.info('[search][referral] 跳转成功', { skuViewId, res }); },
+          fail(err) { console.warn('[search][referral] 跳转失败', { skuViewId, err }); wx.showToast({ title: '跳转失败', icon: 'none' }); }
+        });
         return;
       }
+      // 字符串 weapp：以 '/' 开头时视为小程序内部路径，打印最终跳转链接
       if (typeof weapp === 'string' && wx?.navigateToMiniProgram) {
-        const s = String(weapp).trim();
-        console.debug('[search] navigateToMiniProgram shortLink/path:', s);
-        if (s.startsWith('/')) {
-          wx.navigateToMiniProgram({ appId: 'wxde8ac0a21135c07d', path: s, envVersion: 'release' });
-        } else {
-          wx.navigateToMiniProgram({ shortLink: s, envVersion: 'release' });
-        }
+        const s = String(weapp || '');
+        console.info('[search][referral] 准备跳转（字符串）', { appId: 'wxde8ac0a21135c07d', path: s, skuViewId });
+        wx.navigateToMiniProgram({
+          appId: 'wxde8ac0a21135c07d',
+          path: s,
+          envVersion: 'release',
+          success(res) { console.info('[search][referral] 跳转成功', { skuViewId, res }); },
+          fail(err) { console.warn('[search][referral] 跳转失败', { skuViewId, err }); wx.showToast({ title: '跳转失败', icon: 'none' }); }
+        });
         return;
       }
-      if (item.actId) {
-        console.debug('[search] fallback by actId:', item.actId);
-        wx.cloud.callFunction({ name: 'getMeituanReferralLink', data: { actId: item.actId } }).then(res => {
-          const root = res?.result?.data || {};
-          const dataRoot = (root && typeof root === 'object' && root.data && typeof root.data === 'object') ? root.data : root;
-          const m = dataRoot?.referralLinkMap || dataRoot?.linkMap || dataRoot?.urlMap || {};
-          const wa = m['4'] || m[4] || m.weapp || m.mini;
-          console.debug('[search] fallback referralLinkMap:', m, 'weapp:', wa);
-          if (wa && typeof wa === 'object' && wa.appId && wx?.navigateToMiniProgram) {
-            wx.navigateToMiniProgram({ appId: wa.appId, path: wa.path || '', envVersion: 'release' });
-            return;
-          }
-          if (typeof wa === 'string' && wx?.navigateToMiniProgram) {
-            const s2 = String(wa).trim();
-            if (s2.startsWith('/')) {
-              wx.navigateToMiniProgram({ appId: 'wxde8ac0a21135c07d', path: s2, envVersion: 'release' });
-            } else {
-              wx.navigateToMiniProgram({ shortLink: s2, envVersion: 'release' });
-            }
-          }
-        }).catch(err => console.warn('[search] 兜底拉取链接失败', err));
-      }
+
+      // 最终兜底
+      wx.showToast({ title: '暂无可用链接', icon: 'none' });
     } catch (err) {
       console.warn('[search] 结果跳转失败：', err);
     }

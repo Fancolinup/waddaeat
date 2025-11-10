@@ -76,6 +76,7 @@
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents",
   "navigateToMiniProgramAppIdList": [
-    "wxde8ac0a21135c07d"
+    "wxde8ac0a21135c07d",
+    "wxece3a9a4c82f58c9"
   ]
 }

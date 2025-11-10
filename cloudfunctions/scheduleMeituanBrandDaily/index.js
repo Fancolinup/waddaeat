@@ -445,7 +445,7 @@ exports.main = async (event, context) => {
                 linkTypeList: [3, 4],
                 maxRetries: 10,
                 delayMs: 10000,
-                timeoutMs: 8000,
+                timeoutMs: 2900,
                 ...(appKey && secret ? { appKey, secret } : {})
               }
             });

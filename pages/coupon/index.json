@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "红包领券",
+  "navigationBarTitleText": "外卖领券",
   "enablePullDownRefresh": false,
   "usingComponents": {
     "loading": "/components/loading/loading"

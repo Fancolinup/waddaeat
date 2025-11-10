@@ -18,7 +18,7 @@ Page({
       { name: '星巴克', logo: '/images/canteen.png' }
     ],
     categories: [
-      { key: 'coupon', name: '红包领券' },
+      { key: 'coupon', name: '外卖领券' },
       { key: 'instore', name: '到店优惠' }
     ],
     selectedCategory: 'coupon',
@@ -71,17 +71,8 @@ Page({
       this.setData({ userLocation: null, locationStatus: 'idle', locationText: '选择位置' });
     }
 
-    // TTL 机制：位置超过2小时或附近优惠为空时自动尝试刷新
-    try {
-      const now = Date.now();
-      const TTL_MS = 2 * 3600 * 1000; // 2小时
-      const expired = cachedLoc && typeof cachedLoc.ts === 'number' ? (now - cachedLoc.ts > TTL_MS) : false;
-      const needRefresh = expired || !(Array.isArray(this.data.nearbyOffers) && this.data.nearbyOffers.length > 0);
-      if (cachedLoc && typeof cachedLoc.latitude === 'number' && typeof cachedLoc.longitude === 'number' && needRefresh) {
-        console.debug('[CouponCenter][附近优惠] 触发自动刷新：', { expired, empty: !(this.data.nearbyOffers && this.data.nearbyOffers.length) });
-        this.loadNearbyOffers();
-      }
-    } catch (e) { console.warn('[CouponCenter][附近优惠] 自动刷新检查失败', e); }
+    // 禁用附近优惠自动刷新逻辑：仅在用户主动选择或改变位置后才加载
+    console.info('[CouponCenter][附近优惠] 自动刷新逻辑已禁用：仅在用户选择或改变位置后加载');
 
     this.loadPlatformBanners();
   },
@@ -977,46 +968,81 @@ Page({
   async loadActionCouponsList() {
     try {
       const db = wx.cloud.database();
-      const coll = db.collection('ActionCoupon');
+      const coll = db.collection('ElemeActionCoupon');
+      // 新增：优先通过云函数服务器侧读取，绕过客户端集合读取权限问题
+      let useServer = false;
+      let docsFromServer = [];
+      try {
+        const srv = await wx.cloud.callFunction({ name: 'manageActionCoupons', data: { action: 'list' } });
+        docsFromServer = (srv && srv.result && Array.isArray(srv.result.items)) ? srv.result.items : [];
+        if (docsFromServer.length) {
+          useServer = true;
+          console.info('[ElemeActionCoupon] 服务器侧读取 items=', docsFromServer.length);
+        } else {
+          console.info('[ElemeActionCoupon] 服务器侧读取为空，将回退客户端集合');
+        }
+      } catch (eSrv) {
+        console.warn('[ElemeActionCoupon] 服务器侧读取失败，将回退客户端集合', eSrv);
+      }
       // 读取全部（批量分页）
       let total = 0;
       try {
         const cnt = await coll.count();
         total = (cnt && typeof cnt.total === 'number') ? cnt.total : 0;
+        console.info('[ElemeActionCoupon] 集合统计 total=', total);
       } catch (eCnt) {
-        console.warn('[ActionCoupon] 统计失败，尝试单页读取', eCnt);
+        console.warn('[ElemeActionCoupon] 统计失败，尝试单页读取', eCnt);
       }
       // 当集合为空时，自动触发种子投放一次
       if (total === 0) {
         try {
           await wx.cloud.callFunction({ name: 'manageActionCoupons', data: { strict: true } });
-          console.info('[ActionCoupon] 已触发种子投放');
+          console.info('[ElemeActionCoupon] 已触发种子投放');
+          try {
+            const cnt2 = await coll.count();
+            total = (cnt2 && typeof cnt2.total === 'number') ? cnt2.total : 0;
+            console.info('[ElemeActionCoupon] 种子后 total=', total);
+          } catch (_) {}
         } catch (eSeed) {
-          console.warn('[ActionCoupon] 种子投放失败', eSeed);
+          console.warn('[ElemeActionCoupon] 种子投放失败', eSeed);
         }
       }
       let docs = [];
-      if (total > 0) {
-        for (let offset = 0; offset < total; offset += 20) {
+      // 新增：优先使用服务器侧返回的文档
+      if (useServer) {
+        docs = docsFromServer;
+      } else {
+        if (total > 0) {
+          for (let offset = 0; offset < total; offset += 20) {
+            try {
+              const res = await coll.skip(offset).get();
+              const batch = (res && Array.isArray(res.data)) ? res.data : [];
+              if (batch.length) docs = docs.concat(batch);
+            } catch (ePage) {
+              console.warn('[ElemeActionCoupon] 分页读取失败 offset=', offset, ePage);
+            }
+          }
+        } else {
           try {
-            const res = await coll.skip(offset).get();
-            const batch = (res && Array.isArray(res.data)) ? res.data : [];
-            if (batch.length) docs = docs.concat(batch);
-          } catch (ePage) {
-            console.warn('[ActionCoupon] 分页读取失败 offset=', offset, ePage);
+            const res = await coll.get();
+            docs = (res && Array.isArray(res.data)) ? res.data : [];
+          } catch (eGet) {
+            console.warn('[ElemeActionCoupon] 单页读取失败', eGet);
+            docs = [];
           }
         }
-      } else {
-        try {
-          const res = await coll.get();
-          docs = (res && Array.isArray(res.data)) ? res.data : [];
-        } catch (eGet) {
-          console.warn('[ActionCoupon] 单页读取失败', eGet);
-          docs = [];
-        }
       }
-      // 组装前端展示项：仅保留必要字段（缺图时用拼音映射拼接cloud路径）
-      let list = (docs || []).map(d => {
+      // 原始样本日志
+      try {
+        const sampleCount = Math.min(3, docs.length);
+        for (let i = 0; i < sampleCount; i++) {
+          console.debug('[ElemeActionCoupon] 原始文档样本', i, docs[i]);
+        }
+      } catch (eLog) {
+        console.warn('[ElemeActionCoupon] 原始样本日志失败', eLog);
+      }
+      // 组装前端展示项：仅保留必要字段（缺图时用拼音映射拼接 cloud 路径）
+      const list = (docs || []).map((d, di) => {
         const actId = d.actId || '';
         const name = d.name || ('平台活动' + actId);
         const img = (d.imageCloudPath || d.imageUrl || d.image) || '';
@@ -1030,22 +1056,66 @@ Page({
           try {
             const map = restaurantPinyin || {};
             const key = String(name || '').trim();
-            let slug = map[key] || map[key.replace(/\s+/g,'')] || '';
+            let slug = map[key] || map[key.replace(/\s+/g, '')] || '';
             if (!slug && key) {
-              // 兼容大小写或全角字符的简单归一化
-              const norm = key.replace(/\s+/g,'').toLowerCase();
+              const norm = key.replace(/\s+/g, '').toLowerCase();
               slug = map[norm] || '';
             }
             if (slug) {
               imageUrl = cloudImageManager.getCloudImageUrlInDirSync('platform_actions', slug, 'png');
+              if (di < 8) {
+                console.debug('[ElemeActionCoupon] 拼音映射生成图片路径', { name: key, slug, imageUrl });
+              }
+            } else {
+              if (di < 8) {
+                console.debug('[ElemeActionCoupon] 未找到拼音映射，保留空图', { name: key });
+              }
             }
-          } catch (_) {}
+          } catch (eSlug) {
+            if (di < 8) {
+              console.warn('[ElemeActionCoupon] 拼音映射异常', eSlug);
+            }
+          }
+        }
+        // 兜底：若仍为空，使用占位图，保留活动名称和跳转链接
+        if (!imageUrl || (typeof imageUrl === 'string' && imageUrl.trim() === '')) {
+          imageUrl = cloudImageManager.getPlaceholderUrlSync();
         }
         return { actId, name, imageUrl, referralLinkMap: linkMap };
-      }).filter(x => !!x.imageUrl);
+      });
+
+      console.info('[ElemeActionCoupon] 映射后卡片数:', list.length);
+      try {
+        const sampleCount2 = Math.min(8, list.length);
+        for (let i = 0; i < sampleCount2; i++) {
+          console.debug('[ElemeActionCoupon] item sample', i, list[i]);
+        }
+      } catch (eLog2) {
+        console.warn('[ElemeActionCoupon] 映射样本日志输出失败', eLog2);
+      }
+
+      // 详细日志：逐条输出卡片的图片路径与跳转链接（数据源 list）
+      try {
+        console.info('[ElemeActionCoupon] 映射后卡片详情（含图片与跳转）开始');
+        for (let i = 0; i < list.length; i++) {
+          const it = list[i] || {};
+          const map = it.referralLinkMap || {};
+          const wa = map['4'] || map[4] || map.weapp || map.mini;
+          const link =
+            (wa && typeof wa === 'object') ? { appId: wa.appId || '', path: wa.path || '' } :
+            (typeof wa === 'string') ? { shortLinkOrPath: wa.trim() } :
+            null;
+          const imgType = typeof it.imageUrl === 'string'
+            ? (it.imageUrl.startsWith('cloud://') ? 'cloud' : (it.imageUrl.startsWith('http') ? 'http' : 'other'))
+            : 'none';
+          console.info('[ElemeActionCoupon] [list] 卡片', i, { actId: it.actId, name: it.name, imageUrl: it.imageUrl, imageType: imgType, link });
+        }
+        console.info('[ElemeActionCoupon] 映射后卡片详情（含图片与跳转）结束');
+      } catch (eDtl) {
+        console.warn('[ElemeActionCoupon] 映射后卡片详情日志失败', eDtl);
+      }
 
       // 官方推荐：cloud:// 直接作为 image.src，不再批量转换临时链接
-      // 设置数据与分页（即使无数据也用占位卡片填充）
       const placeholderImg = cloudImageManager.getPlaceholderUrlSync();
       const finalList = list.length ? list : [
         { actId: 'placeholder_1', name: '平台活动', imageUrl: placeholderImg, referralLinkMap: {} },
@@ -1053,41 +1123,92 @@ Page({
         { actId: 'placeholder_3', name: '平台活动', imageUrl: placeholderImg, referralLinkMap: {} },
         { actId: 'placeholder_4', name: '平台活动', imageUrl: placeholderImg, referralLinkMap: {} },
       ];
+
+      // 详细日志：逐条输出“最终展示”卡片的图片路径与跳转链接（finalList）
+      try {
+        console.info('[ElemeActionCoupon] 最终展示卡片详情（含图片与跳转）开始');
+        for (let i = 0; i < finalList.length; i++) {
+          const it = finalList[i] || {};
+          const map = it.referralLinkMap || {};
+          const wa = map['4'] || map[4] || map.weapp || map.mini;
+          const link =
+            (wa && typeof wa === 'object') ? { appId: wa.appId || '', path: wa.path || '' } :
+            (typeof wa === 'string') ? { shortLinkOrPath: wa.trim() } :
+            null;
+          const imgType = typeof it.imageUrl === 'string'
+            ? (it.imageUrl.startsWith('cloud://') ? 'cloud' : (it.imageUrl.startsWith('http') ? 'http' : 'other'))
+            : 'none';
+          console.info('[ElemeActionCoupon] [final] 卡片', i, { actId: it.actId, name: it.name, imageUrl: it.imageUrl, imageType: imgType, link });
+        }
+        console.info('[ElemeActionCoupon] 最终展示卡片详情（含图片与跳转）结束');
+      } catch (eDtl2) {
+        console.warn('[ElemeActionCoupon] 最终展示卡片详情日志失败', eDtl2);
+      }
+
+      console.info('[ElemeActionCoupon] 最终卡片数量:', finalList.length);
       this.setData({ redPacketItems: finalList });
       if (this.data.selectedCategory === 'coupon') {
-        this.setData({ couponPages: this.paginateCoupons(finalList, 4) });
+        const cp = this.paginateCoupons(finalList, 4);
+        this.setData({ couponPages: cp });
+        try {
+          console.info('[ElemeActionCoupon] 绑定到 UI 的 couponPages 详情开始');
+          const flat = [].concat.apply([], cp);
+          for (let i = 0; i < flat.length; i++) {
+            const it = flat[i] || {};
+            const map = it.referralLinkMap || {};
+            const wa = map['4'] || map[4] || map.weapp || map.mini;
+            const link =
+              (wa && typeof wa === 'object') ? { appId: wa.appId || '', path: wa.path || '' } :
+              (typeof wa === 'string') ? { shortLinkOrPath: wa.trim() } :
+              null;
+            console.info('[ElemeActionCoupon] [couponPages] 展示项', i, { actId: it.actId, name: it.name, imageUrl: it.imageUrl, link });
+          }
+          console.info('[ElemeActionCoupon] 绑定到 UI 的 couponPages 详情结束');
+        } catch (eCp) {
+          console.warn('[ElemeActionCoupon] couponPages 详情日志失败', eCp);
+        }
       }
       return finalList.length > 0;
     } catch (err) {
-      console.error('[ActionCoupon] 加载失败', err);
+      console.error('[ElemeActionCoupon] 加载失败', err);
       return false;
     }
   },
 
-  // 新增：点击活动券卡片，直接拉起开放平台小程序链接
+  // 新增：点击活动券卡片，严格使用 referralLinkMap.path 拉起饿了么小程序
   onReceiveActionCoupon(e) {
-    const idx = Number(e?.currentTarget?.dataset?.idx || -1);
+    const rawIdx = e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.idx : undefined;
+    const idx = (typeof rawIdx === 'number') ? rawIdx : Number(rawIdx);
     const list = this.data.redPacketItems || [];
-    const item = (idx >= 0 && idx < list.length) ? list[idx] : null;
+    const item = (Number.isFinite(idx) && idx >= 0 && idx < list.length) ? list[idx] : null;
     if (!item) return;
     const map = item.referralLinkMap || {};
-    const weapp = map['4'] || map[4];
+    const entry = map['4'] || map[4] || map.weapp || map.mini || null;
+    const ELEME_APPID = 'wxece3a9a4c82f58c9';
     try {
-      if (weapp && wx?.navigateToMiniProgram && typeof weapp === 'object' && weapp.appId) {
-        wx.navigateToMiniProgram({ appId: weapp.appId, path: weapp.path || '', envVersion: 'release' });
+      let path = '';
+      let shortLink = '';
+      if (entry && typeof entry === 'object') {
+        path = String(entry.path || '').trim();
+        shortLink = String(entry.shortLink || '').trim();
+      } else if (typeof entry === 'string') {
+        const s = entry.trim();
+        if (s.startsWith('/')) path = s; else shortLink = s;
+      }
+
+      if (path && wx?.navigateToMiniProgram) {
+        console.info('[ElemeActionCoupon] 点击卡片，准备跳转', { idx, actId: item.actId, name: item.name, appId: ELEME_APPID, path });
+        wx.navigateToMiniProgram({ appId: ELEME_APPID, path, envVersion: 'release' });
         return;
       }
-      if (typeof weapp === 'string' && wx?.navigateToMiniProgram) {
-        const s = weapp.trim();
-        if (s.startsWith('/')) {
-          wx.navigateToMiniProgram({ appId: 'wxde8ac0a21135c07d', path: s, envVersion: 'release' });
-        } else {
-          wx.navigateToMiniProgram({ shortLink: s, envVersion: 'release' });
-        }
+      if (shortLink && wx?.navigateToMiniProgram) {
+        console.info('[ElemeActionCoupon] 点击卡片，准备跳转(短链)', { idx, actId: item.actId, name: item.name, shortLink });
+        wx.navigateToMiniProgram({ shortLink, envVersion: 'release' });
         return;
       }
     } catch (e2) {
-      console.warn('[ActionCoupon] 拉起小程序失败或链接缺失', e2);
+      console.warn('[ElemeActionCoupon] 拉起小程序失败或链接缺失', e2);
+      wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' });
     }
   },
 
@@ -1124,11 +1245,12 @@ Page({
     const idx = Number(e?.currentTarget?.dataset?.idx || -1);
     const list = this.data.redPacketItems || [];
     if (idx >= 0 && idx < list.length) {
-      const failing = list[idx]?.imageUrl;
+      let failing = list[idx]?.imageUrl;
       // 官方推荐：仅将 http:// 提升为 https://；cloud:// 保持原样
       if (typeof failing === 'string' && failing.startsWith('http://')) {
         failing = 'https://' + failing.slice(7);
       }
+      console.warn(`[${Date.now()}] 外卖领券卡片图片加载失败`, { idx, src: failing, detail: e && e.detail });
       list[idx].imageUrl = failing || cloudImageManager.getPlaceholderUrlSync();
       this.setData({ redPacketItems: list, couponPages: this.paginateCoupons(list, 4) });
     }
@@ -1204,7 +1326,7 @@ Page({
         const page = pages[pageIndex] || [];
         src = (page[itemIndex] && page[itemIndex].imageUrl) || '';
       }
-      console.info(`[${Date.now()}] 红包卡片图片加载成功`, { idx, src, detail: e && e.detail });
+      console.info(`[${Date.now()}] 外卖领券卡片图片加载成功`, { idx, src, detail: e && e.detail });
     } catch (err) {
       console.warn('[coupon] onCouponImageLoad 日志异常', err);
     }

@@ -2,8 +2,10 @@
 .search-page { height: 100vh; background: #f8f8f8; }
 .search-fixed { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; padding: 20rpx 24rpx; background: #ffffff; box-shadow: 0 6rpx 12rpx rgba(0,0,0,0.06); }
 .search-icon { width: 36rpx; height: 36rpx; margin-right: 16rpx; filter: brightness(0.3); }
-.search-input { flex: 1; height: 72rpx; border-radius: 36rpx; background: #f2f3f5; padding: 0 28rpx; font-size: 28rpx; color: #333; }
-.search-btn { margin-left: 20rpx; height: 72rpx; line-height: 72rpx; padding: 0 28rpx; border-radius: 36rpx; background: #E74C3C; color: #fff; font-size: 28rpx; }
+.search-input { flex: 1; height: 72rpx; border-radius: 36rpx; background: #f2f3f5; padding: 0 28rpx; font-size: 28rpx; color: #333; border: none; outline: none; -webkit-appearance: none; }
+.search-btn { margin-left: 20rpx; height: 72rpx; line-height: 72rpx; padding: 0 28rpx; border-radius: 36rpx; background: #E74C3C; color: #fff; font-size: 28rpx; border: none; outline: none; -webkit-appearance: none; text-decoration: none; }
+.search-btn::after { border: 0 !important; }
+.search-btn[disabled] { opacity: 0.9; }
 
 .result-scroll { height: calc(100vh - 92rpx); }
 /* 缩小卡片之间的间距 */

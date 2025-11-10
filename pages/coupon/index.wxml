@@ -32,7 +32,7 @@
   <!-- 分类导航（保留原有结构与样式） -->
   <view class="category-nav">
     <view class="category-item {{selectedCategory==='coupon'?'active':''}}" data-key="coupon" bindtap="onCategoryTap">
-      <text class="category-text">红包领券</text>
+      <text class="category-text">外卖领券</text>
     </view>
     <view class="category-item {{selectedCategory==='instore'?'active':''}}" data-key="instore" bindtap="onCategoryTap">
       <text class="category-text">到店优惠</text>
@@ -69,8 +69,8 @@
         </block>
         <!-- 红包领券：纯图片卡片 -->
         <block wx:else>
-          <view class="grid-card" wx:for="{{page}}" wx:key="__idx" wx:for-item="c" data-idx="{{c.__idx}}" bindtap="onReceiveActionCoupon" hover-class="none">
-            <image class="card-image" mode="aspectFill" src="{{c.imageUrl}}" data-idx="{{c.__idx}}" binderror="onCouponImageError" bindload="onCouponImageLoad" />
+          <view class="grid-card image-only" wx:for="{{page}}" wx:key="__idx" wx:for-item="c" data-idx="{{c.__idx}}" bindtap="onReceiveActionCoupon" hover-class="none">
+            <image class="card-image image-only" mode="aspectFill" src="{{c.imageUrl}}" data-idx="{{c.__idx}}" binderror="onCouponImageError" bindload="onCouponImageLoad" />
           </view>
         </block>
       </view>
