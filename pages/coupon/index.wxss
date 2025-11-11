@@ -18,7 +18,7 @@
 .category-item { padding: 12rpx 20rpx; border-radius: 24rpx; background: rgba(255,255,255,0.08); color: #fff; border: 2rpx solid rgba(255,255,255,0.18); box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.15); }
 .category-item.active { background: var(--primary); border-color: var(--gold); }
 .category-text { font-weight: 700; text-decoration: none; }
-.category-item.active .category-text { text-decoration: underline; }
+.category-item.active .category-text { text-decoration: none; }
 
 /* 优惠领券区 swiper */
 /* 仅保留宽度与外边距，具体高度统一在下方唯一处定义 */

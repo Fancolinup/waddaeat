@@ -1127,7 +1127,8 @@
 .nearby-section { /* margin-top: 8rpx; */ min-height: 260rpx; overflow: hidden; }
 .nearby-header { display: flex; align-items: center; justify-content: space-between; padding: 0 24rpx; }
 .nearby-title { color: #111; font-weight: 800; font-size: 28rpx; }
-.nearby-placeholder, .nearby-loading { color: #666; border: 2rpx dashed rgba(0,0,0,0.15); border-radius: 16rpx; padding: 18rpx; text-align: center; margin: 8rpx 24rpx; }
+.nearby-placeholder, .nearby-loading { color: #fa8c16; border: 2rpx dashed rgba(0,0,0,0.18); border-radius: 16rpx; padding: 18rpx; text-align: center; margin: 8rpx 24rpx; min-height: 180rpx; display: flex; align-items: center; justify-content: center; }
+.nearby-loading .loading-line { color: #222; font-weight: 600; }
 /* 附近优惠加载动画：三个点依次淡入淡出 */
 .nearby-loading .dot { display: inline-block; width: 10rpx; }
 @keyframes dotsFade {
