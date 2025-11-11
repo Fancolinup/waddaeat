@@ -37,8 +37,6 @@
     <view class="category-item {{selectedCategory==='instore'?'active':''}}" data-key="instore" bindtap="onCategoryTap">
       <text class="category-text">到店优惠</text>
     </view>
-    <!-- 刷新按钮图片：与分类标签同纵向，右侧绝对定位 -->
-    <image class="refresh-image {{couponRefreshing ? 'spinning' : ''}}" src="cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/refresh.png" bindtap="onRefreshTap" mode="widthFix" />
   </view>
 
   <!-- 到店优惠首次加载 Loading -->
