@@ -762,84 +762,150 @@ Page({
     return truncatedName === name ? name : truncatedName + '...';
   },
   onPlatformBannerImageError(e) {
-    const idx = Number(e?.currentTarget?.dataset?.idx || -1);
-    const list = (this.data.platformBanners || []).slice();
-    if (idx >= 0 && idx < list.length) {
-      let failing = list[idx]?.headUrl;
-      // 官方推荐：仅将 http:// 提升为 https://；cloud:// 保持原样，但在错误回调中使用占位图兜底
-      if (typeof failing === 'string' && failing.startsWith('http://')) {
-        failing = 'https://' + failing.slice(7);
-        list[idx].headUrl = failing;
-      } else {
-        list[idx].headUrl = cloudImageManager.getPlaceholderUrlSync();
-      }
+    try {
+      const idx = Number(e?.currentTarget?.dataset?.idx || -1);
+      const list = Array.isArray(this.data.platformBanners) ? this.data.platformBanners.slice() : [];
+      const item = (idx >= 0 && list[idx]) ? list[idx] : null;
+      const actId = item ? (item.actId || '') : '';
+      const src = actId ? `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${actId}.png` : '';
+      console.warn('[PlatformBanner] 图片加载失败，使用云端路径与占位兜底提示', { idx, actId, src, detail: e && e.detail });
+      // 不再修改 headUrl 字段，保持与 WXML 的直接云路径绑定一致
       this.setData({ platformBanners: list });
+    } catch (err) {
+      console.warn('[PlatformBanner] 图片错误兜底异常', err);
     }
   },
+  
   async loadPlatformBanners() {
     try {
-      const res = await wx.cloud.callFunction({ name: 'manageMeituanPlatformBanner', data: { refresh: false, actIds: [689, 701, 648, 645, 638, 569] } });
-      const list = Array.isArray(res?.result?.banners) ? res.result.banners : [];
-      const normalized = list.map(b => {
-        const actId = b.actId || b.activityId || b.id || '';
-        // 强制：使用 actId 拼接云端 fileID（平台活动图片）
-        const headUrl = actId ? `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${actId}.png` : cloudImageManager.getPlaceholderUrlSync();
-        return { ...b, actId, headUrl };
-      });
-
-      // 若首次读取为空，不视为错误，主动触发一次刷新再回填
-      if (!normalized.length) {
-        console.info('[PlatformBanner] 首次读取为空，尝试刷新');
-        const res2 = await wx.cloud.callFunction({ name: 'manageMeituanPlatformBanner', data: { refresh: true, actIds: [689, 701, 648, 645, 638, 569] } });
-        const list2 = Array.isArray(res2?.result?.banners) ? res2.result.banners : [];
-        const normalized2 = list2.map(b => {
-          const actId = b.actId || b.activityId || b.id || '';
-          // 强制：使用 actId 拼接云端 fileID（平台活动图片）
-          const headUrl = actId ? `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${actId}.png` : cloudImageManager.getPlaceholderUrlSync();
-          return { ...b, actId, headUrl };
-        });
-        const defaultActIds = [689, 701, 648, 645, 638, 569];
-        const final = normalized.length ? normalized : [689, 701, 648, 645, 638, 569].map(id => ({ actId: String(id), headUrl: `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${id}.png`, name: '平台活动' }));
-        if (final && final.length) {
-          const f = final[0];
-          const map = (f && typeof f === 'object') ? (f.referralLinkMap || f.linkMap || f.urlMap || (f.links && f.links.referralLinkMap) || {}) : {};
-          const wa = map['4'] || map[4] || map.weapp || map.mini;
-          console.info('[PlatformBanner] 刷新后首条数据', { actId: f.actId, headUrl: f.headUrl, weapp: wa });
-        }
-        this.setData({ platformBanners: final });
-        return;
-      }
-
-      const final = normalized.length ? normalized : [{ actId: 'placeholder', headUrl: cloudImageManager.getPlaceholderUrlSync(), name: '平台活动' }];
-      if (final && final.length) {
-        const f = final[0];
-        const map = (f && typeof f === 'object') ? (f.referralLinkMap || f.linkMap || f.urlMap || (f.links && f.links.referralLinkMap) || {}) : {};
-        const wa = map['4'] || map[4] || map.weapp || map.mini;
-        console.info('[PlatformBanner] 首条数据', { actId: f.actId, headUrl: f.headUrl, weapp: wa });
-      }
-      this.setData({ platformBanners: final });
-    } catch (err) {
-      console.warn('[PlatformBanner] 读取失败，尝试刷新', err);
+      const db = wx.cloud.database();
+      const coll = db.collection('MeituanPlatformBanner');
+      // 先统计总数，尽可能读取全部文档，避免单页为空导致误判
+      let total = 0;
       try {
-        const res2 = await wx.cloud.callFunction({ name: 'manageMeituanPlatformBanner', data: { refresh: true } });
-        const list2 = Array.isArray(res2?.result?.banners) ? res2.result.banners : [];
-        const normalized2 = list2.map(b => {
-          const actId = b.actId || b.activityId || b.id || '';
-          // 强制：使用 actId 拼接云端 fileID（平台活动图片）
-          const headUrl = actId ? `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${actId}.png` : cloudImageManager.getPlaceholderUrlSync();
-          return { ...b, actId, headUrl };
-        });
-        const defaultActIds = [689, 701, 648, 645, 638, 569];
-        const fallbackList = defaultActIds.map(id => ({ actId: String(id), headUrl: `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${id}.png`, name: '平台活动' }));
-        this.setData({ platformBanners: fallbackList });
-      } catch (err2) {
-        console.warn('[PlatformBanner] 刷新失败', err2);
-        const defaultActIds = [689, 701, 648, 645, 638, 569];
-        const fallbackList = defaultActIds.map(id => ({ actId: String(id), headUrl: `cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/${id}.png`, name: '平台活动' }));
-        this.setData({ platformBanners: fallbackList });
+        const cntRes = await coll.count();
+        total = (cntRes && typeof cntRes.total === 'number') ? cntRes.total : 0;
+        console.info('[PlatformBanner] 集合统计 total=', total);
+      } catch (eCnt) {
+        console.warn('[PlatformBanner] 集合统计失败，尝试单页读取', eCnt);
       }
+      let docs = [];
+      if (total > 0) {
+        for (let offset = 0; offset < total; offset += 20) {
+          try {
+            const res = await coll.skip(offset).get();
+            const batch = (res && Array.isArray(res.data)) ? res.data : [];
+            if (batch.length) docs = docs.concat(batch);
+          } catch (ePage) {
+            console.warn('[PlatformBanner] 分页读取失败 offset=', offset, ePage);
+          }
+        }
+      } else {
+        try {
+          const res = await coll.get();
+          docs = (res && Array.isArray(res.data)) ? res.data : [];
+        } catch (eGet) {
+          console.warn('[PlatformBanner] 单页读取失败', eGet);
+          docs = [];
+        }
+      }
+      // 原始文档样本日志
+      try {
+        const sampleCount = Math.min(5, docs.length);
+        console.info('[PlatformBanner] 原始文档数=', docs.length);
+        for (let i = 0; i < sampleCount; i++) {
+          const d = docs[i] || {};
+          console.debug('[PlatformBanner] 原始文档', i, { actId: d.actId, couponValidETimestamp: d.couponValidETimestamp, headUrl: d.headUrl, linkKeys: Object.keys(d.referralLinkMap || {}) });
+        }
+      } catch (eLog) {
+        console.warn('[PlatformBanner] 原始文档日志失败', eLog);
+      }
+      // 按要求：不要根据 couponValidETimestamp 与当前时间过滤；但当结果为空时，输出详尽原因
+      const reasons = [];
+      const list = (docs || []).map((d, di) => {
+        const actId = String(d?.actId || d?.activityId || d?.id || '').trim();
+        const referralLinkMap = (d?.referralLinkMap && typeof d.referralLinkMap === 'object') ? d.referralLinkMap : {};
+        const hasWeapp4 = !!(referralLinkMap && (referralLinkMap['4'] || referralLinkMap[4]));
+        if (!actId) {
+          reasons.push(`[${di}] 过滤：缺少 actId`);
+        }
+        if (!hasWeapp4) {
+          reasons.push(`[${di}] 提示：referralLinkMap 中缺少小程序链接(4)，点击可能不可用`);
+        }
+        if (!d?.couponValidETimestamp || Number(d.couponValidETimestamp) <= 0) {
+          reasons.push(`[${di}] 云函数可能判定过期：couponValidETimestamp=${d?.couponValidETimestamp}`);
+        }
+        if (!d?.headUrl || (typeof d.headUrl === 'string' && !d.headUrl.trim())) {
+          reasons.push(`[${di}] 提示：headUrl 为空（客户端已不依赖该字段）`);
+        }
+        console.info('[PlatformBanner] 映射条目', di, { actId, hasWeapp4 });
+        return { actId, referralLinkMap, name: d?.name || '平台活动', image: cloudImageManager.getCloudImageUrlInDirSync('platform_actions', actId, 'png') };
+      }).filter(x => !!x.actId);
+      console.info('[PlatformBanner] 映射后有效条数:', list.length);
+      if (list.length === 0) {
+        try {
+          if (!docs || docs.length === 0) {
+            reasons.push('集合为空或客户端无读取权限（请检查云数据库权限或改为通过云函数读取）');
+          }
+          console.warn('[PlatformBanner][诊断] 客户端集合读取得到 0 条。可能原因如下：', reasons);
+        } catch (eLog2) {}
+        // 兜底：调用云函数（显式刷新并包含过期项）
+        try {
+          const srv = await wx.cloud.callFunction({ name: 'manageMeituanPlatformBanner', data: { refresh: false, includeExpired: true } });
+          const srvOk = !!(srv && srv.result && srv.result.ok);
+          const banners = (srv && srv.result && Array.isArray(srv.result.banners)) ? srv.result.banners : [];
+          console.info('[PlatformBanner][兜底] 云函数返回 ok=', srvOk, 'total=', (srv && srv.result && srv.result.total), 'banners.length=', banners.length, 'refreshed=', (srv && srv.result && srv.result.refreshed), 'includeExpired=true');
+          let listSrv = banners.map((d, di) => {
+            const actId = String(d?.actId || d?.activityId || d?.id || '').trim();
+            const referralLinkMap = (d?.referralLinkMap && typeof d.referralLinkMap === 'object') ? d.referralLinkMap : {};
+            const hasWeapp4 = !!(referralLinkMap && (referralLinkMap['4'] || referralLinkMap[4]));
+            console.info('[PlatformBanner][兜底] 映射条目', di, { actId, hasWeapp4 });
+            return { actId, referralLinkMap, name: d?.name || '平台活动', image: cloudImageManager.getCloudImageUrlInDirSync('platform_actions', actId, 'png') };
+          }).filter(x => !!x.actId);
+          if (listSrv.length === 0) {
+            console.warn('[PlatformBanner][兜底] 首次刷新并包含过期项仍为 0，尝试限定 linkTypeList=4 再次刷新');
+            try {
+              const srv2 = await wx.cloud.callFunction({ name: 'manageMeituanPlatformBanner', data: { refresh: false, includeExpired: true, linkTypeList: [4] } });
+              const banners2 = (srv2 && srv2.result && Array.isArray(srv2.result.banners)) ? srv2.result.banners : [];
+              console.info('[PlatformBanner][兜底] 第二次云函数返回 total=', (srv2 && srv2.result && srv2.result.total), 'banners.length=', banners2.length, 'refreshed=', (srv2 && srv2.result && srv2.result.refreshed), 'linkTypeList=[4]');
+              listSrv = banners2.map((d, di) => {
+                const actId = String(d?.actId || d?.activityId || d?.id || '').trim();
+                const referralLinkMap = (d?.referralLinkMap && typeof d.referralLinkMap === 'object') ? d.referralLinkMap : {};
+                const hasWeapp4 = !!(referralLinkMap && (referralLinkMap['4'] || referralLinkMap[4]));
+                console.info('[PlatformBanner][兜底] 第二次映射条目', di, { actId, hasWeapp4 });
+                return { actId, referralLinkMap, name: d?.name || '平台活动', image: cloudImageManager.getCloudImageUrlInDirSync('platform_actions', actId, 'png') };
+              }).filter(x => !!x.actId);
+            } catch (eSrv2) {
+              console.warn('[PlatformBanner][兜底] 第二次调用云函数失败', eSrv2);
+            }
+            if (listSrv.length === 0) {
+              console.warn('[PlatformBanner][兜底] 云函数刷新后仍为 0。可能原因：1) 云函数未部署最新版本；2) 云数据库集合为空或权限限制；3) 下游 getMeituanReferralLink 返回空。请检查云函数日志。');
+              // 最终兜底：使用本地默认 actIds 构建占位 banner 列表，确保 UI 可见
+              const localActIds = [689, 701, 648, 645, 638, 569];
+              const localList = localActIds.map(id => ({ actId: String(id), referralLinkMap: {}, image: cloudImageManager.getCloudImageUrlInDirSync('platform_actions', String(id), 'png') }));
+              this.setData({ platformBanners: localList });
+              console.warn('[PlatformBanner][兜底] 使用本地默认 actIds 构建占位列表，本地条数=', localList.length);
+              return true;
+            }
+          }
+          this.setData({ platformBanners: listSrv });
+          console.info('[PlatformBanner][兜底] setData 完成，platformBanners.length=', (this.data.platformBanners || []).length);
+          return listSrv.length > 0;
+        } catch (eSrv) {
+          console.warn('[PlatformBanner][兜底] 调用云函数失败', eSrv);
+        }
+      }
+      this.setData({ platformBanners: list });
+      console.info('[PlatformBanner] setData 完成，platformBanners.length=', (this.data.platformBanners || []).length);
+      return list.length > 0;
+    } catch (err) {
+      console.warn('[PlatformBanner] 加载失败', err);
     }
+    this.setData({ platformBanners: [] });
+    console.info('[PlatformBanner] setData 完成，platformBanners.length=', (this.data.platformBanners || []).length);
+    return false;
   },
+
   async loadPartnerBrandsFromCloud() {
     try {
       const db = wx.cloud.database();
@@ -918,51 +984,104 @@ Page({
     console.debug('[banner] banner data:', b);
     const map = (b && typeof b === 'object') ? (b.referralLinkMap || b.linkMap || b.urlMap || (b.links && b.links.referralLinkMap) || {}) : {};
     const weapp = map['4'] || map[4] || map?.weapp || map?.mini;
-    console.debug('[banner] referralLinkMap:', map, 'weapp:', weapp);
-    // 直接用小程序链接拉起（优先 weapp 对象 appId，其次短链字符串），不做额外 toast/内部跳转
+    const deeplink = map['3'] || map[3] || map?.deeplink || '';
+    console.debug('[banner] referralLinkMap:', map, 'weapp:', weapp, 'deeplink:', deeplink);
+
+    // 1) 直接用 weapp 对象拉起（记录调起链接和结果）
     try {
       if (weapp && wx?.navigateToMiniProgram && typeof weapp === 'object' && weapp.appId) {
-        console.debug('[banner] navigateToMiniProgram object:', weapp);
-        wx.navigateToMiniProgram({ appId: weapp.appId, path: weapp.path || '', envVersion: 'release' });
+        const appId = weapp.appId;
+        const path = weapp.path || '';
+        console.info('[banner] invoking navigateToMiniProgram (object)', { actId: b?.actId, appId, path });
+        wx.navigateToMiniProgram({
+          appId, path, envVersion: 'release',
+          success: (res) => console.info('[banner] navigateToMiniProgram success (object)', { actId: b?.actId, appId, path, res }),
+          fail: (err) => console.warn('[banner] navigateToMiniProgram fail (object)', { actId: b?.actId, appId, path, err })
+        });
         return;
       }
+      // 2) weapp 为字符串：若非 http 链接，视为 path，默认跳转美团小程序（记录调起链接和结果）
       if (typeof weapp === 'string' && wx?.navigateToMiniProgram) {
         const s = weapp.trim();
-        console.debug('[banner] navigateToMiniProgram shortLink/path:', s);
-        if (s.startsWith('/')) {
-          wx.navigateToMiniProgram({ appId: 'wxde8ac0a21135c07d', path: s, envVersion: 'release' });
+        if (!s.startsWith('http')) {
+          const path = s.startsWith('/') ? s : ('/' + s);
+          const appId = 'wxde8ac0a21135c07d';
+          console.info('[banner] invoking navigateToMiniProgram (path string)', { actId: b?.actId, appId, path });
+          wx.navigateToMiniProgram({
+            appId, path, envVersion: 'release',
+            success: (res) => console.info('[banner] navigateToMiniProgram success (path string)', { actId: b?.actId, appId, path, res }),
+            fail: (err) => console.warn('[banner] navigateToMiniProgram fail (path string)', { actId: b?.actId, appId, path, err })
+          });
+          return;
         } else {
-          wx.navigateToMiniProgram({ shortLink: s, envVersion: 'release' });
-        }
-        return;
-      }
-      // 兜底：通过云函数动态获取小程序链接并拉起
-      if (b.actId) {
-        console.debug('[banner] fallback by actId:', b.actId);
-        const res = await wx.cloud.callFunction({ name: 'getMeituanReferralLink', data: { actId: b.actId } });
-        const root = res?.result?.data || {};
-        const dataRoot = (root && typeof root === 'object' && root.data && typeof root.data === 'object') ? root.data : root;
-        const linkMap = dataRoot?.referralLinkMap || {};
-        const wa = linkMap['4'] || linkMap[4] || linkMap.weapp || linkMap.mini;
-        console.debug('[banner] fallback referralLinkMap:', linkMap, 'weapp:', wa);
-        if (wa && typeof wa === 'object' && wa.appId && wx?.navigateToMiniProgram) {
-          wx.navigateToMiniProgram({ appId: wa.appId, path: wa.path || '', envVersion: 'release' });
-          return;
-        }
-        if (typeof wa === 'string' && wx?.navigateToMiniProgram) {
-          const s2 = wa.trim();
-          if (s2.startsWith('/')) {
-            wx.navigateToMiniProgram({ appId: 'wxde8ac0a21135c07d', path: s2, envVersion: 'release' });
-          } else {
-            wx.navigateToMiniProgram({ shortLink: s2, envVersion: 'release' });
-          }
-          return;
+          console.info('[banner] weapp is http link, not supported by navigateToMiniProgram', { actId: b?.actId, weapp: s, deeplink });
         }
       }
     } catch (e2) {
-      console.warn('[banner] 拉起小程序失败或链接缺失', e2);
+      console.warn('[banner] 直接拉起异常，进入兜底解析', e2);
     }
-    // 不做任何 toast 或内部回退跳转，保持简单直达体验
+
+    // 3) 兜底：基于 actId 调用云函数快速解析 weapp 链接后再拉起（记录调起链接和结果）
+    try {
+      if (b?.actId && wx?.cloud?.callFunction && wx?.navigateToMiniProgram) {
+        const cf = await wx.cloud.callFunction({
+          name: 'getMeituanReferralLink',
+          data: { actId: String(b.actId || ''), fastMode: true, linkTypeList: [4], maxRetries: 1, timeoutMs: 2900 }
+        });
+        const map2 = cf?.result?.data?.referralLinkMap || {};
+        const mini2 = map2['4'] || map2[4] || map2?.weapp || map2?.mini;
+        console.debug('[banner] fallback referralLinkMap from getMeituanReferralLink:', map2, 'mini2:', mini2);
+        if (mini2 && typeof mini2 === 'object' && mini2.appId) {
+          const appId = mini2.appId;
+          const path = mini2.path || '';
+          console.info('[banner] invoking navigateToMiniProgram (fallback object)', { actId: b?.actId, appId, path });
+          wx.navigateToMiniProgram({
+            appId, path, envVersion: 'release',
+            success: (res) => console.info('[banner] navigateToMiniProgram success (fallback object)', { actId: b?.actId, appId, path, res }),
+            fail: (err) => console.warn('[banner] navigateToMiniProgram fail (fallback object)', { actId: b?.actId, appId, path, err })
+          });
+          return;
+        }
+      }
+    } catch (e6) {
+      console.warn('[banner] 兜底解析异常，继续管理云函数刷新', e6);
+    }
+
+    // 4) 进一步兜底：调用 manageMeituanPlatformBanner 刷新单个 actId，并尝试再次拉起
+    try {
+      if (b?.actId && wx?.cloud?.callFunction && wx?.navigateToMiniProgram) {
+        const cm = await wx.cloud.callFunction({
+          name: 'manageMeituanPlatformBanner',
+          data: { actIds: [String(b.actId || '')], refresh: true, includeExpired: false, fastMode: true }
+        });
+        const banners = cm?.result?.data || cm?.result?.banners || [];
+        const found = (Array.isArray(banners) ? banners : []).find(x => String(x?.actId || '') === String(b?.actId || '')) || {};
+        const map3 = found?.referralLinkMap || {};
+        const mini3 = map3['4'] || map3[4] || map3?.weapp || map3?.mini;
+        console.debug('[banner] manage fallback referralLinkMap:', map3, 'mini3:', mini3);
+        if (mini3 && typeof mini3 === 'object' && mini3.appId) {
+          const appId = mini3.appId;
+          const path = mini3.path || '';
+          console.info('[banner] invoking navigateToMiniProgram (manage fallback)', { actId: b?.actId, appId, path });
+          wx.navigateToMiniProgram({
+            appId, path, envVersion: 'release',
+            success: (res) => console.info('[banner] navigateToMiniProgram success (manage fallback)', { actId: b?.actId, appId, path, res }),
+            fail: (err) => console.warn('[banner] navigateToMiniProgram fail (manage fallback)', { actId: b?.actId, appId, path, err })
+          });
+          return;
+        }
+      }
+    } catch (e7) {
+      console.warn('[banner] 管理云函数刷新解析失败', e7);
+    }
+
+    // 5) 最终失败：输出详细原因便于排查（包含推广链接）
+    console.warn('[banner] 跳转失败：未获取到有效的小程序链接(类型4)。', {
+      actId: b?.actId,
+      mapKeys: Object.keys(map || {}),
+      weapp,
+      deeplink
+    });
   },
   // 新增：从 ActionCoupon 集合读取活动券（纯图片卡片）
   async loadActionCouponsList() {
@@ -1306,7 +1425,7 @@ Page({
     try {
       const idx = Number(e?.currentTarget?.dataset?.idx || -1);
       const list = Array.isArray(this.data.platformBanners) ? this.data.platformBanners : [];
-      const src = (idx >= 0 && list[idx]) ? list[idx].image : '';
+      const src = (idx >= 0 && list[idx]) ? (list[idx].image || cloudImageManager.getCloudImageUrlInDirSync('platform_actions', list[idx].actId, 'png')) : '';
       console.info(`[${Date.now()}] 平台banner加载成功`, { idx, src, detail: e && e.detail });
     } catch (err) {
       console.warn('[coupon] onPlatformBannerImageLoad 日志异常', err);

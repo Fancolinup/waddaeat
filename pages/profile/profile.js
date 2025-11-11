@@ -13,10 +13,9 @@ Page({
     showFavorites: false,
     favoritesList: [],
     testProducts: [
-      { id: 't1', name: '麦当劳 · 双层吉士汉堡', price: 29, coupon: '减3元', image: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' },
-      { id: 't2', name: '星巴克 · 拿铁(中杯)', price: 32, coupon: '减5元', image: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' },
-      { id: 't3', name: '喜茶 · 芝芝葡萄', price: 21, coupon: '满20减2', image: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' },
-      { id: 't4', name: '海底捞 · 自热火锅', price: 39, coupon: '', image: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png' },
+      { id: 't1', name: '麦当劳 · 双层吉士汉堡', price: 29, coupon: '减3元', image: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png', appId: 'wxde8ac0a21135c07d', path: '/index/pages/h5/h5?weburl=https%3A%2F%2Fclick.meituan.com%2Ft%3Ft%3D1%26c%3D2%26p%3DTF0guL9zU2X1' },
+      { id: 't2', name: '星巴克 · 拿铁(中杯)', price: 32, coupon: '减5元', image: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png', appId: 'wxde8ac0a21135c07d', path: '/index/pages/h5/h5?weburl=https%3A%2F%2Frunion.meituan.com%2Furl%3Fkey%3D4906ce0310404abf8848f63a970b71a4%26url%3Dhttps%253A%252F%252Fi.meituan.com%252F%26sid%3Dwx_sv8G3kzs' },
+      { id: 't3', name: '喜茶 · 芝芝葡萄', price: 21, coupon: '满20减2', image: 'cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/icons/canteen.png', appId: 'wxde8ac0a21135c07d', path: '/pepper/pages/goodDetail/index?did=1496847140&prePage=shop&pushType=1&floorId=1&skuViewId=&channelType=WANG_MENG&p=8C0fp79zyKJ0&t=9&c=2' }
     ]
   },
 
@@ -140,6 +139,32 @@ Page({
   },
   closeFavorites() { this.setData({ showFavorites: false }); },
   noop() {},
+
+  // 新增：测试商品点击跳转到美团小程序指定路径或短链
+  openTestProduct(e) {
+    try {
+      const dataset = e?.currentTarget?.dataset || {};
+      const appId = dataset.appid || 'wxde8ac0a21135c07d';
+      const path = dataset.path || '';
+      const shortLink = dataset.shortlink || '';
+
+      if (shortLink) {
+        wx.navigateToMiniProgram({ shortLink, envVersion: 'release', fail: (err) => {
+          console.warn('[Profile] 跳转短链失败', err);
+          wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' });
+        }});
+        return;
+      }
+
+      wx.navigateToMiniProgram({ appId, path, envVersion: 'release', fail: (err) => {
+        console.warn('[Profile] 跳转指定路径失败', err);
+        wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' });
+      }});
+    } catch (err) {
+      console.warn('[Profile] openTestProduct异常', err);
+      wx.showToast({ title: '操作失败', icon: 'none' });
+    }
+  },
 
   // 分享
   onShareAppMessage() {

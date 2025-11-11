@@ -443,6 +443,7 @@ exports.main = async (event, context) => {
               data: {
                 skuViewId,
                 linkTypeList: [3, 4],
+                attemptUrls: ['https://media.meituan.com/cps_open/common/api/v1/get_referral_link'],
                 maxRetries: 10,
                 delayMs: 10000,
                 timeoutMs: 2900,

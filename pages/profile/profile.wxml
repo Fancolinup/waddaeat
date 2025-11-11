@@ -74,7 +74,7 @@
       </view>
       <view class="test-grid">
         <block wx:for="{{testProducts}}" wx:key="id">
-          <view class="product-card" hover-class="pressed">
+          <view class="product-card" hover-class="pressed" bindtap="openTestProduct" data-appid="{{item.appId}}" data-path="{{item.path}}" data-shortlink="{{item.shortLink}}">
             <image class="thumb" mode="aspectFill" src="{{item.image}}" />
             <view class="info">
               <view class="name">{{item.name}}</view>

@@ -7,7 +7,11 @@
 .search-btn::after { border: 0 !important; }
 .search-btn[disabled] { opacity: 0.9; }
 
-.result-scroll { height: calc(100vh - 92rpx); }
+/* 常驻文案提醒，字号颜色可按需调整 */
+.usage-tip { font-size: 22rpx; color: #8c8c8c; padding: 12rpx 24rpx; background: #fff; border-bottom: 1rpx solid #eee; }
+
+/* 下移列表避免和提示重叠（减去提示高度约 44rpx） */
+.result-scroll { height: calc(100vh - 92rpx - 44rpx); }
 /* 缩小卡片之间的间距 */
 .result-grid { display: grid; grid-template-columns: repeat(1, 1fr); grid-gap: 16rpx; padding: 16rpx; }
 

@@ -157,6 +157,24 @@ Page({
     
     // 仅恢复位置信息显示，不自动刷新附近优惠；刷新由选择位置或位置变更触发
     this.restoreLocationDisplay();
+    
+    // 新增：根据缓存控制附近优惠刷新时机
+    try {
+      const cache = wx.getStorageSync('nearbyOffersCache') || {};
+      const key = this._getLocationCacheKey(cachedLoc);
+      const cachedList = key && cache[key] && Array.isArray(cache[key].list) ? cache[key].list : [];
+      if (cachedLoc && cachedList.length > 0) {
+        // 场景：进入小程序时有定位且存在该定位的附近优惠缓存 -> 直接展示，不刷新
+        this.setData({ nearbyOffers: cachedList, nearbyLoading: false });
+        console.info('[附近优惠][首页] 使用缓存数据展示，无需刷新', { key, count: cachedList.length });
+      } else if (cachedLoc && typeof cachedLoc.latitude === 'number' && typeof cachedLoc.longitude === 'number') {
+        // 场景：进入小程序时有定位但没有附近优惠缓存 -> 刷新
+        console.info('[附近优惠][首页] 无缓存数据，触发刷新', { key });
+        this.loadNearbyOffers();
+      }
+    } catch (e) {
+      console.warn('[附近优惠][首页] 读取缓存失败', e);
+    }
   },
 
   // 配色切换（循环 9 组：s1→s2→...→s9→s1）
@@ -2866,6 +2884,22 @@ Page({
     }
   },
 
+  // 生成附近优惠缓存键：基于 adcode + 经纬度(3位小数) + 位置名
+  _getLocationCacheKey(loc) {
+    try {
+      if (!loc) return '';
+      const adcode = String(loc.adcode || '').trim();
+      const lat = typeof loc.latitude === 'number' ? loc.latitude.toFixed(3) : '';
+      const lng = typeof loc.longitude === 'number' ? loc.longitude.toFixed(3) : '';
+      const name = String(loc.name || '').trim();
+      const key = [adcode, lat, lng, name].filter(Boolean).join('|');
+      return key;
+    } catch (e) {
+      console.warn('[附近优惠][首页] 生成缓存键失败', e);
+      return '';
+    }
+  },
+
   // 首页：加载附近优惠（与领券中心逻辑一致）
   async loadNearbyOffers() {
     try {
@@ -3007,6 +3041,19 @@ Page({
       const nearbyOffers = restaurantCards;
       const nearbyOffersLoop = []; // 移除重复循环，避免重复卡片
       this.setData({ nearbyOffers, nearbyOffersLoop, nearbyLoading: false });
+
+      // 写入附近优惠缓存（按当前位置键）
+      try {
+        const key = this._getLocationCacheKey(this.data.userLocation);
+        if (key) {
+          const cache = wx.getStorageSync('nearbyOffersCache') || {};
+          cache[key] = { list: nearbyOffers, ts: Date.now() };
+          wx.setStorageSync('nearbyOffersCache', cache);
+          console.info('[附近优惠][首页] 已写入缓存', { key, count: nearbyOffers.length });
+        }
+      } catch (e) {
+        console.warn('[附近优惠][首页] 写入缓存失败', e);
+      }
     } catch (err) {
       console.warn('[附近优惠][首页] 加载失败', err);
       // 失败也需关闭加载中状态

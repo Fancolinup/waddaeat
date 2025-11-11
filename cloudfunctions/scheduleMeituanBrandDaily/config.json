@@ -1,5 +1,8 @@
 {
+  "permissions": {
+    "openapi": []
+  },
   "triggers": [
-    { "name": "meituan_brand_minutely", "type": "timer", "config": "0 */1 * * * *" }
+    { "name": "brand_minutely_1", "type": "timer", "config": "0 */1 * * * *" }
   ]
 }

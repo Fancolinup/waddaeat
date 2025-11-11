@@ -71,28 +71,37 @@ function pickWeappFromData(data) {
   return null;
 }
 
-async function callMeituanReferralAPI({ body, appKey, secret, timeoutMs, attemptUrl }) {
-  const bodyStr = JSON.stringify(body);
-  const contentMD5 = computeContentMD5(bodyStr);
+async function callMeituanReferralAPI({ body, appKey, secret, timeoutMs, attemptUrl, method = 'POST' }) {
+  const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
+  const contentMD5 = method.toUpperCase() === 'POST' ? computeContentMD5(bodyStr) : '';
   const timestamp = Date.now().toString();
-  const urlPath = attemptUrl.replace('https://media.meituan.com', '');
+  let urlPath = attemptUrl;
+  try {
+    const u = new URL(attemptUrl);
+    urlPath = `${u.pathname}${u.search || ''}`;
+  } catch (e) {
+    // fallback for environments without URL
+    urlPath = attemptUrl.replace('https://media.meituan.com', '');
+  }
   const headers = {
     'Content-Type': 'application/json;charset=utf-8',
-    'Content-MD5': contentMD5,
+    ...(contentMD5 ? { 'Content-MD5': contentMD5 } : {}),
     'S-Ca-App': appKey,
     'S-Ca-Timestamp': timestamp,
     'S-Ca-Signature-Method': 'HmacSHA256',
     'S-Ca-Signature-Headers': 'S-Ca-App,S-Ca-Timestamp',
-    'S-Ca-Signature': buildSCaSignature({ method: 'POST', urlPath, contentMD5, appKey, timestamp, secret })
+    'S-Ca-Signature': buildSCaSignature({ method, urlPath, contentMD5, appKey, timestamp, secret })
   };
   console.log('[Referral] Request URL:', attemptUrl);
+  console.log('[Referral] Request Method:', method);
   console.log('[Referral] Request Headers (masked):', {
     ...headers,
     'S-Ca-App': appKey ? `${appKey.slice(0, 6)}***${appKey.slice(-4)}` : '',
     'S-Ca-Signature': headers['S-Ca-Signature'] ? '<computed>' : '<empty>'
   });
+  console.log('[Referral] Request Path For Sign:', urlPath);
   console.log('[Referral] Request Body:', body);
-  const resp = await axios.post(attemptUrl, bodyStr, { headers, timeout: timeoutMs });
+  const resp = await axios.request({ method, url: attemptUrl, data: bodyStr, headers, timeout: timeoutMs });
   console.log('[Referral] Response Status:', resp.status);
   console.log('[Referral] Response Headers:', resp.headers);
   console.log('[Referral] Response Data:', resp.data);
@@ -129,7 +138,8 @@ exports.main = async (event, context) => {
       linkTypeList,
       maxRetries,
       delayMs,
-      timeoutMs
+      timeoutMs,
+      method: typeof event?.method === 'string' ? event.method.toUpperCase() : 'POST'
     });
   } catch (e) {}
 
@@ -147,12 +157,18 @@ exports.main = async (event, context) => {
 
   // 主调用：猜测/兼容多种开放平台路径（不同环境可能存在差异），逐个尝试
   const attemptUrls = fastMode
-    ? ['https://media.meituan.com/cps_open/common/api/v1/query_referral_link']
+    ? ['https://media.meituan.com/cps_open/common/api/v1/get_referral_link']
     : [
-      'https://media.meituan.com/cps_open/common/api/v1/generate_referral_link',
-      'https://media.meituan.com/cps_open/common/api/v1/query_referral_link',
-      'https://media.meituan.com/cps_open/common/api/v1/query_referral'
+      'https://media.meituan.com/cps_open/common/api/v1/get_referral_link',
+      'https://media.meituan.com/cps_open/common/api/v1/query_referral_link'
     ];
+  if (Array.isArray(event?.attemptUrls) && event.attemptUrls.length) {
+    try {
+      attemptUrls = event.attemptUrls.filter(u => typeof u === 'string' && /^https?:\/\//.test(u));
+    } catch (e) {}
+  } else if (typeof event?.url === 'string' && /^https?:\/\//.test(event.url)) {
+    attemptUrls = [event.url];
+  }
   try {
     console.log('[Referral] Attempt URLs:', attemptUrls);
   } catch (e) {}
@@ -162,18 +178,25 @@ exports.main = async (event, context) => {
     ? { linkTypeList }
     : {
         linkTypeList,
-        // 允许传入地理位置（到店跳转可能依赖位置）
         ...(typeof event?.latitude === 'number' ? { latitude: event.latitude } : {}),
         ...(typeof event?.longitude === 'number' ? { longitude: event.longitude } : {}),
         ...(typeof event?.cityId === 'number' ? { cityId: event.cityId } : {}),
       };
-  const body = skuViewId ? { ...baseBody, skuViewId } : (actId ? { ...baseBody, actId } : baseBody);
+  let body = skuViewId ? { ...baseBody, skuViewId } : (actId ? { ...baseBody, actId } : baseBody);
+  if (event?.manualBody) {
+    if (typeof event.manualBody === 'string') {
+      try { body = event.manualBody; } catch (e) { console.warn('[Referral] manualBody string provided but not parsed'); }
+    } else if (typeof event.manualBody === 'object') {
+      body = event.manualBody;
+    }
+  }
+  const method = typeof event?.method === 'string' ? event.method.toUpperCase() : 'POST';
 
   let lastErr = null;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     for (const url of attemptUrls) {
       try {
-        const resp = await callMeituanReferralAPI({ body, appKey, secret, timeoutMs, attemptUrl: url });
+        const resp = await callMeituanReferralAPI({ body, appKey, secret, timeoutMs, attemptUrl: url, method });
         const dataRoot = resp?.data || {};
         // 官方/第三方常见结构：{ code, data } 或直接为对象
         const data = (dataRoot && typeof dataRoot === 'object' && dataRoot.data && typeof dataRoot.data === 'object') ? dataRoot.data : dataRoot;

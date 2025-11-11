@@ -23,7 +23,7 @@
     <swiper class="banner-swiper" autoplay="true" interval="3500" circular="true">
       <swiper-item wx:for="{{platformBanners}}" wx:key="actId" wx:for-item="b" wx:for-index="bi">
         <view class="banner-slide" data-idx="{{bi}}" bindtap="onTapPlatformBanner" hover-class="none" hover-stop-propagation="true" style="-webkit-tap-highlight-color: transparent;">
-          <image class="banner-bg" src="{{b.headUrl}}" mode="aspectFill" data-idx="{{bi}}" binderror="onPlatformBannerImageError" bindload="onPlatformBannerImageLoad" style="-webkit-tap-highlight-color: transparent;" />
+          <image class="banner-bg" src="{{b.image || ('cloud://cloud1-0gbk9yujb9937f30.636c-cloud1-0gbk9yujb9937f30-1384367427/Waddaeat/platform_actions/' + (b.actId || '') + '.png')}}" mode="aspectFill" data-idx="{{bi}}" binderror="onPlatformBannerImageError" bindload="onPlatformBannerImageLoad" style="-webkit-tap-highlight-color: transparent;" />
         </view>
       </swiper-item>
     </swiper>

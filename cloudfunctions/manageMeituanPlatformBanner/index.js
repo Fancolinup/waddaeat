@@ -86,9 +86,11 @@ exports.main = async (event, context) => {
 
   const nowTs = Date.now();
 
-  // 运行模式：refresh=刷新并写入；否则仅读取未过期数据
-  // 当 event 为空或未提供 refresh 字段时，默认执行刷新（用于定时触发）
+  // 运行模式：refresh=刷新并写入；否则仅读取
+  // 当 event 为空或未提供 refresh 字段时，默认执行刷新（用于定时触发与手动兜底）
   const doRefresh = (event && Object.keys(event).length > 0) ? !!event.refresh : true;
+  const includeExpired = !!(event && event.includeExpired);
+  console.log('[PlatformBanner] 参数: refresh=', doRefresh, 'includeExpired=', includeExpired, 'actIds=', actIds);
 
   if (doRefresh) {
     console.log('[PlatformBanner] 刷新模式：开始拉取 actIds=', actIds);
@@ -152,7 +154,7 @@ exports.main = async (event, context) => {
     }
   }
 
-  // 读取并返回未过期的 banner 列表
+  // 读取并返回 banner 列表（可选包含过期项）
   try {
     const coll = db.collection('MeituanPlatformBanner');
     // 简单读取全部后在内存中过滤（数据量小）
@@ -162,7 +164,7 @@ exports.main = async (event, context) => {
       const hasAct = !!(d.actId || d.activityId || d.id);
       const hasImg = !!d.headUrl;
       const ts = Number(d.couponValidETimestamp || 0);
-      const stillValid = ts ? ts > nowTs : true;
+      const stillValid = includeExpired ? true : (ts ? ts > nowTs : true);
       return stillValid && (hasImg || hasAct);
     }).sort((a, b) => {
       // 按 actIds 原始顺序排序
@@ -170,9 +172,18 @@ exports.main = async (event, context) => {
       const ib = actIds.indexOf(Number(b.actId));
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
     });
+
+    const expiredCount = docs.filter(d => {
+      const ts = Number(d.couponValidETimestamp || 0);
+      return !includeExpired && !!ts && ts <= nowTs;
+    }).length;
+    const missingAct = docs.filter(d => !(d.actId || d.activityId || d.id)).length;
+    const missingImg = docs.filter(d => !d.headUrl).length;
+    console.info('[PlatformBanner] 读取统计：docs=', docs.length, '有效=', valid.length, 'expired=', expiredCount, 'missingAct=', missingAct, 'missingImg=', missingImg);
+
     return { ok: true, banners: valid, total: valid.length, refreshed: doRefresh };
   } catch (e) {
-    console.warn('[PlatformBanner] 读取未过期 banner 失败：', e);
+    console.warn('[PlatformBanner] 读取 banner 失败：', e);
     return { ok: false, error: { message: e && e.message } };
   }
 };

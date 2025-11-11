@@ -4,7 +4,13 @@
 .brand-logo { width: 48px; height: 48px; border-radius: 24px; margin-right: 10px; }
 .brand-title { font-size: 18px; font-weight: bold; }
 .loading, .error { padding: 16px; color: #666; }
-.product-list { height: calc(100vh - 80px); }
+
+/* 提示文案样式（可调整） */
+.usage-tip { font-size: 22rpx; color: #8c8c8c; padding: 12rpx 0; }
+
+/* 列表高度下调，避免与提示重叠（减去约 44rpx） */
+.product-list { height: calc(100vh - 80px - 44rpx); }
+
 .product-card { display: flex; background: #fff; border-radius: 8px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .product-image { width: 120px; height: 90px; }
 .product-info { flex: 1; padding: 8px; }

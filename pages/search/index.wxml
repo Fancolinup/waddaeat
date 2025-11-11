@@ -7,6 +7,9 @@
     <button class="search-btn" bindtap="onConfirm" bindlongpress="onSearchButtonLongPress" loading="{{searchLinkLoading}}" disabled="{{searchLinkLoading}}">{{searchLinkLoading ? '加载中' : '搜索'}}</button>
   </view>
 
+  <!-- 常驻文案提醒（字号、颜色可在 .usage-tip 样式中调整） -->
+  <view class="usage-tip">受平台限制，个别券在当地使用情况请以页面为准。</view>
+
   <!-- 结果列表区域（卡片栅格） -->
   <scroll-view scroll-y="true" class="result-scroll">
     <view class="result-grid">
