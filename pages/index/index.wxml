@@ -140,13 +140,19 @@
   <!-- 备选与分享：左右并排布局 -->
   <view class="short-share-row">
     <view class="shortlist compact" style="transform: {{shortlistTransform}};">
-      <view class="short-title">备选清单</view>
+      <view class="short-header">
+        <view class="short-title">备选清单</view>
+        <view class="short-hint">（转盘结果可加入备选）</view>
+      </view>
+      <!-- 保持原有结构不变 -->
       <view class="short-grid short-grid-3 compact">
         <block wx:for="{{shortlist}}" wx:key="index" wx:for-index="idx">
           <view class="short-slot filled {{activeShortlistIndex === idx ? 'selected' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" bindtap="onTapShortlistCard">
-            <image class="short-img" src="{{item.icon}}" mode="scaleToFill" lazy-load="true" data-id="{{item.id}}" binderror="onShortImgError" />
-            <view class="short-caption">{{item.name}}</view>
-            <view class="short-confirm" wx:if="{{activeShortlistIndex === idx}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" catchtap="onShortConfirm">就它<text wx:if="{{wheelType === 'takeout' || wheelType === 'beverage'}}">(去下单)</text></view>
+            <view class="short-clip">
+              <image class="short-img" src="{{item.icon}}" mode="scaleToFill" lazy-load="true" data-id="{{item.id}}" binderror="onShortImgError" />
+              <view class="short-caption">{{item.name}}</view>
+              <view class="short-confirm" wx:if="{{activeShortlistIndex === idx}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" catchtap="onShortConfirm">就它<text wx:if="{{wheelType === 'takeout' || wheelType === 'beverage'}}">(去下单)</text></view>
+            </view>
             <text class="short-remove" data-id="{{item.id}}" catchtap="onRemoveShort">×</text>
           </view>
         </block>
