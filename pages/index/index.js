@@ -1325,7 +1325,7 @@ Page({
     this.loadShareText();
   },
 
-  onShortConfirm(e) {
+  async onShortConfirm(e) {
     const { id, name, idx } = e.currentTarget.dataset;
     if (!id || typeof idx === 'undefined') return;
     const list = this.data.shortlist || [];
@@ -1344,12 +1344,63 @@ Page({
     // 短名单确认后清除待刷新标记
     this._pendingAutoRefresh = false;
     this.loadShareText();
-    wx.showToast({ title: '已记录，就它了', icon: 'success' });
 
-    // 外卖/茶饮：快捷“就它”后继续跳转美团
-    if (this.data.wheelType === 'takeout' || this.data.wheelType === 'beverage') {
-      const nameToJump = String(sel.name || '').trim();
-      if (nameToJump) { this._doMeituanJump(nameToJump); }
+    // 与结果浮层“就它，帮我找券”一致的领券流程：查询优惠并跳转品牌详情
+    try { wx.showLoading({ title: '查询优惠中...' }); } catch (e1) { wx.showToast({ title: '查询优惠中...', icon: 'loading', duration: 60000 }); }
+    try {
+      const name = String(sel.name || '').trim();
+      const logo = sel.icon || '';
+      if (!name) { try { wx.hideLoading(); } catch (_) {} return; }
+      const qName = this.cleanRestaurantName ? this.cleanRestaurantName(name) : name;
+      const loc = this.data.userLocation || wx.getStorageSync('userLocation') || {};
+      const lat = (loc && typeof loc.latitude === 'number') ? loc.latitude : undefined;
+      const lng = (loc && typeof loc.longitude === 'number') ? loc.longitude : undefined;
+      const cityId = (() => {
+        const adcode = String(loc?.adcode || '').trim();
+        const cityName = String(loc?.cityName || '').trim();
+        if (adcode && meituanCityMap?.adcodeToId?.[adcode]) return meituanCityMap.adcodeToId[adcode];
+        if (cityName && meituanCityMap?.nameToId?.[cityName]) return meituanCityMap.nameToId[cityName];
+        return meituanCityMap?.nameToId?.['上海市'] || meituanCityMap?.nameToId?.['上海'] || 310100;
+      })();
+      const wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, cityId, searchText: qName, latitude: lat, longitude: lng } });
+      const osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, cityId, searchText: qName, latitude: lat, longitude: lng } });
+      const list1 = this._mapMeituanItemsToProducts(wmRes && wmRes.result);
+      const list2 = this._mapMeituanItemsToProducts(osRes && osRes.result);
+      const seen = new Set();
+      let merged = ([]).concat(list1 || [], list2 || []).filter(it => {
+        const id2 = String(it && it.skuViewId || '').trim();
+        if (!id2) return false;
+        if (seen.has(id2)) return false;
+        seen.add(id2);
+        return true;
+      });
+      try {
+        const fileIds = merged.filter(x => typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0).map(x => x.headUrl);
+        if (fileIds.length && wx.cloud && wx.cloud.getTempFileURL) {
+          const r = await wx.cloud.getTempFileURL({ fileList: fileIds });
+          const map = {};
+          const fl = (r && r.fileList) || [];
+          for (const item of fl) { if (item && item.fileID) map[item.fileID] = item.tempFileURL || ''; }
+          merged = merged.map(x => {
+            if (typeof x.headUrl === 'string' && x.headUrl.indexOf('cloud://') === 0) {
+              const t = map[x.headUrl];
+              return { ...x, headUrl: (t && t.indexOf('http') === 0) ? t : (x.headUrl || this.data.placeholderImageUrl) };
+            }
+            return x;
+          });
+        }
+      } catch (eUrl) { console.warn('[Index][领券] 临时URL转换失败', eUrl); }
+      if (!merged || !merged.length) { try { wx.hideLoading(); } catch (_) {} wx.showToast({ title: '该餐厅目前无优惠。', icon: 'none' }); return; }
+      wx.navigateTo({
+        url: `/pages/brand/detail?name=${encodeURIComponent(name)}${logo ? `&logo=${encodeURIComponent(logo)}` : ''}`,
+        success: (res) => { try { res.eventChannel.emit('initData', { products: merged }); } catch(e) {} },
+        fail: (err) => { console.warn('[Index][领券] 跳转品牌详情失败', err); wx.showToast({ title: '跳转失败，请稍后重试', icon: 'none' }); }
+      });
+      try { wx.hideLoading(); } catch (_) {}
+    } catch (err) {
+      console.warn('[Index][领券] 拉取商品失败', err);
+      try { wx.hideLoading(); } catch (_) {}
+      wx.showToast({ title: '领券服务暂不可用', icon: 'none' });
     }
   },
 

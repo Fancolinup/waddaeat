@@ -151,7 +151,7 @@
             <view class="short-clip">
               <image class="short-img" src="{{item.icon}}" mode="scaleToFill" lazy-load="true" data-id="{{item.id}}" binderror="onShortImgError" />
               <view class="short-caption">{{item.name}}</view>
-              <view class="short-confirm" wx:if="{{activeShortlistIndex === idx}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" catchtap="onShortConfirm">就它<text wx:if="{{wheelType === 'takeout' || wheelType === 'beverage'}}">(去下单)</text></view>
+              <view class="short-confirm" wx:if="{{activeShortlistIndex === idx}}" data-id="{{item.id}}" data-name="{{item.name}}" data-idx="{{idx}}" catchtap="onShortConfirm">就它，找券</view>
             </view>
             <text class="short-remove" data-id="{{item.id}}" catchtap="onRemoveShort">×</text>
           </view>

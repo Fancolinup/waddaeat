@@ -974,7 +974,7 @@
 .short-grid-2 { grid-template-columns: repeat(2, 1fr); }
 .shortlist.compact .short-slot { width: 100rpx; height: 100rpx; border-radius: 12rpx; }
 .shortlist.compact .short-caption { height: 36rpx; font-size: 20rpx; line-height: 36rpx; }
-.shortlist.compact .short-confirm { height: 36rpx; font-size: 22rpx; line-height: 36rpx; }
+.shortlist.compact .short-confirm { height: 32rpx; font-size: 20rpx; line-height: 32rpx; }
 
 /* 分享面板：缩小尺寸并靠右放置在备选区右侧（背景由父容器提供） */
 .share-panel { flex: 1.2; max-width: 55%; background: transparent; border-radius: 12rpx; box-shadow: none; padding: 12rpx; border-left: 2rpx solid #f2f2f2; }
