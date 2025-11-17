@@ -2,11 +2,9 @@
 // 领券中心页面
 const takeoutData = require('../../data/takeout');
 const beverageData = require('../../data/beverage');
-const locationService = require('../../utils/locationService');
 const restaurantData = require('../../restaurant_data.js');
 const restaurantPinyin = require('../../restaurant_pinyin.js');
 const { cloudImageManager } = require('../../utils/cloudImageManager.js');
-const meituanCityMap = require('../../utils/meituanCityMap');
 
 Page({
   data: {
@@ -29,24 +27,16 @@ Page({
     couponPages: [],
     coupons: [],
     couponsSmall: [],
-    nearbyOffers: [],
-    nearbyOffersLoop: [],
     activityBanner: {
         image: '/images/canteen.png',
         title: '平台大促活动',
         desc: '限时抢券，抢到即赚到'
       },
-    // 位置模块显示状态与文案
-    locationStatus: 'idle',
-    locationText: '选择位置',
-    userLocation: null,
     // 领券区分页指示
     couponSwiperCurrent: 0,
     platformBanners: [],
     // 新增：到店优惠首次加载时的 Loading 状态
     instoreLoading: false,
-    // 新增：附近优惠加载中状态，避免静默等待
-    nearbyLoading: false,
     // 新增：刷新控制状态（图片按钮点击时触发平滑过渡）
     couponRefreshing: false,
     // 新增：当前页码（用于按顺序分页读取下一批40条）
@@ -59,20 +49,6 @@ Page({
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 1 });
     }
-
-    // 从本地存储恢复位置（不主动触发位置选择）
-    let cachedLoc = null;
-    try { cachedLoc = wx.getStorageSync('userLocation'); } catch(e) {}
-    if (cachedLoc && cachedLoc.name) {
-      const name = this.truncateLocationName ? this.truncateLocationName(cachedLoc.name) : cachedLoc.name;
-      this.setData({ userLocation: cachedLoc, locationStatus: 'success', locationText: name });
-    } else {
-      // 未设置位置：显示默认提示文案，不触发位置选择
-      this.setData({ userLocation: null, locationStatus: 'idle', locationText: '选择位置' });
-    }
-
-    // 禁用附近优惠自动刷新逻辑：仅在用户主动选择或改变位置后才加载
-    console.info('[CouponCenter][附近优惠] 自动刷新逻辑已禁用：仅在用户选择或改变位置后加载');
 
     this.loadPlatformBanners();
   },
@@ -310,211 +286,7 @@ Page({
       return cloudImageManager.getPlaceholderUrlSync();
     }
   },
-  async loadNearbyOffers() {
-    try {
-      // 开始加载附近优惠：打开加载中状态
-      this.setData({ nearbyLoading: true });
-      const loc = this.data.userLocation || wx.getStorageSync('userLocation');
-      console.info('[附近优惠][餐厅聚合] 开始加载，使用位置', loc);
-      if (!loc || !loc.latitude || !loc.longitude) {
-        console.info('[附近优惠][餐厅聚合] 未设置位置，跳过加载');
-        // 未设置位置：关闭加载中状态
-        this.setData({ nearbyLoading: false });
-        return;
-      }
-
-      // 1) 获取附近餐厅列表（高德/模拟）并去重
-      const radius = 1000;
-      const nearby = await locationService.searchNearbyRestaurants({ latitude: loc.latitude, longitude: loc.longitude }, radius);
-      console.info('[附近优惠][餐厅聚合] 搜索到餐厅数量', Array.isArray(nearby) ? nearby.length : -1);
-      const nearbyArr = Array.isArray(nearby) ? nearby : [];
-      const deduped = [];
-      const seenNames = new Set();
-      for (const r of nearbyArr) {
-        const n = r && r.name ? String(r.name).trim() : '';
-        if (!n || seenNames.has(n)) continue;
-        seenNames.add(n);
-        deduped.push(r);
-      }
-      const restaurants = deduped.slice(0, 20); // 控制数量，扩充至20家，注意后续并发限制
-
-      // 2) 针对每家餐厅并发获取商品（外卖+到店），并为每个商品查询推广链接（仅保留有小程序链接的商品）
-      const restaurantCards = [];
-
-      for (const r of restaurants) {
-        const rName = r && r.name ? r.name : '';
-        if (!rName) continue;
-        const qName = this.cleanRestaurantName ? this.cleanRestaurantName(rName) : (String(rName).trim());
-        const lat = (r && typeof r.latitude === 'number') ? r.latitude : (r?.amapData?.latitude);
-        const lng = (r && typeof r.longitude === 'number') ? r.longitude : (r?.amapData?.longitude);
-        // 拉取外卖与到店商品（静默失败）
-        let wmRes = null, osRes = null;
-        const cityId = (() => {
-          const adcode = String(this?.data?.userLocation?.adcode || r?.amapData?.adcode || '').trim();
-          const cityName = String(this?.data?.userLocation?.cityName || r?.amapData?.cityName || '').trim();
-          if (adcode && meituanCityMap?.adcodeToId?.[adcode]) return meituanCityMap.adcodeToId[adcode];
-          if (cityName && meituanCityMap?.nameToId?.[cityName]) return meituanCityMap.nameToId[cityName];
-          return meituanCityMap?.nameToId?.['上海市'] || meituanCityMap?.nameToId?.['上海'] || 310100;
-        })();
-        try {
-          wmRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 1, cityId, searchText: qName, latitude: lat, longitude: lng } });
-          console.info('[附近优惠][餐厅聚合] 外卖响应 result', wmRes && wmRes.result);
-        } catch (e1) { console.warn('[附近优惠][餐厅聚合] 外卖拉取失败', { name: rName, error: e1 }); }
-        try {
-          osRes = await wx.cloud.callFunction({ name: 'getMeituanCoupon', data: { platform: 2, bizLine: 1, cityId, searchText: qName, latitude: lat, longitude: lng } });
-          console.info('[附近优惠][餐厅聚合] 到店响应 result', osRes && osRes.result);
-        } catch (e2) { console.warn('[附近优惠][餐厅聚合] 到店拉取失败', { name: rName, error: e2 }); }
-
-        const normalizeList = (res, source) => {
-          const root = res?.result?.data || res?.result || {};
-          const arr = Array.isArray(root?.data)
-            ? root.data
-            : (Array.isArray(root?.list)
-              ? root.list
-              : (Array.isArray(root?.items) ? root.items : []));
-          return (arr || []).map(it => {
-            const skuViewId = String(it?.couponPackDetail?.skuViewId || it?.skuViewId || '').trim();
-            const brandName = it?.brandInfo?.brandName || it?.brandName || rName;
-            const name = it?.couponPackDetail?.name || it?.name || it?.title || '';
-            let headUrl = it?.couponPackDetail?.headUrl || it?.headUrl || it?.imgUrl || it?.image || it?.picUrl || '';
-            if (typeof headUrl === 'string' && headUrl.startsWith('http://')) headUrl = 'https://' + headUrl.slice(7);
-            // 新增：解析价格，保证二级页面显示
-            const parseNum = (v) => { const n = (typeof v === 'string') ? parseFloat(v) : (typeof v === 'number' ? v : NaN); return isFinite(n) ? n : 0; };
-            const originalPrice = parseNum(it?.couponPackDetail?.originalPrice || it?.originalPrice || it?.originPrice);
-            const sellPrice = parseNum(it?.couponPackDetail?.sellPrice || it?.sellPrice || it?.price || it?.currentPrice);
-            return { skuViewId, brandName, name, headUrl, source, bizLine: Number(it?.bizLine ?? (source === 'onsite' ? 1 : 0)), originalPrice, sellPrice };
-          }).filter(x => !!x.skuViewId);
-        };
-
-        const wmList = normalizeList(wmRes, 'takeout');
-        const osList = normalizeList(osRes, 'onsite');
-        console.info('[附近优惠][餐厅聚合] 解析完成', { restaurant: rName, takeoutCount: wmList.length, onsiteCount: osList.length });
-
-        const merged = wmList.concat(osList).slice(0, 6); // 每店最多取前6个用于查询链接
-        const itemsWithLink = [];
-        let idx = 0;
-        const couponWorkersLimit = 3; // 每家餐厅内部并发不超过3
-        const worker = async () => {
-          while (idx < merged.length) {
-            const it = merged[idx++];
-            try {
-              console.info('[附近优惠][餐厅聚合][referral] 请求 getMeituanReferralLink', { skuViewId: it.skuViewId });
-              const lr = await wx.cloud.callFunction({ name: 'getMeituanReferralLink', data: { skuViewId: it.skuViewId } });
-              console.info('[附近优惠][餐厅聚合][referral] 响应 result', lr && lr.result);
-              const root = lr?.result?.data || lr?.result || {};
-              const dataRoot = (root && typeof root === 'object' && root.data && typeof root.data === 'object') ? root.data : root;
-              const linkMap = dataRoot?.referralLinkMap || {};
-              const weapp = linkMap['4'] || linkMap[4] || linkMap.weapp || linkMap.mini;
-              if (weapp) {
-                itemsWithLink.push({ ...it, referralLinkMap: linkMap });
-              } else {
-                console.info('[附近优惠][餐厅聚合][referral] 未找到小程序链接，跳过', { skuViewId: it.skuViewId });
-              }
-            } catch (e) {
-              console.warn('[附近优惠][餐厅聚合][referral] 查询失败', { skuViewId: it && it.skuViewId, error: e });
-            }
-          }
-        };
-        await Promise.all(new Array(couponWorkersLimit).fill(0).map(() => worker()));
-
-        if (!itemsWithLink.length) {
-          console.info('[附近优惠][餐厅聚合] 餐厅无可跳转商品，跳过', { restaurant: rName });
-          continue;
-        }
-
-        // 提取品牌logo（优先使用美团返回的 brandLogoUrl）
-        const extractBrandLogoUrl = (resp) => {
-          try {
-            const root = resp?.result?.data || resp?.result || {};
-            const arr = Array.isArray(root?.data)
-              ? root.data
-              : (Array.isArray(root?.list)
-                ? root.list
-                : (Array.isArray(root?.items) ? root.items : []));
-            let c = '';
-            for (const it of arr) {
-              c = it?.brandInfo?.brandLogoUrl || it?.brandLogoUrl || '';
-              if (c) break;
-            }
-            if (typeof c === 'string' && c.startsWith('http://')) c = 'https://' + c.slice(7);
-            return c;
-          } catch (e) { return ''; }
-        };
-        const logoCandidate = extractBrandLogoUrl(wmRes) || extractBrandLogoUrl(osRes) || '';
-        const logoUrl = logoCandidate || this.getBrandLogo(rName);
-
-        restaurantCards.push({
-          id: r.id || (rName + '_' + (r.distance || '')), // 兜底生成id
-          name: rName,
-          distance: typeof r.distance === 'number' ? r.distance : null,
-          logoUrl: logoUrl || cloudImageManager.getCloudImageUrlSync('takeout', 'png'),
-          products: itemsWithLink
-        });
-      }
-
-      const nearbyOffers = restaurantCards;
-      const nearbyOffersLoop = []; // 移除重复循环，避免重复卡片
-      console.info('[附近优惠][餐厅聚合] 成功聚合餐厅数量', nearbyOffers.length);
-      this.setData({ nearbyOffers, nearbyOffersLoop, nearbyLoading: false });
-    } catch (err) {
-      console.warn('[附近优惠][餐厅聚合] 加载失败', err);
-      // 失败也需关闭加载中状态
-      this.setData({ nearbyLoading: false });
-    }
-  },
-
-  onNearbyRestaurantTap(e) {
-    try {
-      const id = e.currentTarget.dataset.id;
-      const list = Array.isArray(this.data.nearbyOffers) ? this.data.nearbyOffers : [];
-      const restaurant = list.find(r => String(r.id) === String(id));
-      console.info('[附近优惠][餐厅聚合][点击] 选中餐厅', { id, name: restaurant && restaurant.name });
-      if (!restaurant) return;
-      const name = restaurant.name || '';
-      const logo = restaurant.logoUrl || cloudImageManager.getCloudImageUrlSync('takeout', 'png');
-      const products = Array.isArray(restaurant.products) ? restaurant.products : [];
-      const url = `/pages/brand/detail?name=${encodeURIComponent(name)}&logo=${encodeURIComponent(logo)}`;
-      wx.navigateTo({
-        url,
-        success: (res) => {
-          try {
-            const channel = res.eventChannel;
-            channel && channel.emit && channel.emit('initData', { products });
-            console.info('[附近优惠][餐厅聚合][跳转] 已传递商品数量', products.length);
-          } catch (e) { console.warn('[附近优惠][餐厅聚合][跳转] 传递数据失败', e); }
-        },
-        fail: (err) => { console.warn('[附近优惠][餐厅聚合][跳转] 失败', err); }
-      });
-    } catch (err) {
-      console.warn('[附近优惠][餐厅聚合][点击] 处理失败', err);
-    }
-  },
-
-  async onLocationTap() {
-    try {
-      console.info('[CouponCenter][位置] 用户触发位置选择');
-      this.setData({ locationStatus: 'loading', locationText: '定位中' });
-      // 直接调用微信内置位置选择，不进行权限检查与引导
-      const loc = await locationService.chooseUserLocation();
-      console.info('[CouponCenter][位置] 用户选择位置', loc);
-      // 记录用户选择的位置到本地存储（双向同步）
-      try { wx.setStorageSync('userLocation', { ...loc, ts: Date.now() }); } catch(e) { console.warn('[CouponCenter][位置] 写入本地缓存失败', e); }
-      // 使用真实位置加载附近优惠（静默失败，无提示）
-      await this.setData({ userLocation: loc });
-      await this.loadNearbyOffers();
-      this.setData({
-        userLocation: loc,
-        locationStatus: 'success',
-        locationText: this.truncateLocationName ? this.truncateLocationName(loc.name) : (loc.name || '已设置位置')
-      });
-      console.info('[CouponCenter][位置] 位置设置完成并已触发附近优惠加载');
-    } catch (err) {
-      this.setData({ locationStatus: 'idle', locationText: '选择位置' });
-      console.warn('[CouponCenter][位置] 选择位置失败', err);
-      // 静默失败：不做前端提示
-    }
-  },
-
+  // 已移除附近优惠模块：以下方法不再执行
   onCategoryTap(e) {
     const key = e.currentTarget.dataset.key;
     if (!key) return;
@@ -633,40 +405,6 @@ Page({
     }
   },
 
-  onReceiveNearbyCoupon(e) {
-    try {
-      const id = String(e?.currentTarget?.dataset?.id || '');
-      if (!id) return;
-      const list = Array.isArray(this.data.nearbyOffers) ? this.data.nearbyOffers : [];
-      const item = list.find(x => String(x.id) === id);
-      if (!item) return;
-      const map = item.referralLinkMap || {};
-      const weapp = map['4'] || map[4];
-      if (!weapp) { console.info('[附近优惠][点击跳转] 未找到小程序链接'); return; }
-      // 对象类型：包含 appId/path，优先使用对象内 appId
-      if (wx?.navigateToMiniProgram && typeof weapp === 'object') {
-        const info = weapp || {};
-        const appId = info.appId || 'wxde8ac0a21135c07d';
-        console.info('[附近优惠][点击跳转] 以对象跳转', { appId, path: info.path || '' });
-        wx.navigateToMiniProgram({ appId, path: info.path || '', envVersion: 'release' });
-        return;
-      }
-      // 字符串类型：内部页面路径或小程序短链
-      if (typeof weapp === 'string' && wx?.navigateToMiniProgram) {
-        const s = weapp.trim();
-        if (s.startsWith('/')) {
-          console.info('[附近优惠][点击跳转] 以内部path跳转', { appId: 'wxde8ac0a21135c07d', path: s });
-          wx.navigateToMiniProgram({ appId: 'wxde8ac0a21135c07d', path: s, envVersion: 'release' });
-        } else {
-          console.info('[附近优惠][点击跳转] 以 shortLink 跳转', { shortLink: s });
-          wx.navigateToMiniProgram({ shortLink: s, envVersion: 'release' });
-        }
-      }
-    } catch (err) {
-      console.warn('[附近优惠][点击跳转] 失败', err);
-      // 静默失败：不做前端提示
-    }
-  },
 
   onBannerTap() {
     // 直接复用平台 banner 的点击行为：根据链接进行跳转，不展示 toast
@@ -716,18 +454,9 @@ Page({
   async callMeituanCoupon() {
     console.debug('[Meituan][FrontEnd] 准备调用云函数 getMeituanCoupon');
     try {
-      const loc = this.data.userLocation || wx.getStorageSync('userLocation') || {};
-      const latitude = (loc && typeof loc.latitude === 'number') ? loc.latitude : undefined;
-      const longitude = (loc && typeof loc.longitude === 'number') ? loc.longitude : undefined;
-      const res = await wx.cloud.callFunction({
+      const res = wx.cloud.callFunction({
         name: 'getMeituanCoupon',
-        data: {
-          platform: 1,
-          searchText: '麦当劳',
-          latitude,
-          longitude
-          // 安全建议：AppKey/Secret 建议通过云函数环境变量配置；若未配置可临时在 data 里传入
-        }
+        data: { platform: 1, searchText: '麦当劳' }
       });
       console.debug('[Meituan][FrontEnd] 云函数返回 result:', res && res.result);
       if (res && res.result) {
@@ -744,23 +473,7 @@ Page({
     }
   },
 
-  // 截取位置名称，限制在20个字节内（中文3字节、英文1字节）
-  truncateLocationName(name) {
-    if (!name) return '';
-    let byteLength = 0;
-    let truncatedName = '';
-    for (let i = 0; i < name.length; i++) {
-      const char = name[i];
-      const charByteLength = /[\u4e00-\u9fa5]/.test(char) ? 3 : 1;
-      if (byteLength + charByteLength <= 20) {
-        byteLength += charByteLength;
-        truncatedName += char;
-      } else {
-        break;
-      }
-    }
-    return truncatedName === name ? name : truncatedName + '...';
-  },
+
   onPlatformBannerImageError(e) {
     try {
       const idx = Number(e?.currentTarget?.dataset?.idx || -1);

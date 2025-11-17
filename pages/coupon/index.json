@@ -3,10 +3,5 @@
   "enablePullDownRefresh": false,
   "usingComponents": {
     "loading": "/components/loading/loading"
-  },
-  "permission": {
-    "scope.userLocation": {
-      "desc": "用于搜索附近餐厅推荐"
-    }
   }
 }

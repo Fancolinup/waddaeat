@@ -438,11 +438,11 @@ Page({
         }
       }
 
-      // 兜底占位图（餐厅统一 canteen.png）
-      return cloudImageManager.getCloudImageUrlSync('canteen', 'png');
+      // 兜底占位图（餐厅统一 canteen.png，使用云端fileID）
+      return cloudImageManager.getFileId('canteen', 'png');
     } catch (e) {
       console.warn('getRestaurantIconPath 解析失败，使用餐厅占位图:', e);
-      return cloudImageManager.getCloudImageUrlSync('canteen', 'png');
+      return cloudImageManager.getFileId('canteen', 'png');
     }
   },
 
@@ -1480,11 +1480,11 @@ Page({
         }
       }
 
-      // 兜底占位图（统一占位图）
-      return cloudImageManager.getPlaceholderUrlSync();
+      // 兜底占位图（餐厅统一 canteen.png，使用云端fileID）
+      return cloudImageManager.getFileId('canteen', 'png');
     } catch (e) {
-      console.warn('getRestaurantIconPath 解析失败，使用占位图:', e);
-      return cloudImageManager.getPlaceholderUrlSync();
+      console.warn('getRestaurantIconPath 解析失败，使用餐厅占位图:', e);
+      return cloudImageManager.getFileId('canteen', 'png');
     }
   },
 
@@ -1800,7 +1800,8 @@ Page({
               // 使用 CloudImageManager 的目录支持，统一走 logos 目录生成 cloud:// fileID
               finalIcon = cloudImageManager.getCloudImageUrlInDirSync('logos', slug, 'png');
             } else {
-              finalIcon = cloudImageManager.getPlaceholderUrlSync();
+              // 餐厅兜底：统一使用云端 canteen.png 的 fileID
+              finalIcon = cloudImageManager.getFileId('canteen', 'png');
             }
           }
           this.setData({ 'selected.icon': finalIcon });
@@ -2234,13 +2235,19 @@ Page({
         return;
       }
 
-      // 餐厅轮盘：使用增强的降级机制
-      // 移除云端降级机制，直接使用本地餐厅兜底
-      const localCanteen = cloudImageManager.getCloudImageUrlSync('canteen', 'png');
+      // 餐厅轮盘：优先使用云端兜底 canteen.png（fileID），并尝试转换为临时HTTPS
+      const cloudCanteen = cloudImageManager.getFileId('canteen', 'png');
       const newLogoRetryMap = { ...this.data.logoRetryMap };
       newLogoRetryMap[name] = retryCount + 1;
-      this.setData({ 'selected.icon': localCanteen, logoRetryMap: newLogoRetryMap });
-      console.debug(`[${ts()}] 餐厅logo降级为本地兜底:`, localCanteen);
+      this.setData({ 'selected.icon': cloudCanteen, logoRetryMap: newLogoRetryMap });
+      console.debug(`[${ts()}] 餐厅logo降级为云端兜底:`, cloudCanteen);
+      try { this.convertSelectedIconToTempHttps(); } catch(_) {}
+      // 如果兜底自身也加载失败（第二次进入该逻辑，或当前 name 已是 canteen），则二次降级为本地图片，确保可视化
+      if (name === 'canteen' || retryCount >= 1) {
+        const localCanteen = cloudImageManager.getCloudImageUrlSync('canteen', 'png');
+        this.setData({ 'selected.icon': localCanteen });
+        console.debug(`[${ts()}] 餐厅logo二次降级为本地兜底:`, localCanteen);
+      }
       return;
       
       // 最终兜底（餐厅）：已在上面统一设置为本地 canteen，无需重复处理
@@ -2912,7 +2919,7 @@ Page({
       }
 
       // 采集附近餐厅（多半径聚合+去重）
-      const targetCount = 60;
+      const targetCount = 100;
       const radiusSteps = [1500, 2500, 3500, 5000, 7000];
       let collected = [];
       let usedRadius = radiusSteps[0];
