@@ -88,6 +88,8 @@ Page({
     // 顶部toast显示
     showTopToast: false,
     topToastText: '',
+    // 无定位灰色遮挡层显示控制
+    showLocationMask: false,
     // 随机化转动时长（ms），默认 3200ms
     spinDurationMs: 3200,
     // 旋转次数计数器（接受或确认后重置）
@@ -175,6 +177,16 @@ Page({
     } catch (e) {
       console.warn('[附近优惠][首页] 读取缓存失败', e);
     }
+
+    // 根据是否有定位数据决定是否展示灰色遮挡层
+    const loc = this.data.userLocation || null;
+    const hasLoc = !!(loc && typeof loc.latitude === 'number' && typeof loc.longitude === 'number');
+    const status = this.data.locationStatus;
+    const mask = !(hasLoc && status === 'success');
+    this.setData({ showLocationMask: mask });
+
+    // 进入页面：若存在缓存位置但未加载真实附近餐厅数据，自动调用高德API并刷新餐厅转盘
+    try { this.autoLoadNearbyRestaurantsFromCache && this.autoLoadNearbyRestaurantsFromCache(); } catch (e) { console.warn('[自动定位] 进入页面自动加载触发失败', e); }
   },
 
   // 配色切换（循环 9 组：s1→s2→...→s9→s1）
@@ -2333,6 +2345,43 @@ Page({
     });
   },
 
+  // 无定位遮挡层点击：扇形区域触发位置选择；非扇形区域关闭遮罩并提示
+  onLocationMaskTap: function(e) {
+    try {
+      const sys = wx.getSystemInfoSync() || {};
+      const winW = sys.windowWidth || sys.screenWidth || 375;
+      const rpxToPx = winW / 750;
+      const radiusPx = 240 * rpxToPx; // 与 CSS 遮罩半径保持一致
+      // 读取点击坐标（优先 tap 的 detail，其次 touches/changedTouches）
+      let x = 0, y = 0;
+      if (e && e.detail && typeof e.detail.x === 'number' && typeof e.detail.y === 'number') {
+        x = e.detail.x; y = e.detail.y;
+      } else if (e && e.touches && e.touches[0]) {
+        const t = e.touches[0];
+        x = (t.clientX != null ? t.clientX : t.pageX) || 0;
+        y = (t.clientY != null ? t.clientY : t.pageY) || 0;
+      } else if (e && e.changedTouches && e.changedTouches[0]) {
+        const t = e.changedTouches[0];
+        x = (t.clientX != null ? t.clientX : t.pageX) || 0;
+        y = (t.clientY != null ? t.clientY : t.pageY) || 0;
+      }
+      // 计算是否落在左上角圆心的 0–90° 扇形范围内
+      const dist = Math.sqrt(x * x + y * y);
+      const angle = Math.atan2(y, x) * 180 / Math.PI; // 以左上角为圆心，x 轴向右、y 轴向下
+      const inSector = dist <= radiusPx && angle >= 0 && angle <= 90;
+      if (inSector) {
+        // 透明扇形区域：触发位置选择逻辑（与左上角选择位置按钮同行为）
+        this.onLocationTap();
+        return; // 不在此处关闭遮罩，等待位置选择流程自行更新状态
+      }
+    } catch (err) {
+      console.warn('[location-mask] 计算扇形命中时发生异常，降级为关闭遮罩:', err);
+    }
+    // 非扇形区域：点击关闭遮罩层并提示
+    this.setData({ showLocationMask: false });
+    this.showTopToast('可以随时通过左上角查看附近餐厅哦~');
+  },
+
   // 备选区图片错误处理：回退占位图
   onShortImgError: function(e) {
     try {
@@ -2746,7 +2795,8 @@ Page({
         locationText: displayName,
         userLocation: location,
         nearbyRestaurants: restaurants,
-        nearbyLoading: false
+        nearbyLoading: false,
+        showLocationMask: false
       });
 
       // 定位成功后加载今日选择页“附近优惠”数据（与领券中心一致）
@@ -2781,13 +2831,15 @@ Page({
       if (error.message && error.message.includes('用户取消')) {
         this.setData({
           locationStatus: 'idle',
-          locationText: '选择位置'
+          locationText: '选择位置',
+          showLocationMask: false
         });
         // 用户取消不显示错误提示
       } else {
         this.setData({
           locationStatus: 'error',
-          locationText: '定位失败'
+          locationText: '定位失败',
+          showLocationMask: false
         });
         this.showTopToast('定位失败，请重试');
       }
@@ -2939,6 +2991,114 @@ Page({
         locationStatus: 'success',
         locationText: displayName
       });
+    }
+  },
+
+  // 自动基于缓存位置加载附近餐厅并刷新餐厅转盘（与手动选择一致）
+  async autoLoadNearbyRestaurantsFromCache() {
+    try {
+      const cachedLoc = this.data.userLocation || wx.getStorageSync('userLocation') || null;
+      const hasLoc = !!(cachedLoc && typeof cachedLoc.latitude === 'number' && typeof cachedLoc.longitude === 'number');
+      if (!hasLoc) return;
+      if (this.data.wheelType !== 'restaurant') return;
+      const hasLocationRecs = Array.isArray(this._cachedLocationRecommendations) && this._cachedLocationRecommendations.length >= 1;
+      if (hasLocationRecs) return;
+
+      this.setData({ locationStatus: 'loading', locationText: '选择位置中', nearbyLoading: true });
+
+      const centerStr = `${cachedLoc.longitude},${cachedLoc.latitude}`;
+      const amap = new AMapWX({ key: '183ebcbcecc78388d3c07eca1d58fe10' });
+      const poiRestaurants = await new Promise((resolve) => {
+        amap.getPoiAround({
+          location: centerStr,
+          querytypes: AMAP_TYPES,
+          success: (res) => resolve(res && res.markers ? res.markers : []),
+          fail: () => resolve([])
+        });
+      });
+
+      const v5Url = `https://restapi.amap.com/v5/place/around?location=${centerStr}&radius=20000&types=${encodeURIComponent(AMAP_TYPES)}&extensions=all&sortrule=weight&key=181d090075117c4211b8402639cd68fe`;
+      let v5Pois = [];
+      try {
+        const v5Res = await new Promise((resolve) => {
+          wx.request({ url: v5Url, method: 'GET', success: (res) => resolve(res), fail: (err) => resolve({ data: null, err }) });
+        });
+        const data = v5Res && v5Res.data ? v5Res.data : null;
+        if (data && Array.isArray(data.pois)) { v5Pois = data.pois; }
+      } catch (_) { v5Pois = []; }
+
+      const v5PoisLimited = (v5Pois && v5Pois.length) ? v5Pois.slice(0, 60) : [];
+      const combinePois = (v5PoisLimited || []).concat(poiRestaurants || []);
+      const restaurants = (combinePois || []).map((p, idx) => {
+        const rawName = p.name || p.title || `餐厅${idx+1}`;
+        const name = this.cleanRestaurantName(rawName);
+        const category = p.category || (p.desc || '餐饮');
+        const address = p.address || '';
+        let latitude = p.latitude; let longitude = p.longitude; let distance = p.distance;
+        if (p.location && typeof p.location === 'string' && p.location.includes(',')) {
+          const [lngStr, latStr] = p.location.split(',');
+          longitude = parseFloat(lngStr); latitude = parseFloat(latStr);
+        }
+        if (typeof distance !== 'number' || isNaN(distance)) {
+          distance = locationService.calculateDistance(cachedLoc.latitude, cachedLoc.longitude, latitude, longitude);
+        }
+        const photos = Array.isArray(p.photos) ? p.photos : [];
+        let photoUrl = '';
+        if (photos.length) { const first = photos[0] || {}; photoUrl = first.url || first.photoUrl || ''; }
+        let photoUrlHttps = (typeof photoUrl === 'string' && photoUrl.startsWith('http://')) ? ('https://' + photoUrl.slice(7)) : photoUrl;
+        const biz = p.biz_ext || {};
+        let ratingNum = undefined; if (biz && biz.rating != null) { const rVal = parseFloat(String(biz.rating).trim()); if (!isNaN(rVal)) ratingNum = rVal; }
+        let costNum = undefined;
+        if (biz && biz.cost != null) {
+          if (typeof biz.cost === 'string') { const cVal = parseFloat(biz.cost); if (!isNaN(cVal)) costNum = cVal; }
+          else if (Array.isArray(biz.cost) && biz.cost.length) { const cVal = parseFloat(biz.cost[0]); if (!isNaN(cVal)) costNum = cVal; }
+        }
+        const optimizedPhotoUrl = this.optimizeAmapPhotoUrl(photoUrlHttps);
+        const icon = optimizedPhotoUrl || (this.data.wheelType === 'takeout' ? cloudImageManager.getCloudImageUrl('takeout', 'png') : (this.data.wheelType === 'beverage' ? cloudImageManager.getCloudImageUrl('beverage', 'png') : this.getRestaurantIconPath(name)));
+        return {
+          id: p.id || p.poiId || `amap_${idx}`,
+          name,
+          distance: distance || 0,
+          category,
+          latitude,
+          longitude,
+          address,
+          icon,
+          rating: ratingNum,
+          cost: costNum,
+          amapData: {
+            latitude, longitude, address,
+            cityName: cachedLoc.cityName || '', adcode: cachedLoc.adcode || '', district: cachedLoc.district || '', street: cachedLoc.street || '',
+            original: p
+          }
+        };
+      });
+
+      const basePriority = ranking.prioritizeRestaurants(restaurants, 60) || [];
+      const locationBasedRecommendationsForRestaurant = basePriority.slice(0, 20);
+
+      const displayName = this.truncateLocationName(cachedLoc.name);
+      this.setData({
+        locationStatus: 'success',
+        locationText: displayName,
+        userLocation: cachedLoc,
+        nearbyRestaurants: restaurants,
+        nearbyLoading: false,
+        showLocationMask: false
+      });
+      // 自动加载也刷新附近优惠，保持与手动选择一致
+      this.loadNearbyOffers();
+      this._basePriorityList = basePriority;
+      this._priorityOffset = 0;
+      this._cachedLocationRecommendations = locationBasedRecommendationsForRestaurant;
+
+      if (this.data.wheelType === 'restaurant') {
+        this.updateWheelWithLocationData(locationBasedRecommendationsForRestaurant);
+      }
+
+    } catch (e) {
+      console.warn('[自动定位] 基于缓存位置加载附近餐厅失败，保持通用推荐', e);
+      this.setData({ locationStatus: 'idle', nearbyLoading: false });
     }
   },
 

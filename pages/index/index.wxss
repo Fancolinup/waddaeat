@@ -1,12 +1,11 @@
 /* 基础布局 */
+/* 基础布局容器不创建新的层叠上下文，避免影响 fixed 遮挡层覆盖 */
 .container { 
   min-height: 100vh; 
   display: flex; 
   flex-direction: column; 
   background: linear-gradient(135deg, rgba(240, 248, 255, 0.6), rgba(230, 255, 250, 0.6)); /* 浅色小清新渐变背景 */
   backdrop-filter: blur(15rpx); /* 毛玻璃效果 */
-  position: relative;
-  z-index: 0; /* 确保背景在最底层 */
 }
 .title { 
   text-align: center; 
@@ -1053,7 +1052,7 @@
   position:absolute;
   left:12rpx;
   top:10rpx;
-  z-index:30;
+  z-index:1001;
   display:flex;
   align-items:center;
   gap:10rpx;
@@ -1175,7 +1174,7 @@
 /* 移除重复的 .hero-area 定义，保留文件前部的固定高度版本，避免因flex和负padding导致整体位移 */
 .disabled-banner{position:absolute;top:16rpx;left:16rpx;display:flex;align-items:center;background:#f0f3f6;color:#9aa8b5;border:1rpx solid #c5d0da;border-radius:12rpx;padding:8rpx 12rpx;opacity:.9}
 .disabled-banner .icon{margin-right:8rpx}
-.banner-location{z-index:30}
+.banner-location{z-index:1001}
 
 /* 外卖品牌列表样式 */
 .dl-brands {
@@ -1309,6 +1308,39 @@
   -webkit-backdrop-filter: blur(16rpx);
   z-index: 998; /* 低于决策浮层但高于其他内容 */
   pointer-events: auto; /* 确保遮罩层可以接收点击事件 */
+}
+
+/* 无定位灰色遮挡层：采用扇形开窗（圆心位于页面左上角），露出选择位置模块 */
+.location-mask {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw; height: 100vh; /* 明确覆盖整个视窗 */
+  background: rgba(0,0,0,0.85); /* 加深遮挡层颜色 */
+  z-index: 999; /* 覆盖其他内容，扇形开窗处不遮挡 */
+  /* 标准四分之一圆形（90°扇形）开窗：圆心位于页面左上角，使用径向 + 角向遮罩确保平滑圆弧、半径一致、角度精确为 90° */
+  -webkit-mask-image: radial-gradient(circle at left top, transparent 240rpx, #000 240rpx),
+                      conic-gradient(from 0deg at left top, transparent 0deg 90deg, #000 90deg 360deg);
+  mask-image: radial-gradient(circle at left top, transparent 240rpx, #000 240rpx),
+              conic-gradient(from 0deg at left top, transparent 0deg 90deg, #000 90deg 360deg);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: left top;
+  mask-position: left top;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  /* 第一层（角向扇形）与第二层（圆）做求交：仅保留圆内的 0–90° 扇形；随后默认与背景叠加 */
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  pointer-events: auto;
+}
+.mask-center-text {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 32rpx; /* 字号增大 */
+  font-weight: 600;
 }
 
 /* 决策浮层 - 进一步调整位置上移 */
@@ -1520,7 +1552,7 @@
 .disabled-banner .icon{width:24rpx;height:24rpx;margin-right:8rpx}
 .disabled-banner .msg{font-size:22rpx;color:#667788}
 .disabled-banner .dev-tag{font-size:20rpx;color:#9aa8b5;background:rgba(154,168,181,.18);padding:4rpx 8rpx;border-radius:10rpx}
-.banner-location{position:absolute;z-index:30}
+.banner-location{position:absolute;z-index:1001}
 /* 移除虚线边框并缩小字体，统一美化 */
 
 /* 顶部分享区内部的旧位置删除，保留样式兼容 */

@@ -52,6 +52,11 @@
   <!-- 顶部toast提示 -->
   <view class="top-toast" hidden="{{!showTopToast}}">{{topToastText}}</view>
 
+  <!-- 无定位遮挡层：露出左上角选择位置模块 -->
+  <view class="location-mask" hidden="{{!showLocationMask}}" bindtap="onLocationMaskTap">
+    <view class="mask-center-text">左上角定位后查看附近餐厅</view>
+  </view>
+
   <!-- 毛玻璃遮罩层 -->
   <view class="glass-overlay" hidden="{{!showDecisionLayer}}" bindtap="onOverlayTap"></view>
 
